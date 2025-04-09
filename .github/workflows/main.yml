@@ -1,0 +1,60 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout Code
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # Step 2: Set Version
+    - name: Read version from file
+      run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+
+    # Step 3: Build Docker Image
+    - name: Build Docker Image
+      env:
+        VERSION: ${{ env.VERSION }}
+      run: |
+        docker build -t ${{ vars.APPNAME }}:${{ env.VERSION }} .
+
+    # Step 4: Push Docker Image to Registry
+    - name: Push Docker Image
+      env:
+        VERSION: ${{ env.VERSION }}
+      run: |
+        echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        docker tag ${{ vars.APPNAME }}:${{ env.VERSION }} ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ env.VERSION }}
+        docker push ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ env.VERSION }}         
+        
+    # Step 5: Set Access
+    - name: Set Access
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        name: id_rsa
+        known_hosts: unnecessary
+
+    # Step 6: Deploy to Server
+    - name: Deploy to Server
+      env:
+        VERSION: ${{ env.VERSION }}
+      run: |
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
+        echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        docker pull ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ env.VERSION }}
+        docker stop ${{ vars.APPNAME }} || true
+        docker rm ${{ vars.APPNAME }} || true
+        docker build -t ${{ vars.APPNAME }}:${{ env.VERSION }} .
+        docker run -d --name ${{ vars.APPNAME }} --network ${{ vars.DOCKERNETWORK }} --ip ${{ vars.DOCKERHOST }} -v ${{ vars.DOCKERVOLUME }}:/app/mnt -p ${{ vars.DOCKERPORT }}:${{ vars.DOCKERPORT }} ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ env.VERSION }}
+        EOF
+      
+
+
