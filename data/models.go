@@ -10,6 +10,9 @@ import (
 func (s *Storage) InitTables() {
 
 	s.db.RegisterModel((*PlayerGame)(nil))
+	s.db.RegisterModel((*RecordChar)(nil))
+	s.db.RegisterModel((*RecordNPC)(nil))
+	s.db.RegisterModel((*RecordLocation)(nil))
 
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Game)(nil)).Exec(context.Background())
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Player)(nil)).Exec(context.Background())
@@ -36,7 +39,7 @@ type Game struct {
 	NPCs      []NPC      `bun:"rel:has-many,join:id=game_id"`
 	Locations []Location `bun:"rel:has-many,join:id=game_id"`
 
-	//Records []Record `bun:"rel:has-many,join:id=game_id"`
+	Records []Record `bun:"rel:has-many,join:id=game_id"`
 
 	//Comments []Comment `bun:"rel:has-many,join:id=game_id"`
 }
@@ -112,7 +115,7 @@ type Location struct {
 	Description string `bun:"description"`
 
 	GameID  int      `bun:"game_id"`
-	Records []Record `bun:"m2m:locations_npcs,join:Location=Record"`
+	Records []Record `bun:"m2m:records_locations,join:Location=Record"`
 }
 
 type Record struct {
@@ -125,6 +128,35 @@ type Record struct {
 	NPCs      []NPC      `bun:"m2m:records_npcs,join:Record=NPC"`
 	Locations []Location `bun:"m2m:records_locations,join:Record=Location"`
 
+	GameID int `bun:"game_id"`
+
 	Created time.Time `bun:"created,nullzero,notnull,default:current_timestamp"`
 	Updated time.Time `bun:"updated,nullzero,notnull,default:current_timestamp"`
+}
+
+type RecordChar struct {
+	bun.BaseModel `bun:"records_chars"`
+
+	RecordID int     `bun:"record_id,pk,autoincrement"`
+	Record   *Record `bun:"rel:belongs-to,join:record_id=id"`
+	CharID   int     `bun:"char_id,pk"`
+	Char     *Char   `bun:"rel:belongs-to,join:char_id=id"`
+}
+
+type RecordNPC struct {
+	bun.BaseModel `bun:"records_npcs"`
+
+	RecordID int     `bun:"record_id,pk,autoincrement"`
+	Record   *Record `bun:"rel:belongs-to,join:record_id=id"`
+	NPCID    int     `bun:"npc_id,pk"`
+	NPC      *NPC    `bun:"rel:belongs-to,join:npc_id=id"`
+}
+
+type RecordLocation struct {
+	bun.BaseModel `bun:"records_locations"`
+
+	RecordID   int       `bun:"record_id,pk,autoincrement"`
+	Record     *Record   `bun:"rel:belongs-to,join:record_id=id"`
+	LocationID int       `bun:"location_id,pk"`
+	Location   *Location `bun:"rel:belongs-to,join:location_id=id"`
 }
