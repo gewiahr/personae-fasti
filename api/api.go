@@ -16,6 +16,7 @@ import (
 )
 
 type APIFunc func(http.ResponseWriter, *http.Request) *APIError
+type APIFuncAuth func(http.ResponseWriter, *http.Request, *data.Player) *APIError
 
 type APIServer struct {
 	server  *http.Server
@@ -105,7 +106,7 @@ func InitServer(c *opt.Conf, s *data.Storage) *APIServer {
 	crs := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type", "AccessKey"},
 		AllowCredentials: true,
 	})
 

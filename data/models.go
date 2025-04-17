@@ -23,6 +23,11 @@ func (s *Storage) InitTables() {
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Record)(nil)).Exec(context.Background())
 	//_, _ = s.db.NewCreateTable().IfNotExists().Model((*Mention)(nil)).Exec(context.Background())
 
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*PlayerGame)(nil)).Exec(context.Background())
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordChar)(nil)).Exec(context.Background())
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordNPC)(nil)).Exec(context.Background())
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordLocation)(nil)).Exec(context.Background())
+
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Log)(nil)).Exec(context.Background())
 
 }
@@ -40,8 +45,6 @@ type Game struct {
 	Locations []Location `bun:"rel:has-many,join:id=game_id"`
 
 	Records []Record `bun:"rel:has-many,join:id=game_id"`
-
-	//Comments []Comment `bun:"rel:has-many,join:id=game_id"`
 }
 
 type Player struct {
@@ -56,7 +59,7 @@ type Player struct {
 	Chars []Char `bun:"rel:has-many,join:id=player_id"`
 	Games []Game `bun:"m2m:players_games,join:Player=Game"`
 
-	//Comments []Comment `bun:"rel:has-many,join:id=player_id"`
+	Records []Record `bun:"rel:has-many,join:id=game_id"`
 
 	Registered time.Time `bun:"registeredTime,nullzero,notnull,default:current_timestamp"`
 	LastAction time.Time `bun:"lastActionTime,nullzero,notnull,default:current_timestamp"`
@@ -70,7 +73,7 @@ type Telegram struct {
 
 	ID       int64  `bun:"id,pk"`
 	Username string `bun:"username,notnull"`
-	Lang     string `bun:"lang,default:en"`
+	Lang     string `bun:"lang,default:'en'"`
 }
 
 type Char struct {
@@ -121,17 +124,18 @@ type Location struct {
 type Record struct {
 	bun.BaseModel `bun:"table:record"`
 
-	ID   int    `bun:"id,pk,autoincrement"`
-	Text string `bun:"text,notnull"`
+	ID   int    `bun:"id,pk,autoincrement" json:"id"`
+	Text string `bun:"text,notnull" json:"text"`
 
-	Chars     []Char     `bun:"m2m:records_chars,join:Record=Char"`
-	NPCs      []NPC      `bun:"m2m:records_npcs,join:Record=NPC"`
-	Locations []Location `bun:"m2m:records_locations,join:Record=Location"`
+	Chars     []Char     `bun:"m2m:records_chars,join:Record=Char" json:"chars,omitempty"`
+	NPCs      []NPC      `bun:"m2m:records_npcs,join:Record=NPC" json:"npcs,omitempty"`
+	Locations []Location `bun:"m2m:records_locations,join:Record=Location" json:"locations,omitempty"`
 
-	GameID int `bun:"game_id"`
+	PlayerID int `bun:"player_id" json:"playerID"`
+	GameID   int `bun:"game_id" json:"gameID"`
 
-	Created time.Time `bun:"created,nullzero,notnull,default:current_timestamp"`
-	Updated time.Time `bun:"updated,nullzero,notnull,default:current_timestamp"`
+	Created time.Time `bun:"created,nullzero,notnull,default:current_timestamp" json:"created"`
+	Updated time.Time `bun:"updated,nullzero,notnull,default:current_timestamp" json:"updated"`
 }
 
 type RecordChar struct {
