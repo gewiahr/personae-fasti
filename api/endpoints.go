@@ -13,6 +13,7 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 
 	router.HandleFunc("GET /login/{accesskey}", api.HTTPWrapper(api.handleLogin))
 	router.HandleFunc("GET /records", api.HTTPWrapper(api.PlayerWrapper(api.handleGetRecords)))
+	router.HandleFunc("POST /record", api.HTTPWrapper(api.PlayerWrapper(api.handlePostRecord)))
 
 }
 
@@ -69,6 +70,52 @@ func (api *APIServer) handleGetRecords(w http.ResponseWriter, r *http.Request, p
 	gameRecords := resp.GameRecords{
 		Records: records,
 		Players: playersInfo,
+		CurrentGame: resp.GameInfo{
+			ID:    p.CurrentGame.ID,
+			Title: p.CurrentGame.Name,
+		},
+	}
+
+	return api.Respond(r, w, http.StatusOK, gameRecords)
+}
+
+func (api *APIServer) handlePostRecord(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var record data.Record
+	err := ReadJsonBody(r, &record)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	err = api.storage.InsertNewRecord(&record, p, p.CurrentGame)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	records, err := api.storage.GetCurrentGameRecords(p.CurrentGame)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	players, err := api.storage.GetCurrentGamePlayers(p.CurrentGame)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	var playersInfo []resp.PlayerInfo
+	for _, player := range players {
+		playersInfo = append(playersInfo, resp.PlayerInfo{
+			ID:       player.ID,
+			Username: player.Username,
+		})
+	}
+
+	gameRecords := resp.GameRecords{
+		Records: records,
+		Players: playersInfo,
+		CurrentGame: resp.GameInfo{
+			ID:    p.CurrentGame.ID,
+			Title: p.CurrentGame.Name,
+		},
 	}
 
 	return api.Respond(r, w, http.StatusOK, gameRecords)

@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"fmt"
 )
 
 func (s *Storage) GetPlayerByAccessKey(accesskey string) (*Player, error) {
@@ -31,4 +32,15 @@ func (s *Storage) GetCurrentGamePlayers(game *Game) ([]Player, error) {
 	}
 
 	return game.Players, nil
+}
+
+func (s *Storage) InsertNewRecord(record *Record, player *Player, game *Game) error {
+	result, err := s.db.NewInsert().Model(record).Exec(context.Background())
+	if err != nil {
+		return err
+	}
+	if result == nil {
+		return fmt.Errorf("error")
+	}
+	return nil
 }

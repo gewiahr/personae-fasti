@@ -19,6 +19,7 @@ type GameInfo struct {
 }
 
 type GameRecords struct {
-	Records []data.Record `json:"records"`
-	Players []PlayerInfo  `json:"players"`
+	Records     []data.Record `json:"records"`
+	Players     []PlayerInfo  `json:"players"`
+	CurrentGame GameInfo      `json:"currentGame"`
 }
