@@ -1,12 +1,11 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"personae-fasti/data"
@@ -36,8 +35,8 @@ func (api *APIServer) HandleError(e error) *APIError {
 	}
 }
 
-func (api *APIServer) HandleErrorString(e string) *APIError {
-	return api.HandleError(fmt.Errorf(e))
+func (api *APIServer) HandleErrorString(estr string) *APIError {
+	return api.HandleError(fmt.Errorf(strings.ToLower(estr)))
 }
 
 func (a *APIError) WithCode(c int) *APIError {
@@ -48,18 +47,6 @@ func (a *APIError) WithCode(c int) *APIError {
 func (a *APIError) WithMessage(m string) *APIError {
 	a.Message = m
 	return a
-}
-
-func ReadBody(r *http.Request) []byte {
-	bodyBytes, _ := io.ReadAll(r.Body)
-	r.Body.Close()
-	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-	return bodyBytes
-}
-
-func ReadJsonBody(r *http.Request, v any) error {
-	bodyBytes := ReadBody(r)
-	return json.Unmarshal(bodyBytes, v)
 }
 
 func (api *APIServer) Respond(r *http.Request, w http.ResponseWriter, status int, v any) *APIError {

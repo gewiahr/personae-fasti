@@ -2,7 +2,9 @@ package data
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"personae-fasti/api/models/reqData"
 )
 
 func (s *Storage) GetPlayerByAccessKey(accesskey string) (*Player, error) {
@@ -16,15 +18,6 @@ func (s *Storage) GetPlayerByAccessKey(accesskey string) (*Player, error) {
 	return &player, nil
 }
 
-func (s *Storage) GetCurrentGameRecords(game *Game) ([]Record, error) {
-	err := s.db.NewSelect().Model(game).WherePK().Relation("Records").Scan(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	return game.Records, nil
-}
-
 func (s *Storage) GetCurrentGamePlayers(game *Game) ([]Player, error) {
 	err := s.db.NewSelect().Model(game).WherePK().Relation("Players").Scan(context.Background())
 	if err != nil {
@@ -34,8 +27,25 @@ func (s *Storage) GetCurrentGamePlayers(game *Game) ([]Player, error) {
 	return game.Players, nil
 }
 
-func (s *Storage) InsertNewRecord(record *Record, player *Player, game *Game) error {
-	result, err := s.db.NewInsert().Model(record).Exec(context.Background())
+func (s *Storage) GetCurrentGameRecords(game *Game) ([]Record, error) {
+	err := s.db.NewSelect().Model(game).WherePK().Relation("Records").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows {
+		return []Record{}, nil
+	}
+
+	return game.Records, nil
+}
+
+func (s *Storage) InsertNewRecord(recordInsert *reqData.RecordInsert, p *Player) error {
+	record := Record{
+		Text:     recordInsert.Text,
+		PlayerID: p.ID,
+		GameID:   p.CurrentGameID,
+	}
+
+	result, err := s.db.NewInsert().Model(&record).Exec(context.Background())
 	if err != nil {
 		return err
 	}
@@ -43,4 +53,30 @@ func (s *Storage) InsertNewRecord(record *Record, player *Player, game *Game) er
 		return fmt.Errorf("error")
 	}
 	return nil
+}
+
+func (s *Storage) GetCurrentGameChars(game *Game) ([]Char, error) {
+	err := s.db.NewSelect().Model(game).WherePK().Relation("Chars").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows || game.Chars == nil {
+		return []Char{}, nil
+	}
+
+	return game.Chars, nil
+}
+
+func (s *Storage) GetCharByID(charID int) (*Char, error) {
+	char := Char{
+		ID: charID,
+	}
+
+	err := s.db.NewSelect().Model(&char).WherePK().Relation("Records").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows {
+		return nil, nil
+	}
+
+	return &char, nil
 }

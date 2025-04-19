@@ -79,8 +79,10 @@ type Telegram struct {
 type Char struct {
 	bun.BaseModel `bun:"table:char"`
 
-	ID          int    `bun:"id,pk,autoincrement"`
-	Name        string `bun:"name,notnull"`
+	ID    int    `bun:"id,pk,autoincrement"`
+	Name  string `bun:"name,notnull"`
+	Title string `bun:"title"`
+
 	Description string `bun:"description"`
 
 	PlayerID int `bun:"player_id"`

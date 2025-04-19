@@ -4,7 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"personae-fasti/api/resp"
+	"personae-fasti/api/models/reqData"
+	"personae-fasti/api/models/respData"
 	"personae-fasti/data"
 	"strings"
 )
@@ -14,6 +15,8 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("GET /login/{accesskey}", api.HTTPWrapper(api.handleLogin))
 	router.HandleFunc("GET /records", api.HTTPWrapper(api.PlayerWrapper(api.handleGetRecords)))
 	router.HandleFunc("POST /record", api.HTTPWrapper(api.PlayerWrapper(api.handlePostRecord)))
+	router.HandleFunc("GET /chars", api.HTTPWrapper(api.PlayerWrapper(api.handleGetChars)))
+	router.HandleFunc("GET /char/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetChar)))
 
 }
 
@@ -21,6 +24,7 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 // 	return api.Respond(r, w, http.StatusOK, nil)
 // }
 
+// GET /login/{accesskey}
 func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIError {
 	accesskey := r.PathValue("accesskey")
 
@@ -33,13 +37,13 @@ func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIEr
 		}
 	}
 
-	loginInfo := resp.LoginInfo{
+	loginInfo := respData.LoginInfo{
 		AccessKey: player.AccessKey,
-		Player: resp.PlayerInfo{
+		Player: respData.PlayerInfo{
 			ID:       player.ID,
 			Username: player.Username,
 		},
-		CurrentGame: resp.GameInfo{
+		CurrentGame: respData.GameInfo{
 			ID:    player.CurrentGame.ID,
 			Title: player.CurrentGame.Name,
 		},
@@ -48,6 +52,7 @@ func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIEr
 	return api.Respond(r, w, http.StatusOK, loginInfo)
 }
 
+// GET /records
 func (api *APIServer) handleGetRecords(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
 	records, err := api.storage.GetCurrentGameRecords(p.CurrentGame)
 	if err != nil {
@@ -59,18 +64,18 @@ func (api *APIServer) handleGetRecords(w http.ResponseWriter, r *http.Request, p
 		return api.HandleError(err)
 	}
 
-	var playersInfo []resp.PlayerInfo
+	var playersInfo []respData.PlayerInfo
 	for _, player := range players {
-		playersInfo = append(playersInfo, resp.PlayerInfo{
+		playersInfo = append(playersInfo, respData.PlayerInfo{
 			ID:       player.ID,
 			Username: player.Username,
 		})
 	}
 
-	gameRecords := resp.GameRecords{
+	gameRecords := respData.GameRecords{
 		Records: records,
 		Players: playersInfo,
-		CurrentGame: resp.GameInfo{
+		CurrentGame: respData.GameInfo{
 			ID:    p.CurrentGame.ID,
 			Title: p.CurrentGame.Name,
 		},
@@ -79,14 +84,15 @@ func (api *APIServer) handleGetRecords(w http.ResponseWriter, r *http.Request, p
 	return api.Respond(r, w, http.StatusOK, gameRecords)
 }
 
+// POST /record
 func (api *APIServer) handlePostRecord(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-	var record data.Record
-	err := ReadJsonBody(r, &record)
+	var recordInsert reqData.RecordInsert
+	err := ReadJsonBody(r, &recordInsert)
 	if err != nil {
 		return api.HandleError(err)
 	}
 
-	err = api.storage.InsertNewRecord(&record, p, p.CurrentGame)
+	err = api.storage.InsertNewRecord(&recordInsert, p)
 	if err != nil {
 		return api.HandleError(err)
 	}
@@ -101,22 +107,61 @@ func (api *APIServer) handlePostRecord(w http.ResponseWriter, r *http.Request, p
 		return api.HandleError(err)
 	}
 
-	var playersInfo []resp.PlayerInfo
-	for _, player := range players {
-		playersInfo = append(playersInfo, resp.PlayerInfo{
-			ID:       player.ID,
-			Username: player.Username,
-		})
+	gameRecords := respData.GameRecords{
+		Records:     records,
+		Players:     respData.PlayersToPlayersInfoArray(players),
+		CurrentGame: *respData.GameToGameInfo(p.CurrentGame),
 	}
 
-	gameRecords := resp.GameRecords{
-		Records: records,
-		Players: playersInfo,
-		CurrentGame: resp.GameInfo{
-			ID:    p.CurrentGame.ID,
-			Title: p.CurrentGame.Name,
-		},
-	}
-
-	return api.Respond(r, w, http.StatusOK, gameRecords)
+	return api.Respond(r, w, http.StatusCreated, gameRecords)
 }
+
+// GET /chars
+func (api *APIServer) handleGetChars(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	chars, err := api.storage.GetCurrentGameChars(p.CurrentGame)
+	if err != nil {
+		api.HandleError(err)
+	}
+
+	players, err := api.storage.GetCurrentGamePlayers(p.CurrentGame)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	gameChars := respData.GameChars{
+		Chars:       respData.CharToCharInfoArray(chars),
+		Players:     respData.PlayersToPlayersInfoArray(players),
+		CurrentGame: *respData.GameToGameInfo(p.CurrentGame),
+	}
+
+	return api.Respond(r, w, http.StatusOK, gameChars)
+}
+
+// GET /char/{id}
+func (api *APIServer) handleGetChar(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	charID := getPathValueInt(r, "id")
+	if charID < 0 {
+		return api.HandleError(fmt.Errorf("error parsing id: char id is invalid"))
+	}
+
+	char, err := api.storage.GetCharByID(charID)
+	if err != nil {
+		return api.HandleError(err)
+	} else if char == nil {
+		return api.HandleErrorString(fmt.Sprintf("no character with id %d", charID)).WithCode(http.StatusNotFound)
+	} else if char.GameID != p.CurrentGameID {
+		return api.HandleErrorString(fmt.Sprintf("char %d is not allowed to request for the game %d", char.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+	}
+
+	charPage := respData.CharPage{
+		Char:    *respData.CharToCharFullInfo(char),
+		Records: []data.Record{},
+	}
+
+	return api.Respond(r, w, http.StatusOK, charPage)
+}
+
+// POST /char
+// func (api *APIServer) handlePostChar(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+
+// }
