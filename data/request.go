@@ -80,3 +80,12 @@ func (s *Storage) GetCharByID(charID int) (*Char, error) {
 
 	return &char, nil
 }
+
+func (s *Storage) UpdateChar(charUpdate *reqData.CharUpdate, char *Char) (*Char, error) {
+	_, err := s.db.NewUpdate().Model(char).WherePK().
+		Set("name = ?", charUpdate.Name).
+		Set("title = ?", charUpdate.Title).
+		Set("description = ?", charUpdate.Description).
+		Returning("*").Exec(context.Background())
+	return char, err
+}

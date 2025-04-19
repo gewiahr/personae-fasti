@@ -17,6 +17,7 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("POST /record", api.HTTPWrapper(api.PlayerWrapper(api.handlePostRecord)))
 	router.HandleFunc("GET /chars", api.HTTPWrapper(api.PlayerWrapper(api.handleGetChars)))
 	router.HandleFunc("GET /char/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetChar)))
+	router.HandleFunc("PUT /char", api.HTTPWrapper(api.PlayerWrapper(api.handlePutChar)))
 
 }
 
@@ -152,6 +153,7 @@ func (api *APIServer) handleGetChar(w http.ResponseWriter, r *http.Request, p *d
 	} else if char.GameID != p.CurrentGameID {
 		return api.HandleErrorString(fmt.Sprintf("char %d is not allowed to request for the game %d", char.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
 	}
+	// ++ Add char check ++//
 
 	charPage := respData.CharPage{
 		Char:    *respData.CharToCharFullInfo(char),
@@ -165,3 +167,30 @@ func (api *APIServer) handleGetChar(w http.ResponseWriter, r *http.Request, p *d
 // func (api *APIServer) handlePostChar(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
 
 // }
+
+// PUT /char
+func (api *APIServer) handlePutChar(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var charUpdate reqData.CharUpdate
+	err := ReadJsonBody(r, &charUpdate)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	char, err := api.storage.GetCharByID(charUpdate.ID)
+	if err != nil {
+		return api.HandleError(err)
+	} else if char == nil {
+		return api.HandleErrorString(fmt.Sprintf("no character with id %d", charUpdate.ID)).WithCode(http.StatusNotFound)
+	} else if char.GameID != p.CurrentGameID {
+		return api.HandleErrorString(fmt.Sprintf("char %d is not allowed to request for the game %d", char.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+	}
+	// ++ Add char check ++//
+
+	char, err = api.storage.UpdateChar(&charUpdate, char)
+	if err != nil {
+		api.HandleError(err)
+	}
+
+	charFullInfo := respData.CharToCharFullInfo(char)
+	return api.Respond(r, w, http.StatusOK, charFullInfo)
+}
