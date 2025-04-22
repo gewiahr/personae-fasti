@@ -106,3 +106,40 @@ func (s *Storage) UpdateChar(charUpdate *reqData.CharUpdate, char *Char) (*Char,
 		Returning("*").Exec(context.Background())
 	return char, err
 }
+
+func (s *Storage) GetSuggestions(player *Player) ([]Suggestion, error) {
+	var suggestions []Suggestion
+
+	err := s.db.NewRaw(
+		`SELECT 
+			id,
+			CONCAT('char:', id) as sid,
+			'char' as type,
+			name
+		FROM char
+		WHERE game_id = ?
+
+		UNION ALL
+
+		SELECT
+			id,
+			CONCAT('npc:', id) as sid,
+			'npc' as type,
+			name
+		FROM npc
+		WHERE game_id = ?
+
+		UNION ALL
+
+		SELECT
+			id,
+			CONCAT('location:', id) as sid,
+			'location' as type,
+			name
+		FROM location
+		WHERE game_id = ?`,
+		player.CurrentGameID, player.CurrentGameID, player.CurrentGameID,
+	).Scan(context.Background(), &suggestions)
+
+	return suggestions, err
+}

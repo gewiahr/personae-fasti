@@ -13,13 +13,16 @@ import (
 func (api *APIServer) SetHandlers(router *http.ServeMux) {
 
 	router.HandleFunc("GET /login/{accesskey}", api.HTTPWrapper(api.handleLogin))
+
 	router.HandleFunc("GET /records", api.HTTPWrapper(api.PlayerWrapper(api.handleGetRecords)))
 	router.HandleFunc("POST /record", api.HTTPWrapper(api.PlayerWrapper(api.handlePostRecord)))
+
 	router.HandleFunc("GET /chars", api.HTTPWrapper(api.PlayerWrapper(api.handleGetChars)))
 	router.HandleFunc("GET /char/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetCharByID)))
 	router.HandleFunc("POST /char", api.HTTPWrapper(api.PlayerWrapper(api.handleCreateChar)))
 	router.HandleFunc("PUT /char", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateChar)))
 
+	router.HandleFunc("GET /suggestions", api.HTTPWrapper(api.PlayerWrapper(api.handleGetSuggestions)))
 }
 
 // func (api *APIServer) handleHome(w http.ResponseWriter, r *http.Request) *APIError {
@@ -206,4 +209,14 @@ func (api *APIServer) handleUpdateChar(w http.ResponseWriter, r *http.Request, p
 
 	charFullInfo := respData.CharToCharFullInfo(char)
 	return api.Respond(r, w, http.StatusOK, charFullInfo)
+}
+
+// GET /suggestions
+func (api *APIServer) handleGetSuggestions(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	suggestions, err := api.storage.GetSuggestions(p)
+	if err != nil {
+		api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusOK, respData.SuggestionData{Suggestions: suggestions})
 }

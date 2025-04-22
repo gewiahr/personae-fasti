@@ -53,3 +53,7 @@ type CharFullInfo struct {
 	PlayerID int `json:"playerID"`
 	GameID   int `json:"gameID"`
 }
+
+type SuggestionData struct {
+	Suggestions []data.Suggestion `json:"entities"`
+}
