@@ -16,8 +16,9 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("GET /records", api.HTTPWrapper(api.PlayerWrapper(api.handleGetRecords)))
 	router.HandleFunc("POST /record", api.HTTPWrapper(api.PlayerWrapper(api.handlePostRecord)))
 	router.HandleFunc("GET /chars", api.HTTPWrapper(api.PlayerWrapper(api.handleGetChars)))
-	router.HandleFunc("GET /char/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetChar)))
-	router.HandleFunc("PUT /char", api.HTTPWrapper(api.PlayerWrapper(api.handlePutChar)))
+	router.HandleFunc("GET /char/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetCharByID)))
+	router.HandleFunc("POST /char", api.HTTPWrapper(api.PlayerWrapper(api.handleCreateChar)))
+	router.HandleFunc("PUT /char", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateChar)))
 
 }
 
@@ -139,7 +140,7 @@ func (api *APIServer) handleGetChars(w http.ResponseWriter, r *http.Request, p *
 }
 
 // GET /char/{id}
-func (api *APIServer) handleGetChar(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+func (api *APIServer) handleGetCharByID(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
 	charID := getPathValueInt(r, "id")
 	if charID < 0 {
 		return api.HandleError(fmt.Errorf("error parsing id: char id is invalid"))
@@ -164,12 +165,24 @@ func (api *APIServer) handleGetChar(w http.ResponseWriter, r *http.Request, p *d
 }
 
 // POST /char
-// func (api *APIServer) handlePostChar(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+func (api *APIServer) handleCreateChar(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var charCreate reqData.CharCreate
+	err := ReadJsonBody(r, &charCreate)
+	if err != nil {
+		return api.HandleError(err)
+	}
 
-// }
+	char, err := api.storage.CreateChar(&charCreate, p)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	charFullInfo := respData.CharToCharFullInfo(char)
+	return api.Respond(r, w, http.StatusOK, charFullInfo)
+}
 
 // PUT /char
-func (api *APIServer) handlePutChar(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+func (api *APIServer) handleUpdateChar(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
 	var charUpdate reqData.CharUpdate
 	err := ReadJsonBody(r, &charUpdate)
 	if err != nil {

@@ -81,6 +81,23 @@ func (s *Storage) GetCharByID(charID int) (*Char, error) {
 	return &char, nil
 }
 
+func (s *Storage) CreateChar(charCreate *reqData.CharCreate, player *Player) (*Char, error) {
+	char := Char{
+		Name:        charCreate.Name,
+		Title:       charCreate.Title,
+		Description: charCreate.Description,
+		PlayerID:    player.ID,
+		GameID:      player.CurrentGameID,
+	}
+
+	_, err := s.db.NewInsert().Model(&char).
+		Column("name", "title", "description", "player_id", "game_id").
+		Returning("*").Exec(context.Background(), &char)
+	//Exec(context.Background())
+
+	return &char, err
+}
+
 func (s *Storage) UpdateChar(charUpdate *reqData.CharUpdate, char *Char) (*Char, error) {
 	_, err := s.db.NewUpdate().Model(char).WherePK().
 		Set("name = ?", charUpdate.Name).
