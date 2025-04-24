@@ -31,7 +31,7 @@ func (s *Storage) GetCurrentGameRecords(game *Game) ([]Record, error) {
 	err := s.db.NewSelect().Model(game).WherePK().Relation("Records").Scan(context.Background())
 	if err != nil {
 		return nil, err
-	} else if err == sql.ErrNoRows {
+	} else if err == sql.ErrNoRows || game.Records == nil {
 		return []Record{}, nil
 	}
 
@@ -107,6 +107,57 @@ func (s *Storage) UpdateChar(charUpdate *reqData.CharUpdate, char *Char) (*Char,
 	return char, err
 }
 
+func (s *Storage) GetCurrentGameNPCs(game *Game) ([]NPC, error) {
+	err := s.db.NewSelect().Model(game).WherePK().Relation("NPCs").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows || game.NPCs == nil {
+		return []NPC{}, nil
+	}
+
+	return game.NPCs, nil
+}
+
+func (s *Storage) GetNPCByID(npcID int) (*NPC, error) {
+	npc := NPC{
+		ID: npcID,
+	}
+
+	err := s.db.NewSelect().Model(&npc).WherePK().Relation("Records").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows {
+		return nil, nil
+	}
+
+	return &npc, nil
+}
+
+func (s *Storage) CreateNPC(npcCreate *reqData.NPCCreate, player *Player) (*NPC, error) {
+	npc := NPC{
+		Name:        npcCreate.Name,
+		Title:       npcCreate.Title,
+		Description: npcCreate.Description,
+		CreatedByID: player.ID,
+		GameID:      player.CurrentGameID,
+	}
+
+	_, err := s.db.NewInsert().Model(&npc).
+		Column("name", "title", "description", "created_by_id", "game_id").
+		Returning("*").Exec(context.Background(), &npc)
+
+	return &npc, err
+}
+
+func (s *Storage) UpdateNPC(npcUpdate *reqData.NPCUpdate, npc *NPC) (*NPC, error) {
+	_, err := s.db.NewUpdate().Model(npc).WherePK().
+		Set("name = ?", npcUpdate.Name).
+		Set("title = ?", npcUpdate.Title).
+		Set("description = ?", npcUpdate.Description).
+		Returning("*").Exec(context.Background())
+	return npc, err
+}
+
 func (s *Storage) GetSuggestions(player *Player) ([]Suggestion, error) {
 	var suggestions []Suggestion
 
@@ -140,6 +191,10 @@ func (s *Storage) GetSuggestions(player *Player) ([]Suggestion, error) {
 		WHERE game_id = ?`,
 		player.CurrentGameID, player.CurrentGameID, player.CurrentGameID,
 	).Scan(context.Background(), &suggestions)
+
+	if suggestions == nil {
+		suggestions = []Suggestion{}
+	}
 
 	return suggestions, err
 }

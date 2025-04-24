@@ -38,6 +38,9 @@ type Game struct {
 	ID   int    `bun:"id,pk,autoincrement"`
 	Name string `bun:"name,notnull"`
 
+	GMID int64   `bun:"gm_id"`
+	GM   *Player `bun:"rel:belongs-to,join:gm_id=id"`
+
 	Players []Player `bun:"m2m:players_games,join:Game=Player"`
 	Chars   []Char   `bun:"rel:has-many,join:id=game_id"`
 
@@ -45,6 +48,9 @@ type Game struct {
 	Locations []Location `bun:"rel:has-many,join:id=game_id"`
 
 	Records []Record `bun:"rel:has-many,join:id=game_id"`
+
+	Created time.Time `bun:"created,default:current_timestamp"`
+	Deleted time.Time `bun:"deleted,default:null"`
 }
 
 type Player struct {
@@ -61,11 +67,12 @@ type Player struct {
 
 	Records []Record `bun:"rel:has-many,join:id=game_id"`
 
-	Registered time.Time `bun:"registeredTime,nullzero,notnull,default:current_timestamp"`
-	LastAction time.Time `bun:"lastActionTime,nullzero,notnull,default:current_timestamp"`
-
 	CurrentGameID int   `bun:"current_game_id"`
 	CurrentGame   *Game `bun:"rel:belongs-to,join=current_game_id=id"`
+
+	Registered time.Time `bun:"registeredTime,nullzero,notnull,default:current_timestamp"`
+	LastAction time.Time `bun:"lastActionTime,nullzero,notnull,default:current_timestamp"`
+	Deleted    time.Time `bun:"deleted,default:null"`
 }
 
 type Telegram struct {
@@ -89,6 +96,9 @@ type Char struct {
 	GameID   int `bun:"game_id"`
 
 	Records []Record `bun:"m2m:records_chars,join:Char=Record"`
+
+	Created time.Time `bun:"created,default:current_timestamp"`
+	Deleted time.Time `bun:"deleted,default:null"`
 }
 
 type PlayerGame struct {
@@ -103,12 +113,20 @@ type PlayerGame struct {
 type NPC struct {
 	bun.BaseModel `bun:"table:npc"`
 
-	ID          int    `bun:"id,pk,autoincrement"`
-	Name        string `bun:"name,notnull"`
+	ID    int    `bun:"id,pk,autoincrement"`
+	Name  string `bun:"name,notnull"`
+	Title string `bun:"title"`
+
 	Description string `bun:"description"`
 
 	GameID  int      `bun:"game_id"`
 	Records []Record `bun:"m2m:records_npcs,join:NPC=Record"`
+
+	CreatedByID int     `bun:"created_by_id"`
+	CreatedBy   *Player `bun:"rel:belongs-to,join=created_by_id=id"`
+
+	Created time.Time `bun:"created,default:current_timestamp"`
+	Deleted time.Time `bun:"deleted,default:null"`
 }
 
 type Location struct {
@@ -117,10 +135,14 @@ type Location struct {
 	ID          int    `bun:"id,pk,autoincrement"`
 	ParentID    int    `bun:"pid"` // TODO: Change to relations
 	Name        string `bun:"name,notnull"`
+	Title       string `bun:"title"`
 	Description string `bun:"description"`
 
 	GameID  int      `bun:"game_id"`
 	Records []Record `bun:"m2m:records_locations,join:Location=Record"`
+
+	Created time.Time `bun:"created,default:current_timestamp"`
+	Deleted time.Time `bun:"deleted,default:null"`
 }
 
 type Record struct {
@@ -138,6 +160,7 @@ type Record struct {
 
 	Created time.Time `bun:"created,nullzero,notnull,default:current_timestamp" json:"created"`
 	Updated time.Time `bun:"updated,nullzero,notnull,default:current_timestamp" json:"updated"`
+	Deleted time.Time `bun:"deleted,default:null"`
 }
 
 type RecordChar struct {

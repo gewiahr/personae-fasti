@@ -22,6 +22,11 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("POST /char", api.HTTPWrapper(api.PlayerWrapper(api.handleCreateChar)))
 	router.HandleFunc("PUT /char", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateChar)))
 
+	router.HandleFunc("GET /npcs", api.HTTPWrapper(api.PlayerWrapper(api.handleGetNPCs)))
+	router.HandleFunc("GET /npc/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetNPCByID)))
+	router.HandleFunc("POST /npc", api.HTTPWrapper(api.PlayerWrapper(api.handleCreateNPC)))
+	router.HandleFunc("PUT /npc", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateNPC)))
+
 	router.HandleFunc("GET /suggestions", api.HTTPWrapper(api.PlayerWrapper(api.handleGetSuggestions)))
 }
 
@@ -69,7 +74,7 @@ func (api *APIServer) handleGetRecords(w http.ResponseWriter, r *http.Request, p
 		return api.HandleError(err)
 	}
 
-	var playersInfo []respData.PlayerInfo
+	var playersInfo = []respData.PlayerInfo{}
 	for _, player := range players {
 		playersInfo = append(playersInfo, respData.PlayerInfo{
 			ID:       player.ID,
@@ -209,6 +214,90 @@ func (api *APIServer) handleUpdateChar(w http.ResponseWriter, r *http.Request, p
 
 	charFullInfo := respData.CharToCharFullInfo(char)
 	return api.Respond(r, w, http.StatusOK, charFullInfo)
+}
+
+// GET /npcs
+func (api *APIServer) handleGetNPCs(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	npcs, err := api.storage.GetCurrentGameNPCs(p.CurrentGame)
+	if err != nil {
+		api.HandleError(err)
+	}
+
+	gameChars := respData.GameNPCs{
+		NPCs:        respData.NPCToNPCInfoArray(npcs),
+		CurrentGame: *respData.GameToGameInfo(p.CurrentGame),
+	}
+
+	return api.Respond(r, w, http.StatusOK, gameChars)
+}
+
+// GET /npc/{id}
+func (api *APIServer) handleGetNPCByID(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	npcID := getPathValueInt(r, "id")
+	if npcID < 0 {
+		return api.HandleError(fmt.Errorf("error parsing id: npc id is invalid"))
+	}
+
+	npc, err := api.storage.GetNPCByID(npcID)
+	if err != nil {
+		return api.HandleError(err)
+	} else if npc == nil {
+		return api.HandleErrorString(fmt.Sprintf("no character with id %d", npcID)).WithCode(http.StatusNotFound)
+	} else if npc.GameID != p.CurrentGameID {
+		return api.HandleErrorString(fmt.Sprintf("npc %d is not allowed to request for the game %d", npc.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+	}
+	// ++ Add char check ++//
+
+	npcPage := respData.NPCPage{
+		NPC:     *respData.NPCToNPCFullInfo(npc),
+		Records: []data.Record{},
+	}
+
+	return api.Respond(r, w, http.StatusOK, npcPage)
+}
+
+// POST /npc
+func (api *APIServer) handleCreateNPC(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var npcCreate reqData.NPCCreate
+	err := ReadJsonBody(r, &npcCreate)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	npc, err := api.storage.CreateNPC(&npcCreate, p)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	npcFullInfo := respData.NPCToNPCFullInfo(npc)
+	return api.Respond(r, w, http.StatusOK, npcFullInfo)
+}
+
+// PUT /npc
+func (api *APIServer) handleUpdateNPC(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var npcUpdate reqData.NPCUpdate
+	err := ReadJsonBody(r, &npcUpdate)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	npc, err := api.storage.GetNPCByID(npcUpdate.ID)
+	if err != nil {
+		return api.HandleError(err)
+	} else if npc == nil {
+		return api.HandleErrorString(fmt.Sprintf("no npc with id %d", npcUpdate.ID)).WithCode(http.StatusNotFound)
+	} else if npc.GameID != p.CurrentGameID {
+		return api.HandleErrorString(fmt.Sprintf("npc %d is not allowed to request for the game %d", npc.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+	}
+	// ++ Add char check ++//
+
+	npc, err = api.storage.UpdateNPC(&npcUpdate, npc)
+	if err != nil {
+		api.HandleError(err)
+	}
+
+	npcFullInfo := respData.NPCToNPCFullInfo(npc)
+	return api.Respond(r, w, http.StatusOK, npcFullInfo)
 }
 
 // GET /suggestions

@@ -46,3 +46,27 @@ func CharToCharFullInfo(char *data.Char) *CharFullInfo {
 		GameID:      char.GameID,
 	}
 }
+
+func NPCToNPCInfoArray(npcs []data.NPC) []NPCInfo {
+	npcInfoArray := []NPCInfo{}
+	for _, npc := range npcs {
+		npcInfoArray = append(npcInfoArray, NPCInfo{
+			ID:     npc.ID,
+			Name:   npc.Name,
+			Title:  npc.Title,
+			GameID: npc.GameID,
+		})
+	}
+
+	return npcInfoArray
+}
+
+func NPCToNPCFullInfo(npc *data.NPC) *NPCFullInfo {
+	return &NPCFullInfo{
+		ID:          npc.ID,
+		Name:        npc.Name,
+		Title:       npc.Title,
+		Description: npc.Description,
+		GameID:      npc.GameID,
+	}
+}
