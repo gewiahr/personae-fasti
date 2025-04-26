@@ -166,7 +166,7 @@ func (api *APIServer) handleGetCharByID(w http.ResponseWriter, r *http.Request, 
 
 	charPage := respData.CharPage{
 		Char:    *respData.CharToCharFullInfo(char),
-		Records: []data.Record{},
+		Records: char.Records, // ** change to mention API type ** //
 	}
 
 	return api.Respond(r, w, http.StatusOK, charPage)
@@ -250,7 +250,7 @@ func (api *APIServer) handleGetNPCByID(w http.ResponseWriter, r *http.Request, p
 
 	npcPage := respData.NPCPage{
 		NPC:     *respData.NPCToNPCFullInfo(npc),
-		Records: []data.Record{},
+		Records: npc.Records, // ** change to mention API type ** //
 	}
 
 	return api.Respond(r, w, http.StatusOK, npcPage)
