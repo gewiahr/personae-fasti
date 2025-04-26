@@ -177,7 +177,7 @@ func (s *Storage) GetCurrentGameLocations(game *Game) ([]Location, error) {
 	err := s.db.NewSelect().Model(game).WherePK().Relation("Locations").Scan(context.Background())
 	if err != nil {
 		return nil, err
-	} else if err == sql.ErrNoRows || game.NPCs == nil {
+	} else if err == sql.ErrNoRows || game.Locations == nil {
 		return []Location{}, nil
 	}
 
