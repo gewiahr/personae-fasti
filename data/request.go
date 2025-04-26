@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"personae-fasti/api/models/reqData"
+
+	"github.com/uptrace/bun"
 )
 
 func (s *Storage) GetPlayerByAccessKey(accesskey string) (*Player, error) {
@@ -45,13 +47,26 @@ func (s *Storage) InsertNewRecord(recordInsert *reqData.RecordInsert, p *Player)
 		GameID:   p.CurrentGameID,
 	}
 
-	result, err := s.db.NewInsert().Model(&record).Exec(context.Background())
+	err := s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
+		// Insert Record
+		result, err := s.db.NewInsert().Model(&record).Exec(context.Background())
+		if err != nil {
+			return err
+		}
+		if result == nil {
+			return fmt.Errorf("empty insert")
+		}
+		// Insert Mentions
+		if err := s.InsertMentionsForRecord(&record); err != nil {
+			return err
+		}
+
+		return nil
+	})
 	if err != nil {
 		return err
 	}
-	if result == nil {
-		return fmt.Errorf("error")
-	}
+
 	return nil
 }
 
