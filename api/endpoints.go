@@ -27,6 +27,11 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("POST /npc", api.HTTPWrapper(api.PlayerWrapper(api.handleCreateNPC)))
 	router.HandleFunc("PUT /npc", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateNPC)))
 
+	router.HandleFunc("GET /locations", api.HTTPWrapper(api.PlayerWrapper(api.handleGetLocations)))
+	router.HandleFunc("GET /location/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetLocationByID)))
+	router.HandleFunc("POST /location", api.HTTPWrapper(api.PlayerWrapper(api.handleCreateLocation)))
+	router.HandleFunc("PUT /location", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateLocation)))
+
 	router.HandleFunc("GET /suggestions", api.HTTPWrapper(api.PlayerWrapper(api.handleGetSuggestions)))
 }
 
@@ -223,12 +228,12 @@ func (api *APIServer) handleGetNPCs(w http.ResponseWriter, r *http.Request, p *d
 		api.HandleError(err)
 	}
 
-	gameChars := respData.GameNPCs{
+	gameNPCs := respData.GameNPCs{
 		NPCs:        respData.NPCToNPCInfoArray(npcs),
 		CurrentGame: *respData.GameToGameInfo(p.CurrentGame),
 	}
 
-	return api.Respond(r, w, http.StatusOK, gameChars)
+	return api.Respond(r, w, http.StatusOK, gameNPCs)
 }
 
 // GET /npc/{id}
@@ -242,7 +247,7 @@ func (api *APIServer) handleGetNPCByID(w http.ResponseWriter, r *http.Request, p
 	if err != nil {
 		return api.HandleError(err)
 	} else if npc == nil {
-		return api.HandleErrorString(fmt.Sprintf("no character with id %d", npcID)).WithCode(http.StatusNotFound)
+		return api.HandleErrorString(fmt.Sprintf("no npc with id %d", npcID)).WithCode(http.StatusNotFound)
 	} else if npc.GameID != p.CurrentGameID {
 		return api.HandleErrorString(fmt.Sprintf("npc %d is not allowed to request for the game %d", npc.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
 	}
@@ -298,6 +303,90 @@ func (api *APIServer) handleUpdateNPC(w http.ResponseWriter, r *http.Request, p 
 
 	npcFullInfo := respData.NPCToNPCFullInfo(npc)
 	return api.Respond(r, w, http.StatusOK, npcFullInfo)
+}
+
+// GET /locations
+func (api *APIServer) handleGetLocations(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	locations, err := api.storage.GetCurrentGameLocations(p.CurrentGame)
+	if err != nil {
+		api.HandleError(err)
+	}
+
+	gameLocations := respData.GameLocations{
+		Locations:   respData.LocationToLocationInfoArray(locations),
+		CurrentGame: *respData.GameToGameInfo(p.CurrentGame),
+	}
+
+	return api.Respond(r, w, http.StatusOK, gameLocations)
+}
+
+// GET /location/{id}
+func (api *APIServer) handleGetLocationByID(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	locationID := getPathValueInt(r, "id")
+	if locationID < 0 {
+		return api.HandleError(fmt.Errorf("error parsing id: location id is invalid"))
+	}
+
+	location, err := api.storage.GetLocationByID(locationID)
+	if err != nil {
+		return api.HandleError(err)
+	} else if location == nil {
+		return api.HandleErrorString(fmt.Sprintf("no location with id %d", locationID)).WithCode(http.StatusNotFound)
+	} else if location.GameID != p.CurrentGameID {
+		return api.HandleErrorString(fmt.Sprintf("location %d is not allowed to request for the game %d", location.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+	}
+	// ++ Add char check ++//
+
+	locationPage := respData.LocationPage{
+		Location: *respData.LocationToLocationFullInfo(location),
+		Records:  location.Records, // ** change to mention API type ** //
+	}
+
+	return api.Respond(r, w, http.StatusOK, locationPage)
+}
+
+// POST /location
+func (api *APIServer) handleCreateLocation(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var locationCreate reqData.LocationCreate
+	err := ReadJsonBody(r, &locationCreate)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	location, err := api.storage.CreateLocation(&locationCreate, p)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	locationFullInfo := respData.LocationToLocationFullInfo(location)
+	return api.Respond(r, w, http.StatusOK, locationFullInfo)
+}
+
+// PUT /location
+func (api *APIServer) handleUpdateLocation(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var locationUpdate reqData.LocationUpdate
+	err := ReadJsonBody(r, &locationUpdate)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	location, err := api.storage.GetLocationByID(locationUpdate.ID)
+	if err != nil {
+		return api.HandleError(err)
+	} else if location == nil {
+		return api.HandleErrorString(fmt.Sprintf("no location with id %d", locationUpdate.ID)).WithCode(http.StatusNotFound)
+	} else if location.GameID != p.CurrentGameID {
+		return api.HandleErrorString(fmt.Sprintf("location %d is not allowed to request for the game %d", location.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+	}
+	// ++ Add char check ++//
+
+	location, err = api.storage.UpdateLocation(&locationUpdate, location)
+	if err != nil {
+		api.HandleError(err)
+	}
+
+	locationFullInfo := respData.LocationToLocationFullInfo(location)
+	return api.Respond(r, w, http.StatusOK, locationFullInfo)
 }
 
 // GET /suggestions

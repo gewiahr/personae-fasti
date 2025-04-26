@@ -173,6 +173,57 @@ func (s *Storage) UpdateNPC(npcUpdate *reqData.NPCUpdate, npc *NPC) (*NPC, error
 	return npc, err
 }
 
+func (s *Storage) GetCurrentGameLocations(game *Game) ([]Location, error) {
+	err := s.db.NewSelect().Model(game).WherePK().Relation("Locations").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows || game.NPCs == nil {
+		return []Location{}, nil
+	}
+
+	return game.Locations, nil
+}
+
+func (s *Storage) GetLocationByID(locationID int) (*Location, error) {
+	location := Location{
+		ID: locationID,
+	}
+
+	err := s.db.NewSelect().Model(&location).WherePK().Relation("Records").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows {
+		return nil, nil
+	}
+
+	return &location, nil
+}
+
+func (s *Storage) CreateLocation(locationCreate *reqData.LocationCreate, player *Player) (*Location, error) {
+	location := Location{
+		Name:        locationCreate.Name,
+		Title:       locationCreate.Title,
+		Description: locationCreate.Description,
+		CreatedByID: player.ID,
+		GameID:      player.CurrentGameID,
+	}
+
+	_, err := s.db.NewInsert().Model(&location).
+		Column("name", "title", "description", "created_by_id", "game_id").
+		Returning("*").Exec(context.Background(), &location)
+
+	return &location, err
+}
+
+func (s *Storage) UpdateLocation(locationUpdate *reqData.LocationUpdate, location *Location) (*Location, error) {
+	_, err := s.db.NewUpdate().Model(location).WherePK().
+		Set("name = ?", locationUpdate.Name).
+		Set("title = ?", locationUpdate.Title).
+		Set("description = ?", locationUpdate.Description).
+		Returning("*").Exec(context.Background())
+	return location, err
+}
+
 func (s *Storage) GetSuggestions(player *Player) ([]Suggestion, error) {
 	var suggestions []Suggestion
 

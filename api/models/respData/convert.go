@@ -70,3 +70,27 @@ func NPCToNPCFullInfo(npc *data.NPC) *NPCFullInfo {
 		GameID:      npc.GameID,
 	}
 }
+
+func LocationToLocationInfoArray(locations []data.Location) []LocationInfo {
+	locationInfoArray := []LocationInfo{}
+	for _, location := range locations {
+		locationInfoArray = append(locationInfoArray, LocationInfo{
+			ID:     location.ID,
+			Name:   location.Name,
+			Title:  location.Title,
+			GameID: location.GameID,
+		})
+	}
+
+	return locationInfoArray
+}
+
+func LocationToLocationFullInfo(location *data.Location) *LocationFullInfo {
+	return &LocationFullInfo{
+		ID:          location.ID,
+		Name:        location.Name,
+		Title:       location.Title,
+		Description: location.Description,
+		GameID:      location.GameID,
+	}
+}

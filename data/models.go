@@ -141,6 +141,9 @@ type Location struct {
 	GameID  int      `bun:"game_id"`
 	Records []Record `bun:"m2m:records_locations,join:Location=Record"`
 
+	CreatedByID int     `bun:"created_by_id"`
+	CreatedBy   *Player `bun:"rel:belongs-to,join=created_by_id=id"`
+
 	Created time.Time `bun:"created,default:current_timestamp"`
 	Deleted time.Time `bun:"deleted,default:null"`
 }

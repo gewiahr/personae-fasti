@@ -81,6 +81,33 @@ type NPCFullInfo struct {
 	GameID int `json:"gameID"`
 }
 
+type LocationInfo struct {
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Title string `json:"title"`
+
+	GameID int `json:"gameID"`
+}
+
+type GameLocations struct {
+	Locations   []LocationInfo `json:"locations"`
+	CurrentGame GameInfo       `json:"currentGame"`
+}
+
+type LocationPage struct {
+	Location LocationFullInfo `json:"location"`
+	Records  []data.Record    `json:"records"`
+}
+
+type LocationFullInfo struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+
+	GameID int `json:"gameID"`
+}
+
 type SuggestionData struct {
 	Suggestions []data.Suggestion `json:"entities"`
 }

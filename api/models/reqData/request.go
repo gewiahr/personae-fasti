@@ -31,3 +31,16 @@ type NPCUpdate struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 }
+
+type LocationCreate struct {
+	Name        string `json:"name"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+type LocationUpdate struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
