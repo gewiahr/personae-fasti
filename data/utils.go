@@ -44,3 +44,19 @@ func (s *Storage) InsertMentionsForRecord(record *Record) error {
 
 	return err
 }
+
+func (s *Storage) DeleteMentionsForRecord(record *Record) error {
+	_, err := s.db.NewDelete().Model(&RecordChar{}).Where("record_id = ?", record.ID).Exec(context.Background())
+	if err != nil {
+		return err
+	}
+	_, err = s.db.NewDelete().Model(&RecordNPC{}).Where("record_id = ?", record.ID).Exec(context.Background())
+	if err != nil {
+		return err
+	}
+	_, err = s.db.NewDelete().Model(&RecordLocation{}).Where("record_id = ?", record.ID).Exec(context.Background())
+	if err != nil {
+		return err
+	}
+	return nil
+}

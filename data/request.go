@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"personae-fasti/api/models/reqData"
+	"time"
 
 	"github.com/uptrace/bun"
 )
@@ -56,6 +57,42 @@ func (s *Storage) InsertNewRecord(recordInsert *reqData.RecordInsert, p *Player)
 		if result == nil {
 			return fmt.Errorf("empty insert")
 		}
+		// Insert Mentions
+		if err := s.InsertMentionsForRecord(&record); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) UpdateRecord(recordUpdate *reqData.RecordUpdate, p *Player) error {
+	record := Record{
+		ID:      recordUpdate.ID,
+		Text:    recordUpdate.Text,
+		Updated: time.Now().UTC(),
+	}
+
+	err := s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
+		// Update Record
+		result, err := s.db.NewUpdate().Model(&record).Column("text", "updated").WherePK().Exec(context.Background())
+		if err != nil {
+			return err
+		}
+		if result == nil {
+			return fmt.Errorf("empty insert")
+		}
+
+		// Delete Old Mentions
+		if err := s.DeleteMentionsForRecord(&record); err != nil {
+			return err
+		}
+
 		// Insert Mentions
 		if err := s.InsertMentionsForRecord(&record); err != nil {
 			return err

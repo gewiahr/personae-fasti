@@ -16,6 +16,7 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 
 	router.HandleFunc("GET /records", api.HTTPWrapper(api.PlayerWrapper(api.handleGetRecords)))
 	router.HandleFunc("POST /record", api.HTTPWrapper(api.PlayerWrapper(api.handlePostRecord)))
+	router.HandleFunc("PUT /record", api.HTTPWrapper(api.PlayerWrapper(api.handleChangeRecord)))
 
 	router.HandleFunc("GET /chars", api.HTTPWrapper(api.PlayerWrapper(api.handleGetChars)))
 	router.HandleFunc("GET /char/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetCharByID)))
@@ -108,6 +109,38 @@ func (api *APIServer) handlePostRecord(w http.ResponseWriter, r *http.Request, p
 	}
 
 	err = api.storage.InsertNewRecord(&recordInsert, p)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	records, err := api.storage.GetCurrentGameRecords(p.CurrentGame)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	players, err := api.storage.GetCurrentGamePlayers(p.CurrentGame)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	gameRecords := respData.GameRecords{
+		Records:     records,
+		Players:     respData.PlayersToPlayersInfoArray(players),
+		CurrentGame: *respData.GameToGameInfo(p.CurrentGame),
+	}
+
+	return api.Respond(r, w, http.StatusCreated, gameRecords)
+}
+
+// PUT /record
+func (api *APIServer) handleChangeRecord(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var recordUpdate reqData.RecordUpdate
+	err := ReadJsonBody(r, &recordUpdate)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	err = api.storage.UpdateRecord(&recordUpdate, p)
 	if err != nil {
 		return api.HandleError(err)
 	}

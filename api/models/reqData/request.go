@@ -6,6 +6,11 @@ type RecordInsert struct {
 	GameID   int    `json:"-"`
 }
 
+type RecordUpdate struct {
+	ID   int    `json:"id"`
+	Text string `json:"text"`
+}
+
 type CharCreate struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
