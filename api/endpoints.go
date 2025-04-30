@@ -161,7 +161,7 @@ func (api *APIServer) handleChangeRecord(w http.ResponseWriter, r *http.Request,
 		CurrentGame: *respData.GameToGameInfo(p.CurrentGame),
 	}
 
-	return api.Respond(r, w, http.StatusCreated, gameRecords)
+	return api.Respond(r, w, http.StatusOK, gameRecords)
 }
 
 // GET /chars
@@ -224,7 +224,7 @@ func (api *APIServer) handleCreateChar(w http.ResponseWriter, r *http.Request, p
 	}
 
 	charFullInfo := respData.CharToCharFullInfo(char)
-	return api.Respond(r, w, http.StatusOK, charFullInfo)
+	return api.Respond(r, w, http.StatusCreated, charFullInfo)
 }
 
 // PUT /char
@@ -308,7 +308,7 @@ func (api *APIServer) handleCreateNPC(w http.ResponseWriter, r *http.Request, p 
 	}
 
 	npcFullInfo := respData.NPCToNPCFullInfo(npc)
-	return api.Respond(r, w, http.StatusOK, npcFullInfo)
+	return api.Respond(r, w, http.StatusCreated, npcFullInfo)
 }
 
 // PUT /npc
@@ -392,7 +392,7 @@ func (api *APIServer) handleCreateLocation(w http.ResponseWriter, r *http.Reques
 	}
 
 	locationFullInfo := respData.LocationToLocationFullInfo(location)
-	return api.Respond(r, w, http.StatusOK, locationFullInfo)
+	return api.Respond(r, w, http.StatusCreated, locationFullInfo)
 }
 
 // PUT /location
