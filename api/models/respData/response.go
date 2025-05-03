@@ -18,15 +18,42 @@ type PlayerSettings struct {
 	PlayerGames []GameInfo `json:"playerGames"`
 }
 
+func FormPlayerSettings(playerGames []data.Game, currentGame data.Game) *PlayerSettings {
+	var playerGameInfo []GameInfo
+	for _, game := range playerGames {
+		playerGameInfo = append(playerGameInfo, *GameToGameInfo(&game))
+	}
+
+	return &PlayerSettings{
+		CurrentGame: *GameToGameInfo(&currentGame),
+		PlayerGames: playerGameInfo,
+	}
+}
+
 type GameInfo struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`
 }
 
 type GameRecords struct {
-	Records     []data.Record `json:"records"`
-	Players     []PlayerInfo  `json:"players"`
-	CurrentGame GameInfo      `json:"currentGame"`
+	Records     []data.Record  `json:"records"`
+	Sessions    []data.Session `json:"sessions"`
+	Players     []PlayerInfo   `json:"players"`
+	CurrentGame GameInfo       `json:"currentGame"`
+}
+
+func FormGameRecords(p *data.Player, rs []data.Record, ps []data.Player, ss []data.Session) *GameRecords {
+	gameRecords := GameRecords{
+		Records:  rs,
+		Sessions: ss,
+		Players:  PlayersToPlayersInfoArray(ps),
+		CurrentGame: GameInfo{
+			ID:    p.CurrentGame.ID,
+			Title: p.CurrentGame.Name,
+		},
+	}
+
+	return &gameRecords
 }
 
 type CharInfo struct {

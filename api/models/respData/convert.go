@@ -94,15 +94,3 @@ func LocationToLocationFullInfo(location *data.Location) *LocationFullInfo {
 		GameID:      location.GameID,
 	}
 }
-
-func FormPlayerSettings(playerGames []data.Game, currentGame data.Game) *PlayerSettings {
-	var playerGameInfo []GameInfo
-	for _, game := range playerGames {
-		playerGameInfo = append(playerGameInfo, *GameToGameInfo(&game))
-	}
-
-	return &PlayerSettings{
-		CurrentGame: *GameToGameInfo(&currentGame),
-		PlayerGames: playerGameInfo,
-	}
-}

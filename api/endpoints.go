@@ -83,22 +83,12 @@ func (api *APIServer) handleGetRecords(w http.ResponseWriter, r *http.Request, p
 		return api.HandleError(err)
 	}
 
-	var playersInfo = []respData.PlayerInfo{}
-	for _, player := range players {
-		playersInfo = append(playersInfo, respData.PlayerInfo{
-			ID:       player.ID,
-			Username: player.Username,
-		})
+	sessions, err := api.storage.GetCurrentGameSessions(p.CurrentGame)
+	if err != nil {
+		return api.HandleError(err)
 	}
 
-	gameRecords := respData.GameRecords{
-		Records: records,
-		Players: playersInfo,
-		CurrentGame: respData.GameInfo{
-			ID:    p.CurrentGame.ID,
-			Title: p.CurrentGame.Name,
-		},
-	}
+	gameRecords := respData.FormGameRecords(p, records, players, sessions)
 
 	return api.Respond(r, w, http.StatusOK, gameRecords)
 }
@@ -126,11 +116,12 @@ func (api *APIServer) handlePostRecord(w http.ResponseWriter, r *http.Request, p
 		return api.HandleError(err)
 	}
 
-	gameRecords := respData.GameRecords{
-		Records:     records,
-		Players:     respData.PlayersToPlayersInfoArray(players),
-		CurrentGame: *respData.GameToGameInfo(p.CurrentGame),
+	sessions, err := api.storage.GetCurrentGameSessions(p.CurrentGame)
+	if err != nil {
+		return api.HandleError(err)
 	}
+
+	gameRecords := respData.FormGameRecords(p, records, players, sessions)
 
 	return api.Respond(r, w, http.StatusCreated, gameRecords)
 }
@@ -158,11 +149,12 @@ func (api *APIServer) handleChangeRecord(w http.ResponseWriter, r *http.Request,
 		return api.HandleError(err)
 	}
 
-	gameRecords := respData.GameRecords{
-		Records:     records,
-		Players:     respData.PlayersToPlayersInfoArray(players),
-		CurrentGame: *respData.GameToGameInfo(p.CurrentGame),
+	sessions, err := api.storage.GetCurrentGameSessions(p.CurrentGame)
+	if err != nil {
+		return api.HandleError(err)
 	}
+
+	gameRecords := respData.FormGameRecords(p, records, players, sessions)
 
 	return api.Respond(r, w, http.StatusOK, gameRecords)
 }

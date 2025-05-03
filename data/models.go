@@ -41,6 +41,8 @@ type Game struct {
 	GMID int64   `bun:"gm_id"`
 	GM   *Player `bun:"rel:belongs-to,join:gm_id=id"`
 
+	Sessions []Session `bun:"rel:has-many,join:id=game_id"`
+
 	Players []Player `bun:"m2m:players_games,join:Game=Player"`
 	Chars   []Char   `bun:"rel:has-many,join:id=game_id"`
 
@@ -191,4 +193,18 @@ type RecordLocation struct {
 	Record     *Record   `bun:"rel:belongs-to,join:record_id=id"`
 	LocationID int       `bun:"location_id,pk"`
 	Location   *Location `bun:"rel:belongs-to,join:location_id=id"`
+}
+
+type Session struct {
+	bun.BaseModel `bun:"session"`
+
+	ID int `bun:"id,pk,autoincrement"`
+
+	GameID int   `bun:"game_id,notnull"`
+	Game   *Game `bun:"rel:belongs-to,join:game_id=id"`
+
+	Number int    `bun:"number,notnull"`
+	Name   string `bun:",notnull,default:''"`
+
+	EndTime time.Time `bun:"end_time,nullzero"`
 }

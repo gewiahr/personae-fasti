@@ -41,6 +41,17 @@ func (s *Storage) GetCurrentGameRecords(game *Game) ([]Record, error) {
 	return game.Records, nil
 }
 
+func (s *Storage) GetCurrentGameSessions(game *Game) ([]Session, error) {
+	err := s.db.NewSelect().Model(game).WherePK().Relation("Sessions").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows || game.Sessions == nil {
+		return []Session{}, nil
+	}
+
+	return game.Sessions, nil
+}
+
 func (s *Storage) InsertNewRecord(recordInsert *reqData.RecordInsert, p *Player) error {
 	record := Record{
 		Text:     recordInsert.Text,
