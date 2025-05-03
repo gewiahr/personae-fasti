@@ -49,3 +49,7 @@ type LocationUpdate struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 }
+
+type GameChange struct {
+	GameID int `json:"gameID"`
+}

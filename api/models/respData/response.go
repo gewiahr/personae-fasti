@@ -13,6 +13,11 @@ type PlayerInfo struct {
 	Username string `json:"username"`
 }
 
+type PlayerSettings struct {
+	CurrentGame GameInfo   `json:"currentGame"`
+	PlayerGames []GameInfo `json:"playerGames"`
+}
+
 type GameInfo struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`

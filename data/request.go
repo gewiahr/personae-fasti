@@ -301,3 +301,25 @@ func (s *Storage) GetSuggestions(player *Player) ([]Suggestion, error) {
 
 	return suggestions, err
 }
+
+func (s *Storage) GetPlayerGames(player *Player) ([]Game, error) {
+	err := s.db.NewSelect().Model(player).Relation("Games").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	return player.Games, nil
+}
+
+func (s *Storage) ChangeCurrentGame(player *Player, gameID int) (*Game, error) {
+	player.CurrentGameID = gameID
+	_, err := s.db.NewUpdate().Model(player).Column("current_game_id").WherePK().Returning("*").Exec(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	err = s.db.NewSelect().Model(player).WherePK().Relation("CurrentGame").Scan(context.Background(), player)
+	if err != nil {
+		return nil, err
+	}
+	return player.CurrentGame, nil
+}

@@ -34,6 +34,9 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("PUT /location", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateLocation)))
 
 	router.HandleFunc("GET /suggestions", api.HTTPWrapper(api.PlayerWrapper(api.handleGetSuggestions)))
+
+	router.HandleFunc("GET /player/settings", api.HTTPWrapper(api.PlayerWrapper(api.handleGetPlayerSetings)))
+	router.HandleFunc("PUT /player/game", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerGame)))
 }
 
 // func (api *APIServer) handleHome(w http.ResponseWriter, r *http.Request) *APIError {
@@ -430,4 +433,32 @@ func (api *APIServer) handleGetSuggestions(w http.ResponseWriter, r *http.Reques
 	}
 
 	return api.Respond(r, w, http.StatusOK, respData.SuggestionData{Suggestions: suggestions})
+}
+
+// GET /player/settings
+func (api *APIServer) handleGetPlayerSetings(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	playerGames, err := api.storage.GetPlayerGames(p)
+	if err != nil {
+		api.HandleError(err)
+	}
+
+	playerSettings := respData.FormPlayerSettings(playerGames, *p.CurrentGame)
+	return api.Respond(r, w, http.StatusOK, playerSettings)
+}
+
+// PUT /player/game
+func (api *APIServer) handleChangePlayerGame(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var currentGameChange reqData.GameChange
+	err := ReadJsonBody(r, &currentGameChange)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	currentGame, err := api.storage.ChangeCurrentGame(p, currentGameChange.GameID)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	currentGameInfo := respData.GameToGameInfo(currentGame)
+	return api.Respond(r, w, http.StatusOK, currentGameInfo)
 }
