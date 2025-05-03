@@ -328,9 +328,11 @@ func (s *Storage) ChangeCurrentGame(player *Player, gameID int) (*Game, error) {
 	if err != nil {
 		return nil, err
 	}
+	// ** Get to know why RETURNING is not working here properly ** //
 	err = s.db.NewSelect().Model(player).WherePK().Relation("CurrentGame").Scan(context.Background(), player)
 	if err != nil {
 		return nil, err
 	}
+	// ** Get to know why RETURNING is not working here properly ** //
 	return player.CurrentGame, nil
 }

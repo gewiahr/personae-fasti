@@ -21,6 +21,7 @@ func (s *Storage) InitTables() {
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*NPC)(nil)).Exec(context.Background())
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Location)(nil)).Exec(context.Background())
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Record)(nil)).Exec(context.Background())
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Session)(nil)).Exec(context.Background())
 	//_, _ = s.db.NewCreateTable().IfNotExists().Model((*Mention)(nil)).Exec(context.Background())
 
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*PlayerGame)(nil)).Exec(context.Background())
@@ -70,7 +71,7 @@ type Player struct {
 	Records []Record `bun:"rel:has-many,join:id=game_id"`
 
 	CurrentGameID int   `bun:"current_game_id"`
-	CurrentGame   *Game `bun:"rel:belongs-to,join=current_game_id=id"`
+	CurrentGame   *Game `bun:"rel:belongs-to,join:current_game_id=id"`
 
 	Registered time.Time `bun:"registeredTime,nullzero,notnull,default:current_timestamp"`
 	LastAction time.Time `bun:"lastActionTime,nullzero,notnull,default:current_timestamp"`
@@ -125,7 +126,7 @@ type NPC struct {
 	Records []Record `bun:"m2m:records_npcs,join:NPC=Record"`
 
 	CreatedByID int     `bun:"created_by_id"`
-	CreatedBy   *Player `bun:"rel:belongs-to,join=created_by_id=id"`
+	CreatedBy   *Player `bun:"rel:belongs-to,join:created_by_id=id"`
 
 	Created time.Time `bun:"created,default:current_timestamp"`
 	Deleted time.Time `bun:"deleted,default:null"`
@@ -144,7 +145,7 @@ type Location struct {
 	Records []Record `bun:"m2m:records_locations,join:Location=Record"`
 
 	CreatedByID int     `bun:"created_by_id"`
-	CreatedBy   *Player `bun:"rel:belongs-to,join=created_by_id=id"`
+	CreatedBy   *Player `bun:"rel:belongs-to,join:created_by_id=id"`
 
 	Created time.Time `bun:"created,default:current_timestamp"`
 	Deleted time.Time `bun:"deleted,default:null"`
