@@ -199,13 +199,13 @@ type RecordLocation struct {
 type Session struct {
 	bun.BaseModel `bun:"session"`
 
-	ID int `bun:"id,pk,autoincrement"`
+	ID int `bun:"id,pk,autoincrement" json:"id"`
 
 	GameID int   `bun:"game_id,notnull"`
 	Game   *Game `bun:"rel:belongs-to,join:game_id=id"`
 
-	Number int    `bun:"number,notnull"`
-	Name   string `bun:",notnull,default:''"`
+	Number int    `bun:"number,notnull" json:"number"`
+	Name   string `bun:",notnull,default:''" json:"name"`
 
-	EndTime time.Time `bun:"end_time,nullzero"`
+	EndTime time.Time `bun:"end_time,nullzero" json:"endTime"`
 }
