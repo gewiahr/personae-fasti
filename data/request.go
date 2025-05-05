@@ -83,10 +83,11 @@ func (s *Storage) InsertNewRecord(recordInsert *reqData.RecordInsert, p *Player)
 }
 
 func (s *Storage) UpdateRecord(recordUpdate *reqData.RecordUpdate, p *Player) error {
+	now := time.Now().UTC()
 	record := Record{
 		ID:      recordUpdate.ID,
 		Text:    recordUpdate.Text,
-		Updated: time.Now().UTC(),
+		Updated: &now,
 	}
 
 	err := s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {

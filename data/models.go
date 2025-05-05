@@ -52,8 +52,8 @@ type Game struct {
 
 	Records []Record `bun:"rel:has-many,join:id=game_id"`
 
-	Created time.Time `bun:"created,default:current_timestamp"`
-	Deleted time.Time `bun:"deleted,default:null"`
+	Created *time.Time `bun:"created,default:current_timestamp"`
+	Deleted *time.Time `bun:"deleted,default:null"`
 }
 
 type Player struct {
@@ -73,9 +73,9 @@ type Player struct {
 	CurrentGameID int   `bun:"current_game_id"`
 	CurrentGame   *Game `bun:"rel:belongs-to,join:current_game_id=id"`
 
-	Registered time.Time `bun:"registeredTime,nullzero,notnull,default:current_timestamp"`
-	LastAction time.Time `bun:"lastActionTime,nullzero,notnull,default:current_timestamp"`
-	Deleted    time.Time `bun:"deleted,default:null"`
+	Registered *time.Time `bun:"registeredTime,nullzero,notnull,default:current_timestamp"`
+	LastAction *time.Time `bun:"lastActionTime,nullzero,notnull,default:current_timestamp"`
+	Deleted    *time.Time `bun:"deleted,default:null"`
 }
 
 type Telegram struct {
@@ -100,8 +100,8 @@ type Char struct {
 
 	Records []Record `bun:"m2m:records_chars,join:Char=Record"`
 
-	Created time.Time `bun:"created,default:current_timestamp"`
-	Deleted time.Time `bun:"deleted,default:null"`
+	Created *time.Time `bun:"created,default:current_timestamp"`
+	Deleted *time.Time `bun:"deleted,default:null"`
 }
 
 type PlayerGame struct {
@@ -128,8 +128,8 @@ type NPC struct {
 	CreatedByID int     `bun:"created_by_id"`
 	CreatedBy   *Player `bun:"rel:belongs-to,join:created_by_id=id"`
 
-	Created time.Time `bun:"created,default:current_timestamp"`
-	Deleted time.Time `bun:"deleted,default:null"`
+	Created *time.Time `bun:"created,default:current_timestamp"`
+	Deleted *time.Time `bun:"deleted,default:null"`
 }
 
 type Location struct {
@@ -147,8 +147,8 @@ type Location struct {
 	CreatedByID int     `bun:"created_by_id"`
 	CreatedBy   *Player `bun:"rel:belongs-to,join:created_by_id=id"`
 
-	Created time.Time `bun:"created,default:current_timestamp"`
-	Deleted time.Time `bun:"deleted,default:null"`
+	Created *time.Time `bun:"created,default:current_timestamp"`
+	Deleted *time.Time `bun:"deleted,default:null"`
 }
 
 type Record struct {
@@ -164,9 +164,9 @@ type Record struct {
 	PlayerID int `bun:"player_id" json:"playerID"`
 	GameID   int `bun:"game_id" json:"gameID"`
 
-	Created time.Time `bun:"created,nullzero,notnull,default:current_timestamp" json:"created"`
-	Updated time.Time `bun:"updated,nullzero,notnull,default:current_timestamp" json:"updated"`
-	Deleted time.Time `bun:"deleted,default:null"`
+	Created *time.Time `bun:"created,nullzero,notnull,default:current_timestamp" json:"created"`
+	Updated *time.Time `bun:"updated,nullzero,notnull,default:current_timestamp" json:"updated"`
+	Deleted *time.Time `bun:"deleted,default:null"`
 }
 
 type RecordChar struct {
@@ -207,5 +207,5 @@ type Session struct {
 	Number int    `bun:"number,notnull" json:"number"`
 	Name   string `bun:",notnull,default:''" json:"name"`
 
-	EndTime time.Time `bun:"end_time,nullzero" json:"endTime"`
+	EndTime *time.Time `bun:"end_time,nullzero" json:"endTime"`
 }
