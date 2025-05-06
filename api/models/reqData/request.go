@@ -2,13 +2,15 @@ package reqData
 
 type RecordInsert struct {
 	Text     string `json:"text"`
+	Hidden   bool   `json:"hidden"`
 	PlayerID int    `json:"-"`
 	GameID   int    `json:"-"`
 }
 
 type RecordUpdate struct {
-	ID   int    `json:"id"`
-	Text string `json:"text"`
+	ID     int    `json:"id"`
+	Text   string `json:"text"`
+	Hidden bool   `json:"hidden"`
 }
 
 type CharCreate struct {

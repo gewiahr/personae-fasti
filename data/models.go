@@ -39,7 +39,7 @@ type Game struct {
 	ID   int    `bun:"id,pk,autoincrement"`
 	Name string `bun:"name,notnull"`
 
-	GMID int64   `bun:"gm_id"`
+	GMID int     `bun:"gm_id"`
 	GM   *Player `bun:"rel:belongs-to,join:gm_id=id"`
 
 	Sessions []Session `bun:"rel:has-many,join:id=game_id"`
@@ -163,6 +163,7 @@ type Record struct {
 
 	PlayerID int `bun:"player_id" json:"playerID"`
 	GameID   int `bun:"game_id" json:"gameID"`
+	HiddenBy int `bun:"hidden_by,default:0" json:"hiddenBy"`
 
 	Created *time.Time `bun:"created,nullzero,notnull,default:current_timestamp" json:"created"`
 	Updated *time.Time `bun:"updated,nullzero,notnull,default:current_timestamp" json:"updated"`

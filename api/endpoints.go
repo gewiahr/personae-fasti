@@ -65,6 +65,7 @@ func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIEr
 		CurrentGame: respData.GameInfo{
 			ID:    player.CurrentGame.ID,
 			Title: player.CurrentGame.Name,
+			GMID:  player.CurrentGame.GMID,
 		},
 	}
 
@@ -73,7 +74,7 @@ func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIEr
 
 // GET /records
 func (api *APIServer) handleGetRecords(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-	records, err := api.storage.GetCurrentGameRecords(p.CurrentGame)
+	records, err := api.storage.GetCurrentGameRecordsForPlayer(p.CurrentGame, p)
 	if err != nil {
 		return api.HandleError(err)
 	}
@@ -106,7 +107,7 @@ func (api *APIServer) handlePostRecord(w http.ResponseWriter, r *http.Request, p
 		return api.HandleError(err)
 	}
 
-	records, err := api.storage.GetCurrentGameRecords(p.CurrentGame)
+	records, err := api.storage.GetCurrentGameRecordsForPlayer(p.CurrentGame, p)
 	if err != nil {
 		return api.HandleError(err)
 	}
@@ -139,7 +140,7 @@ func (api *APIServer) handleChangeRecord(w http.ResponseWriter, r *http.Request,
 		return api.HandleError(err)
 	}
 
-	records, err := api.storage.GetCurrentGameRecords(p.CurrentGame)
+	records, err := api.storage.GetCurrentGameRecordsForPlayer(p.CurrentGame, p)
 	if err != nil {
 		return api.HandleError(err)
 	}

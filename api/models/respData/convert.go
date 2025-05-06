@@ -6,6 +6,7 @@ func GameToGameInfo(game *data.Game) *GameInfo {
 	return &GameInfo{
 		ID:    game.ID,
 		Title: game.Name,
+		GMID:  game.GMID,
 	}
 }
 

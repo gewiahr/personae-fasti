@@ -33,6 +33,7 @@ func FormPlayerSettings(playerGames []data.Game, currentGame data.Game) *PlayerS
 type GameInfo struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`
+	GMID  int    `json:"gmID"`
 }
 
 type GameRecords struct {
@@ -50,6 +51,7 @@ func FormGameRecords(p *data.Player, rs []data.Record, ps []data.Player, ss []da
 		CurrentGame: GameInfo{
 			ID:    p.CurrentGame.ID,
 			Title: p.CurrentGame.Name,
+			GMID:  p.CurrentGame.GMID,
 		},
 	}
 

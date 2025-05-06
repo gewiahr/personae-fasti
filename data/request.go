@@ -30,15 +30,34 @@ func (s *Storage) GetCurrentGamePlayers(game *Game) ([]Player, error) {
 	return game.Players, nil
 }
 
-func (s *Storage) GetCurrentGameRecords(game *Game) ([]Record, error) {
-	err := s.db.NewSelect().Model(game).WherePK().Relation("Records").Scan(context.Background())
+func (s *Storage) GetCurrentGameRecordsForPlayer(game *Game, player *Player) ([]Record, error) {
+	var records []Record
+	err := s.db.NewSelect().Model(&records).
+		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.Where("game_id = ?", game.ID)
+		}).
+		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.Where("hidden_by = 0").WhereOr("hidden_by = ?", player.ID)
+		}).
+		Scan(context.Background(), &records)
 	if err != nil {
 		return nil, err
-	} else if err == sql.ErrNoRows || game.Records == nil {
+	} else if err == sql.ErrNoRows {
 		return []Record{}, nil
 	}
 
-	return game.Records, nil
+	return records, nil
+
+	// === Old implementation without hidden records === //
+	//
+	// err := s.db.NewSelect().Model(game).WherePK().Relation("Records").Scan(context.Background())
+	// if err != nil {
+	// 	return nil, err
+	// } else if err == sql.ErrNoRows || game.Records == nil {
+	// 	return []Record{}, nil
+	// }
+	//
+	// return game.Records, nil
 }
 
 func (s *Storage) GetCurrentGameSessions(game *Game) ([]Session, error) {
@@ -57,6 +76,10 @@ func (s *Storage) InsertNewRecord(recordInsert *reqData.RecordInsert, p *Player)
 		Text:     recordInsert.Text,
 		PlayerID: p.ID,
 		GameID:   p.CurrentGameID,
+	}
+
+	if recordInsert.Hidden {
+		record.HiddenBy = p.ID
 	}
 
 	err := s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
@@ -90,9 +113,15 @@ func (s *Storage) UpdateRecord(recordUpdate *reqData.RecordUpdate, p *Player) er
 		Updated: &now,
 	}
 
+	if recordUpdate.Hidden {
+		record.HiddenBy = p.ID
+	} else {
+		record.HiddenBy = 0
+	}
+
 	err := s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
 		// Update Record
-		result, err := s.db.NewUpdate().Model(&record).Column("text", "updated").WherePK().Exec(context.Background())
+		result, err := s.db.NewUpdate().Model(&record).Column("text", "updated", "hidden_by").WherePK().Exec(context.Background())
 		if err != nil {
 			return err
 		}
