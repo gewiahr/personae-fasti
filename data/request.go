@@ -315,7 +315,7 @@ func (s *Storage) GetSuggestions(player *Player) ([]Suggestion, error) {
 }
 
 func (s *Storage) GetPlayerGames(player *Player) ([]Game, error) {
-	err := s.db.NewSelect().Model(player).Relation("Games").Scan(context.Background())
+	err := s.db.NewSelect().Model(player).WherePK().Relation("Games").Scan(context.Background())
 	if err != nil {
 		return nil, err
 	}
