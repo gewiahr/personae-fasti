@@ -198,9 +198,14 @@ func (api *APIServer) handleGetCharByID(w http.ResponseWriter, r *http.Request, 
 	}
 	// ++ Add char check ++//
 
+	records := []data.Record{}
+	if len(char.Records) > 0 {
+		records, err = api.storage.GetAllowedRecords(char.Records, p.ID)
+	}
+
 	charPage := respData.CharPage{
 		Char:    *respData.CharToCharFullInfo(char),
-		Records: char.Records, // ** change to mention API type ** //
+		Records: records, // ** change to mention API type ** //
 	}
 
 	return api.Respond(r, w, http.StatusOK, charPage)
@@ -282,9 +287,14 @@ func (api *APIServer) handleGetNPCByID(w http.ResponseWriter, r *http.Request, p
 	}
 	// ++ Add char check ++//
 
+	records := []data.Record{}
+	if len(npc.Records) > 0 {
+		records, err = api.storage.GetAllowedRecords(npc.Records, p.ID)
+	}
+
 	npcPage := respData.NPCPage{
 		NPC:     *respData.NPCToNPCFullInfo(npc),
-		Records: npc.Records, // ** change to mention API type ** //
+		Records: records, // ** change to mention API type ** //
 	}
 
 	return api.Respond(r, w, http.StatusOK, npcPage)
@@ -366,9 +376,14 @@ func (api *APIServer) handleGetLocationByID(w http.ResponseWriter, r *http.Reque
 	}
 	// ++ Add char check ++//
 
+	records := []data.Record{}
+	if len(location.Records) > 0 {
+		records, err = api.storage.GetAllowedRecords(location.Records, p.ID)
+	}
+
 	locationPage := respData.LocationPage{
 		Location: *respData.LocationToLocationFullInfo(location),
-		Records:  location.Records, // ** change to mention API type ** //
+		Records:  records, // ** change to mention API type ** //
 	}
 
 	return api.Respond(r, w, http.StatusOK, locationPage)

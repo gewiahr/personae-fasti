@@ -2,9 +2,12 @@ package data
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"regexp"
 	"strconv"
+
+	"github.com/uptrace/bun"
 )
 
 func (s *Storage) InsertMentionsForRecord(record *Record) error {
@@ -59,4 +62,19 @@ func (s *Storage) DeleteMentionsForRecord(record *Record) error {
 		return err
 	}
 	return nil
+}
+
+func (s *Storage) GetAllowedRecords(records []Record, playerID int) ([]Record, error) {
+	err := s.db.NewSelect().Model(&records).
+		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.Where("hidden_by = 0").WhereOr("hidden_by = ?", playerID)
+		}).
+		Scan(context.Background(), &records)
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows {
+		return []Record{}, nil
+	}
+
+	return records, nil
 }
