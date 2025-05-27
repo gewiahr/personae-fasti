@@ -31,6 +31,7 @@ func CharToCharInfoArray(chars []data.Char) []CharInfo {
 			Title:    char.Title,
 			PlayerID: char.PlayerID,
 			GameID:   char.GameID,
+			HiddenBy: char.HiddenBy,
 		})
 	}
 
@@ -45,6 +46,7 @@ func CharToCharFullInfo(char *data.Char) *CharFullInfo {
 		Description: char.Description,
 		PlayerID:    char.PlayerID,
 		GameID:      char.GameID,
+		HiddenBy:    char.HiddenBy,
 	}
 }
 
@@ -52,10 +54,11 @@ func NPCToNPCInfoArray(npcs []data.NPC) []NPCInfo {
 	npcInfoArray := []NPCInfo{}
 	for _, npc := range npcs {
 		npcInfoArray = append(npcInfoArray, NPCInfo{
-			ID:     npc.ID,
-			Name:   npc.Name,
-			Title:  npc.Title,
-			GameID: npc.GameID,
+			ID:       npc.ID,
+			Name:     npc.Name,
+			Title:    npc.Title,
+			GameID:   npc.GameID,
+			HiddenBy: npc.HiddenBy,
 		})
 	}
 
@@ -69,6 +72,7 @@ func NPCToNPCFullInfo(npc *data.NPC) *NPCFullInfo {
 		Title:       npc.Title,
 		Description: npc.Description,
 		GameID:      npc.GameID,
+		HiddenBy:    npc.HiddenBy,
 	}
 }
 
@@ -76,10 +80,11 @@ func LocationToLocationInfoArray(locations []data.Location) []LocationInfo {
 	locationInfoArray := []LocationInfo{}
 	for _, location := range locations {
 		locationInfoArray = append(locationInfoArray, LocationInfo{
-			ID:     location.ID,
-			Name:   location.Name,
-			Title:  location.Title,
-			GameID: location.GameID,
+			ID:       location.ID,
+			Name:     location.Name,
+			Title:    location.Title,
+			GameID:   location.GameID,
+			HiddenBy: location.HiddenBy,
 		})
 	}
 
@@ -93,5 +98,6 @@ func LocationToLocationFullInfo(location *data.Location) *LocationFullInfo {
 		Title:       location.Title,
 		Description: location.Description,
 		GameID:      location.GameID,
+		HiddenBy:    location.HiddenBy,
 	}
 }

@@ -175,27 +175,39 @@ func (s *Storage) GetCharByID(charID int) (*Char, error) {
 }
 
 func (s *Storage) CreateChar(charCreate *reqData.CharCreate, player *Player) (*Char, error) {
+	var hiddenBy = 0
+	if charCreate.Hidden {
+		hiddenBy = player.ID
+	}
+
 	char := Char{
 		Name:        charCreate.Name,
 		Title:       charCreate.Title,
 		Description: charCreate.Description,
+		HiddenBy:    hiddenBy,
 		PlayerID:    player.ID,
 		GameID:      player.CurrentGameID,
 	}
 
 	_, err := s.db.NewInsert().Model(&char).
-		Column("name", "title", "description", "player_id", "game_id").
+		Column("name", "title", "description", "hidden_by", "player_id", "game_id").
 		Returning("*").Exec(context.Background(), &char)
 	//Exec(context.Background())
 
 	return &char, err
 }
 
-func (s *Storage) UpdateChar(charUpdate *reqData.CharUpdate, char *Char) (*Char, error) {
+func (s *Storage) UpdateChar(charUpdate *reqData.CharUpdate, char *Char, player *Player) (*Char, error) {
+	var hiddenBy = 0
+	if charUpdate.Hidden {
+		hiddenBy = player.ID
+	}
+
 	_, err := s.db.NewUpdate().Model(char).WherePK().
 		Set("name = ?", charUpdate.Name).
 		Set("title = ?", charUpdate.Title).
 		Set("description = ?", charUpdate.Description).
+		Set("hidden_by = ?", hiddenBy).
 		Returning("*").Exec(context.Background())
 	return char, err
 }
@@ -227,26 +239,38 @@ func (s *Storage) GetNPCByID(npcID int) (*NPC, error) {
 }
 
 func (s *Storage) CreateNPC(npcCreate *reqData.NPCCreate, player *Player) (*NPC, error) {
+	var hiddenBy = 0
+	if npcCreate.Hidden {
+		hiddenBy = player.ID
+	}
+
 	npc := NPC{
 		Name:        npcCreate.Name,
 		Title:       npcCreate.Title,
 		Description: npcCreate.Description,
+		HiddenBy:    hiddenBy,
 		CreatedByID: player.ID,
 		GameID:      player.CurrentGameID,
 	}
 
 	_, err := s.db.NewInsert().Model(&npc).
-		Column("name", "title", "description", "created_by_id", "game_id").
+		Column("name", "title", "description", "hidden_by", "created_by_id", "game_id").
 		Returning("*").Exec(context.Background(), &npc)
 
 	return &npc, err
 }
 
-func (s *Storage) UpdateNPC(npcUpdate *reqData.NPCUpdate, npc *NPC) (*NPC, error) {
+func (s *Storage) UpdateNPC(npcUpdate *reqData.NPCUpdate, npc *NPC, player *Player) (*NPC, error) {
+	var hiddenBy = 0
+	if npcUpdate.Hidden {
+		hiddenBy = player.ID
+	}
+
 	_, err := s.db.NewUpdate().Model(npc).WherePK().
 		Set("name = ?", npcUpdate.Name).
 		Set("title = ?", npcUpdate.Title).
 		Set("description = ?", npcUpdate.Description).
+		Set("hidden_by = ?", hiddenBy).
 		Returning("*").Exec(context.Background())
 	return npc, err
 }
@@ -278,26 +302,38 @@ func (s *Storage) GetLocationByID(locationID int) (*Location, error) {
 }
 
 func (s *Storage) CreateLocation(locationCreate *reqData.LocationCreate, player *Player) (*Location, error) {
+	var hiddenBy = 0
+	if locationCreate.Hidden {
+		hiddenBy = player.ID
+	}
+
 	location := Location{
 		Name:        locationCreate.Name,
 		Title:       locationCreate.Title,
 		Description: locationCreate.Description,
+		HiddenBy:    hiddenBy,
 		CreatedByID: player.ID,
 		GameID:      player.CurrentGameID,
 	}
 
 	_, err := s.db.NewInsert().Model(&location).
-		Column("name", "title", "description", "created_by_id", "game_id").
+		Column("name", "title", "description", "hidden_by", "created_by_id", "game_id").
 		Returning("*").Exec(context.Background(), &location)
 
 	return &location, err
 }
 
-func (s *Storage) UpdateLocation(locationUpdate *reqData.LocationUpdate, location *Location) (*Location, error) {
+func (s *Storage) UpdateLocation(locationUpdate *reqData.LocationUpdate, location *Location, player *Player) (*Location, error) {
+	var hiddenBy = 0
+	if locationUpdate.Hidden {
+		hiddenBy = player.ID
+	}
+
 	_, err := s.db.NewUpdate().Model(location).WherePK().
 		Set("name = ?", locationUpdate.Name).
 		Set("title = ?", locationUpdate.Title).
 		Set("description = ?", locationUpdate.Description).
+		Set("hidden_by = ?", hiddenBy).
 		Returning("*").Exec(context.Background())
 	return location, err
 }

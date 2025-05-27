@@ -97,6 +97,7 @@ type Char struct {
 
 	PlayerID int `bun:"player_id"`
 	GameID   int `bun:"game_id"`
+	HiddenBy int `bun:"hidden_by,default:0" json:"hiddenBy"`
 
 	Records []Record `bun:"m2m:records_chars,join:Char=Record"`
 
@@ -127,6 +128,7 @@ type NPC struct {
 
 	CreatedByID int     `bun:"created_by_id"`
 	CreatedBy   *Player `bun:"rel:belongs-to,join:created_by_id=id"`
+	HiddenBy    int     `bun:"hidden_by,default:0" json:"hiddenBy"`
 
 	Created *time.Time `bun:"created,default:current_timestamp"`
 	Deleted *time.Time `bun:"deleted,default:null"`
@@ -146,6 +148,7 @@ type Location struct {
 
 	CreatedByID int     `bun:"created_by_id"`
 	CreatedBy   *Player `bun:"rel:belongs-to,join:created_by_id=id"`
+	HiddenBy    int     `bun:"hidden_by,default:0" json:"hiddenBy"`
 
 	Created *time.Time `bun:"created,default:current_timestamp"`
 	Deleted *time.Time `bun:"deleted,default:null"`
@@ -167,7 +170,7 @@ type Record struct {
 
 	Created *time.Time `bun:"created,nullzero,notnull,default:current_timestamp" json:"created"`
 	Updated *time.Time `bun:"updated,nullzero,notnull,default:current_timestamp" json:"updated"`
-	Deleted *time.Time `bun:"deleted,default:null"`
+	Deleted *time.Time `bun:"deleted,default:null" json:"-"`
 }
 
 type RecordChar struct {

@@ -164,7 +164,7 @@ func (api *APIServer) handleChangeRecord(w http.ResponseWriter, r *http.Request,
 func (api *APIServer) handleGetChars(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
 	chars, err := api.storage.GetCurrentGameChars(p.CurrentGame)
 	if err != nil {
-		api.HandleError(err)
+		return api.HandleError(err)
 	}
 
 	players, err := api.storage.GetCurrentGamePlayers(p.CurrentGame)
@@ -246,9 +246,9 @@ func (api *APIServer) handleUpdateChar(w http.ResponseWriter, r *http.Request, p
 	}
 	// ++ Add char check ++//
 
-	char, err = api.storage.UpdateChar(&charUpdate, char)
+	char, err = api.storage.UpdateChar(&charUpdate, char, p)
 	if err != nil {
-		api.HandleError(err)
+		return api.HandleError(err)
 	}
 
 	charFullInfo := respData.CharToCharFullInfo(char)
@@ -259,7 +259,12 @@ func (api *APIServer) handleUpdateChar(w http.ResponseWriter, r *http.Request, p
 func (api *APIServer) handleGetNPCs(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
 	npcs, err := api.storage.GetCurrentGameNPCs(p.CurrentGame)
 	if err != nil {
-		api.HandleError(err)
+		return api.HandleError(err)
+	}
+
+	npcs, err = api.storage.GetAllowedNPCs(npcs, p.ID)
+	if err != nil {
+		return api.HandleError(err)
 	}
 
 	gameNPCs := respData.GameNPCs{
@@ -335,9 +340,9 @@ func (api *APIServer) handleUpdateNPC(w http.ResponseWriter, r *http.Request, p 
 	}
 	// ++ Add char check ++//
 
-	npc, err = api.storage.UpdateNPC(&npcUpdate, npc)
+	npc, err = api.storage.UpdateNPC(&npcUpdate, npc, p)
 	if err != nil {
-		api.HandleError(err)
+		return api.HandleError(err)
 	}
 
 	npcFullInfo := respData.NPCToNPCFullInfo(npc)
@@ -348,7 +353,12 @@ func (api *APIServer) handleUpdateNPC(w http.ResponseWriter, r *http.Request, p 
 func (api *APIServer) handleGetLocations(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
 	locations, err := api.storage.GetCurrentGameLocations(p.CurrentGame)
 	if err != nil {
-		api.HandleError(err)
+		return api.HandleError(err)
+	}
+
+	locations, err = api.storage.GetAllowedLocations(locations, p.ID)
+	if err != nil {
+		return api.HandleError(err)
 	}
 
 	gameLocations := respData.GameLocations{
@@ -424,9 +434,9 @@ func (api *APIServer) handleUpdateLocation(w http.ResponseWriter, r *http.Reques
 	}
 	// ++ Add char check ++//
 
-	location, err = api.storage.UpdateLocation(&locationUpdate, location)
+	location, err = api.storage.UpdateLocation(&locationUpdate, location, p)
 	if err != nil {
-		api.HandleError(err)
+		return api.HandleError(err)
 	}
 
 	locationFullInfo := respData.LocationToLocationFullInfo(location)
@@ -437,7 +447,7 @@ func (api *APIServer) handleUpdateLocation(w http.ResponseWriter, r *http.Reques
 func (api *APIServer) handleGetSuggestions(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
 	suggestions, err := api.storage.GetSuggestions(p)
 	if err != nil {
-		api.HandleError(err)
+		return api.HandleError(err)
 	}
 
 	return api.Respond(r, w, http.StatusOK, respData.SuggestionData{Suggestions: suggestions})
@@ -447,7 +457,7 @@ func (api *APIServer) handleGetSuggestions(w http.ResponseWriter, r *http.Reques
 func (api *APIServer) handleGetPlayerSetings(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
 	playerGames, err := api.storage.GetPlayerGames(p)
 	if err != nil {
-		api.HandleError(err)
+		return api.HandleError(err)
 	}
 
 	playerSettings := respData.FormPlayerSettings(playerGames, *p.CurrentGame)

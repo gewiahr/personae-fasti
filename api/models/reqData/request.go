@@ -17,6 +17,7 @@ type CharCreate struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	Hidden      bool   `json:"hidden"`
 }
 
 type CharUpdate struct {
@@ -24,12 +25,14 @@ type CharUpdate struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	Hidden      bool   `json:"hidden"`
 }
 
 type NPCCreate struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	Hidden      bool   `json:"hidden"`
 }
 
 type NPCUpdate struct {
@@ -37,12 +40,14 @@ type NPCUpdate struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	Hidden      bool   `json:"hidden"`
 }
 
 type LocationCreate struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	Hidden      bool   `json:"hidden"`
 }
 
 type LocationUpdate struct {
@@ -50,6 +55,7 @@ type LocationUpdate struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	Hidden      bool   `json:"hidden"`
 }
 
 type GameChange struct {

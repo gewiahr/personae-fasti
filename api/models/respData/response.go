@@ -65,6 +65,7 @@ type CharInfo struct {
 
 	PlayerID int `json:"playerID"`
 	GameID   int `json:"gameID"`
+	HiddenBy int `json:"hiddenBy"`
 }
 
 type GameChars struct {
@@ -86,6 +87,7 @@ type CharFullInfo struct {
 
 	PlayerID int `json:"playerID"`
 	GameID   int `json:"gameID"`
+	HiddenBy int `json:"hiddenBy"`
 }
 
 type NPCInfo struct {
@@ -93,7 +95,8 @@ type NPCInfo struct {
 	Name  string `json:"name"`
 	Title string `json:"title"`
 
-	GameID int `json:"gameID"`
+	GameID   int `json:"gameID"`
+	HiddenBy int `json:"hiddenBy"`
 }
 
 type GameNPCs struct {
@@ -112,7 +115,8 @@ type NPCFullInfo struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 
-	GameID int `json:"gameID"`
+	GameID   int `json:"gameID"`
+	HiddenBy int `json:"hiddenBy"`
 }
 
 type LocationInfo struct {
@@ -120,7 +124,8 @@ type LocationInfo struct {
 	Name  string `json:"name"`
 	Title string `json:"title"`
 
-	GameID int `json:"gameID"`
+	GameID   int `json:"gameID"`
+	HiddenBy int `json:"hiddenBy"`
 }
 
 type GameLocations struct {
@@ -139,7 +144,8 @@ type LocationFullInfo struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 
-	GameID int `json:"gameID"`
+	GameID   int `json:"gameID"`
+	HiddenBy int `json:"hiddenBy"`
 }
 
 type SuggestionData struct {

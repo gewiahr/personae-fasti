@@ -65,7 +65,7 @@ func (s *Storage) DeleteMentionsForRecord(record *Record) error {
 }
 
 func (s *Storage) GetAllowedRecords(records []Record, playerID int) ([]Record, error) {
-	err := s.db.NewSelect().Model(&records).
+	err := s.db.NewSelect().Model(&records).WherePK().
 		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
 			return q.Where("hidden_by = 0").WhereOr("hidden_by = ?", playerID)
 		}).
@@ -77,4 +77,34 @@ func (s *Storage) GetAllowedRecords(records []Record, playerID int) ([]Record, e
 	}
 
 	return records, nil
+}
+
+func (s *Storage) GetAllowedNPCs(npcs []NPC, playerID int) ([]NPC, error) {
+	err := s.db.NewSelect().Model(&npcs).WherePK().
+		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.Where("hidden_by = 0").WhereOr("hidden_by = ?", playerID)
+		}).
+		Scan(context.Background(), &npcs)
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows {
+		return []NPC{}, nil
+	}
+
+	return npcs, nil
+}
+
+func (s *Storage) GetAllowedLocations(locations []Location, playerID int) ([]Location, error) {
+	err := s.db.NewSelect().Model(&locations).WherePK().
+		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.Where("hidden_by = 0").WhereOr("hidden_by = ?", playerID)
+		}).
+		Scan(context.Background(), &locations)
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows {
+		return []Location{}, nil
+	}
+
+	return locations, nil
 }
