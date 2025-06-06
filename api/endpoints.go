@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"net/http"
 	"personae-fasti/api/models/reqData"
 	"personae-fasti/api/models/respData"
@@ -37,6 +38,9 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 
 	router.HandleFunc("GET /player/settings", api.HTTPWrapper(api.PlayerWrapper(api.handleGetPlayerSetings)))
 	router.HandleFunc("PUT /player/game", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerGame)))
+
+	router.HandleFunc("GET /image/{type}/{id}", api.HTTPWrapper(api.handleGetImage))
+	router.HandleFunc("POST /image/{type}/{id}", api.HTTPWrapper(api.handlePostImage))
 }
 
 // func (api *APIServer) handleHome(w http.ResponseWriter, r *http.Request) *APIError {
@@ -479,4 +483,99 @@ func (api *APIServer) handleChangePlayerGame(w http.ResponseWriter, r *http.Requ
 
 	currentGameInfo := respData.GameToGameInfo(currentGame)
 	return api.Respond(r, w, http.StatusOK, currentGameInfo)
+}
+
+// GET /image/{type}/{id}
+func (api *APIServer) handleGetImage(w http.ResponseWriter, r *http.Request) *APIError {
+	// ++ add permissions by player ++ //
+	imageType := r.PathValue("type")
+	imageID := getPathValueInt(r, "id")
+	if imageType == "" || imageID == 0 {
+		return api.HandleErrorString("image type and id cannot be empty or 0").WithCode(http.StatusBadRequest)
+	}
+
+	params := fmt.Sprintf("%s_%d", imageType, imageID)
+	uri := fmt.Sprintf("%s/file/fasti/%s", api.fileServer.Addr, params)
+
+	req, _ := http.NewRequest(r.Method, uri, nil)
+	req.Header.Add("Authorization", api.fileServer.Pass)
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return api.HandleErrorString(fmt.Sprintf("cannot send image get request: %v", err))
+	}
+
+	if res.StatusCode == 200 || res.StatusCode == 201 {
+		resBody, _ := io.ReadAll(res.Body)
+		return api.Respond(r, w, res.StatusCode, string(resBody))
+	} else {
+		resBody, _ := io.ReadAll(res.Body)
+		return api.HandleErrorString(fmt.Sprintf("file server error: %s", string(resBody))).WithCode(res.StatusCode)
+	}
+}
+
+// POST /image/{type}/{id}
+func (api *APIServer) handlePostImage(w http.ResponseWriter, r *http.Request) *APIError {
+	imageType := r.PathValue("type")
+	imageID := getPathValueInt(r, "id")
+
+	if imageType == "" || imageID == 0 {
+		return api.HandleErrorString("image type and id cannot be empty or 0").WithCode(http.StatusBadRequest)
+	}
+
+	// ++ add permissions by player ++ //
+
+	params := fmt.Sprintf("%s_%d", imageType, imageID)
+	uri := fmt.Sprintf("%s/file/fasti/%s", api.fileServer.Addr, params)
+
+	maxSize := int64(4 * 1024 * 1024)
+	// body, err := io.ReadAll(io.LimitReader(r.Body, maxSize))
+	// if err != nil {
+	// 	return api.HandleErrorString(fmt.Sprintf("error reading request body: %s", err))
+	// }
+
+	// req, err := http.NewRequest("POST", uri, bytes.NewReader(body))
+	// if err != nil {
+	// 	return api.HandleErrorString(fmt.Sprintf("error creating forward request: %s", err))
+	// }
+
+	// Create pipe for streaming
+	pr, pw := io.Pipe()
+	defer pr.Close()
+
+	// Prepare the outgoing request
+	req, _ := http.NewRequest(r.Method, uri, pr)
+	req.Header = r.Header
+	req.Header.Add("Authorization", api.fileServer.Pass)
+
+	// Stream with exact size enforcement
+	go func() {
+		defer pw.Close()
+		written, _ := io.CopyN(pw, r.Body, maxSize+1)
+
+		if written > maxSize {
+			pw.CloseWithError(http.ErrBodyNotAllowed)
+			return
+		}
+	}()
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		if err == http.ErrBodyNotAllowed {
+			return api.HandleErrorString("file too large").WithCode(http.StatusRequestEntityTooLarge)
+		} else {
+			return api.HandleErrorString(fmt.Sprintf("cannot send image post request: %v", err))
+		}
+
+	}
+
+	// Close body to not to log image sent
+	defer r.Body.Close()
+
+	if res.StatusCode == 200 || res.StatusCode == 201 {
+		return api.Respond(r, w, res.StatusCode, nil)
+	} else {
+		resBody, _ := io.ReadAll(res.Body)
+		return api.HandleErrorString(fmt.Sprintf("file server error: %s", string(resBody)))
+	}
 }

@@ -18,8 +18,9 @@ type APIFunc func(http.ResponseWriter, *http.Request) *APIError
 type APIFuncAuth func(http.ResponseWriter, *http.Request, *data.Player) *APIError
 
 type APIServer struct {
-	server  *http.Server
-	storage *data.Storage
+	server     *http.Server
+	storage    *data.Storage
+	fileServer *opt.FileServer
 }
 
 type APIError struct {
@@ -102,7 +103,8 @@ func InitServer(c *opt.Conf, s *data.Storage) *APIServer {
 			Addr:    c.App.Port,
 			Handler: crs.Handler(router),
 		},
-		storage: s,
+		storage:    s,
+		fileServer: &c.FileServer,
 	}
 
 	api.SetHandlers(router)

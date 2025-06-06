@@ -19,6 +19,12 @@ type Conf struct {
 		Password string `json:"password"`
 		Name     string `json:"name"`
 	} `json:"db"`
+	FileServer FileServer `json:"fileServer"`
+}
+
+type FileServer struct {
+	Addr string `json:"addr"`
+	Pass string `json:"pass"`
 }
 
 func InitConfig() *Conf {
