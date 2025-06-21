@@ -495,7 +495,7 @@ func (api *APIServer) handleGetImage(w http.ResponseWriter, r *http.Request) *AP
 	}
 
 	params := fmt.Sprintf("%s_%d", imageType, imageID)
-	uri := fmt.Sprintf("%s/file/fasti/%s", api.fileServer.Addr, params)
+	uri := fmt.Sprintf("%s/file/%s/%s", api.fileServer.Addr, api.fileServer.Proj, params)
 
 	req, _ := http.NewRequest(r.Method, uri, nil)
 	req.Header.Add("Authorization", api.fileServer.Pass)
@@ -526,7 +526,7 @@ func (api *APIServer) handlePostImage(w http.ResponseWriter, r *http.Request) *A
 	// ++ add permissions by player ++ //
 
 	params := fmt.Sprintf("%s_%d", imageType, imageID)
-	uri := fmt.Sprintf("%s/file/fasti/%s", api.fileServer.Addr, params)
+	uri := fmt.Sprintf("%s/file/%s/%s", api.fileServer.Addr, api.fileServer.Proj, params)
 
 	maxSize := int64(4 * 1024 * 1024)
 	// body, err := io.ReadAll(io.LimitReader(r.Body, maxSize))

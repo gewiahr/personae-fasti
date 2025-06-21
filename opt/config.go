@@ -25,6 +25,7 @@ type Conf struct {
 type FileServer struct {
 	Addr string `json:"addr"`
 	Pass string `json:"pass"`
+	Proj string `json:"proj"`
 }
 
 func InitConfig() *Conf {
