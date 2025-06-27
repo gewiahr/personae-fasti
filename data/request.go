@@ -39,6 +39,9 @@ func (s *Storage) GetCurrentGameRecordsForPlayer(game *Game, player *Player) ([]
 		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
 			return q.Where("hidden_by = 0").WhereOr("hidden_by = ?", player.ID)
 		}).
+		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.Where("deleted IS NULL")
+		}).
 		Scan(context.Background(), &records)
 	if err != nil {
 		return nil, err
@@ -143,6 +146,25 @@ func (s *Storage) UpdateRecord(recordUpdate *reqData.RecordUpdate, p *Player) er
 	})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) DeleteRecord(recordID int, p *Player) error {
+	now := time.Now().UTC()
+	record := Record{
+		ID:      recordID,
+		Deleted: &now,
+	}
+
+	// Delete Record
+	result, err := s.db.NewUpdate().Model(&record).Column("deleted").WherePK().Exec(context.Background())
+	if err != nil {
+		return err
+	}
+	if result == nil {
+		return fmt.Errorf("empty delete")
 	}
 
 	return nil

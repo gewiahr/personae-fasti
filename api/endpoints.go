@@ -18,6 +18,7 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("GET /records", api.HTTPWrapper(api.PlayerWrapper(api.handleGetRecords)))
 	router.HandleFunc("POST /record", api.HTTPWrapper(api.PlayerWrapper(api.handlePostRecord)))
 	router.HandleFunc("PUT /record", api.HTTPWrapper(api.PlayerWrapper(api.handleChangeRecord)))
+	router.HandleFunc("DELETE /record/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleDeleteRecord)))
 
 	router.HandleFunc("GET /chars", api.HTTPWrapper(api.PlayerWrapper(api.handleGetChars)))
 	router.HandleFunc("GET /char/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetCharByID)))
@@ -162,6 +163,21 @@ func (api *APIServer) handleChangeRecord(w http.ResponseWriter, r *http.Request,
 	gameRecords := respData.FormGameRecords(p, records, players, sessions)
 
 	return api.Respond(r, w, http.StatusOK, gameRecords)
+}
+
+// DELETE /record
+func (api *APIServer) handleDeleteRecord(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	recordID := getPathValueInt(r, "id")
+	if recordID < 0 {
+		return api.HandleError(fmt.Errorf("error parsing id: record id is invalid"))
+	}
+
+	err := api.storage.DeleteRecord(recordID, p)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusOK, nil)
 }
 
 // GET /chars
