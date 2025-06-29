@@ -40,6 +40,8 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("GET /player/settings", api.HTTPWrapper(api.PlayerWrapper(api.handleGetPlayerSetings)))
 	router.HandleFunc("PUT /player/game", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerGame)))
 
+	router.HandleFunc("POST /game/session/new", api.HTTPWrapper(api.PlayerWrapper(api.handleStartNewGameSession)))
+
 	router.HandleFunc("GET /image/{type}/{id}", api.HTTPWrapper(api.handleGetImage))
 	router.HandleFunc("POST /image/{type}/{id}", api.HTTPWrapper(api.handlePostImage))
 }
@@ -499,6 +501,20 @@ func (api *APIServer) handleChangePlayerGame(w http.ResponseWriter, r *http.Requ
 
 	currentGameInfo := respData.GameToGameInfo(currentGame)
 	return api.Respond(r, w, http.StatusOK, currentGameInfo)
+}
+
+// POST /game/session/new
+func (api *APIServer) handleStartNewGameSession(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	if p.CurrentGame.GMID != p.ID {
+		return api.HandleErrorString("only GM may start new session").WithCode(http.StatusForbidden)
+	}
+
+	newSession, err := api.storage.StartNewGameSession(p.CurrentGame)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusCreated, newSession)
 }
 
 // GET /image/{type}/{id}

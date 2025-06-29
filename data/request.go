@@ -74,6 +74,56 @@ func (s *Storage) GetCurrentGameSessions(game *Game) ([]Session, error) {
 	return game.Sessions, nil
 }
 
+func (s *Storage) GetCurrentGameSession(game *Game) (*Session, error) {
+	var currentSession Session
+
+	err := s.db.NewSelect().Model(&currentSession).Where("game_id = ? AND end_time IS NULL", game.ID).Scan(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows {
+		return nil, nil
+	}
+
+	return &currentSession, nil
+}
+
+func (s *Storage) StartNewGameSession(game *Game) (*Session, error) {
+	currentSession, err := s.GetCurrentGameSession(game)
+	if err != nil {
+		return nil, err
+	}
+
+	sessionNumber := 0
+	if currentSession != nil {
+		currentTime := time.Now().UTC()
+		currentSession.EndTime = &currentTime
+
+		_, err := s.db.NewUpdate().Model(currentSession).Column("end_time").WherePK().Exec(context.Background())
+		if err != nil {
+			return nil, err
+		} else if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("cannot update previous session row")
+		}
+
+		sessionNumber = currentSession.Number
+	}
+
+	newSession := &Session{
+		GameID: game.ID,
+		Number: sessionNumber,
+	}
+
+	// Made it transactional
+	_, err = s.db.NewInsert().Model(newSession).Exec(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("cannot create new session row")
+	}
+
+	return currentSession, nil
+}
+
 func (s *Storage) InsertNewRecord(recordInsert *reqData.RecordInsert, p *Player) error {
 	record := Record{
 		Text:     recordInsert.Text,
