@@ -105,7 +105,7 @@ func (s *Storage) StartNewGameSession(game *Game) (*Session, error) {
 			return nil, fmt.Errorf("cannot update previous session row")
 		}
 
-		sessionNumber = currentSession.Number
+		sessionNumber = currentSession.Number + 1
 	}
 
 	newSession := &Session{
