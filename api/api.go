@@ -2,10 +2,9 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"personae-fasti/data"
@@ -37,7 +36,7 @@ func (api *APIServer) HandleError(e error) *APIError {
 }
 
 func (api *APIServer) HandleErrorString(estr string) *APIError {
-	return api.HandleError(fmt.Errorf(strings.ToLower(estr)))
+	return api.HandleError(errors.New(estr))
 }
 
 func (a *APIError) WithCode(c int) *APIError {

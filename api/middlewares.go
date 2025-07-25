@@ -2,9 +2,9 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 )
 
 func (api *APIServer) HTTPWrapper(f APIFunc) http.HandlerFunc {
@@ -21,7 +21,7 @@ func (api *APIServer) PlayerWrapper(f APIFuncAuth) APIFunc {
 		player, err := api.storage.GetPlayerByAccessKey(accesskey)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				return api.HandleError(fmt.Errorf("login failed: no user info for the passkey %d", strings.ToLower(accesskey))).WithCode(http.StatusUnauthorized)
+				return api.HandleError(errors.New(fmt.Sprintf("login failed: no user info for the passkey %s", accesskey))).WithCode(http.StatusUnauthorized)
 			} else {
 				return api.HandleError(err)
 			}

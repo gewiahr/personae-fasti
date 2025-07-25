@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -64,7 +65,7 @@ func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIEr
 	player, err := api.storage.GetPlayerByAccessKey(accesskey)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return api.HandleError(fmt.Errorf("login failed: no user info for the passkey %d", strings.ToLower(accesskey))).WithCode(http.StatusUnauthorized)
+			return api.HandleError(errors.New(fmt.Sprintf("login failed: no user info for the passkey %s", strings.ToLower(accesskey)))).WithCode(http.StatusUnauthorized)
 		} else {
 			return api.HandleError(err)
 		}
