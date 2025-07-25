@@ -148,6 +148,61 @@ type LocationFullInfo struct {
 	HiddenBy int `json:"hiddenBy"`
 }
 
+type QuestInfo struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+
+	GameID     int  `json:"gameID"`
+	HiddenBy   int  `json:"hiddenBy"`
+	Successful bool `json:"successful"`
+	Finished   bool `json:"finished"`
+}
+
+type GameQuests struct {
+	Quests      []QuestInfo `json:"quests"`
+	CurrentGame GameInfo    `json:"currentGame"`
+}
+
+type QuestPage struct {
+	Quest   QuestFullInfo       `json:"quest"`
+	Tasks   []QuestTaskFullInfo `json:"tasks"`
+	Records []data.Record       `json:"records"`
+}
+
+type QuestFullInfo struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+
+	ParentID int `json:"parentID"`
+	ChildID  int `json:"childID"`
+	HeadID   int `json:"headID"`
+
+	GameID     int  `json:"gameID"`
+	HiddenBy   int  `json:"hiddenBy"`
+	Successful bool `json:"successful"`
+	Finished   bool `json:"finished"`
+}
+
+type QuestTaskFullInfo struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+
+	QuestID int `json:"questID"`
+
+	Type     int  `json:"type"`
+	Capacity int  `json:"capacity"`
+	Current  int  `json:"current"`
+	Finished bool `json:"finished"`
+
+	GameID   int `json:"gameID"`
+	HiddenBy int `json:"hiddenBy"`
+}
+
 type SuggestionData struct {
 	Suggestions []data.Suggestion `json:"entities"`
 }

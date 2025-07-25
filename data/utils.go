@@ -108,3 +108,18 @@ func (s *Storage) GetAllowedLocations(locations []Location, playerID int) ([]Loc
 
 	return locations, nil
 }
+
+func (s *Storage) GetAllowedQuests(quests []Quest, playerID int) ([]Quest, error) {
+	err := s.db.NewSelect().Model(&quests).WherePK().
+		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.Where("hidden_by = 0").WhereOr("hidden_by = ?", playerID)
+		}).
+		Scan(context.Background(), &quests)
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows {
+		return []Quest{}, nil
+	}
+
+	return quests, nil
+}

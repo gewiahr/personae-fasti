@@ -35,6 +35,13 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("POST /location", api.HTTPWrapper(api.PlayerWrapper(api.handleCreateLocation)))
 	router.HandleFunc("PUT /location", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateLocation)))
 
+	router.HandleFunc("GET /quests", api.HTTPWrapper(api.PlayerWrapper(api.handleGetQuests)))
+	router.HandleFunc("GET /quest/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetQuestByID)))
+	router.HandleFunc("POST /quest", api.HTTPWrapper(api.PlayerWrapper(api.handleCreateQuest)))
+	router.HandleFunc("PUT /quest", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateQuest)))
+
+	router.HandleFunc("PATCH /quest/tasks", api.HTTPWrapper(api.PlayerWrapper(api.handlePatchQuestTasks)))
+
 	router.HandleFunc("GET /suggestions", api.HTTPWrapper(api.PlayerWrapper(api.handleGetSuggestions)))
 
 	router.HandleFunc("GET /player/settings", api.HTTPWrapper(api.PlayerWrapper(api.handleGetPlayerSetings)))
@@ -463,6 +470,137 @@ func (api *APIServer) handleUpdateLocation(w http.ResponseWriter, r *http.Reques
 
 	locationFullInfo := respData.LocationToLocationFullInfo(location)
 	return api.Respond(r, w, http.StatusOK, locationFullInfo)
+}
+
+// GET /quests
+func (api *APIServer) handleGetQuests(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	quests, err := api.storage.GetCurrentGameQuests(p.CurrentGame)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	quests, err = api.storage.GetAllowedQuests(quests, p.ID)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	gameQuests := respData.GameQuests{
+		Quests:      respData.QuestToQuestInfoArray(quests),
+		CurrentGame: *respData.GameToGameInfo(p.CurrentGame),
+	}
+
+	return api.Respond(r, w, http.StatusOK, gameQuests)
+}
+
+// GET /quest/{id}
+func (api *APIServer) handleGetQuestByID(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	questID := getPathValueInt(r, "id")
+	if questID < 0 {
+		return api.HandleError(fmt.Errorf("error parsing id: quest id is invalid"))
+	}
+
+	quest, err := api.storage.GetQuestByID(questID)
+	if err != nil {
+		return api.HandleError(err)
+	} else if quest == nil {
+		return api.HandleErrorString(fmt.Sprintf("no quest with id %d", questID)).WithCode(http.StatusNotFound)
+	} else if quest.GameID != p.CurrentGameID {
+		return api.HandleErrorString(fmt.Sprintf("quest %d is not allowed to request for the game %d", quest.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+	}
+	// ++ Add char check ++//
+
+	tasks, err := api.storage.GetTasksByQuest(quest)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	records := []data.Record{}
+	if len(quest.Records) > 0 {
+		records, err = api.storage.GetAllowedRecords(quest.Records, p.ID)
+	}
+
+	questPage := respData.QuestPage{
+		Quest:   *respData.QuestToQuestFullInfo(quest),
+		Tasks:   respData.TaskToTaskFullInfoArray(tasks),
+		Records: records, // ** change to mention API type ** //
+	}
+
+	return api.Respond(r, w, http.StatusOK, questPage)
+}
+
+// POST /quest
+func (api *APIServer) handleCreateQuest(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var questCreateData reqData.QuestCreateData
+	err := ReadJsonBody(r, &questCreateData)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	quest, err := api.storage.CreateQuest(&questCreateData.Quest, questCreateData.Tasks, p)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	questFullInfo := respData.QuestToQuestFullInfo(quest)
+	return api.Respond(r, w, http.StatusCreated, questFullInfo)
+}
+
+// PUT /quest
+func (api *APIServer) handleUpdateQuest(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var questUpdate reqData.QuestUpdateData
+	err := ReadJsonBody(r, &questUpdate)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	quest, err := api.storage.GetQuestByID(questUpdate.Quest.ID)
+	if err != nil {
+		return api.HandleError(err)
+	} else if quest == nil {
+		return api.HandleErrorString(fmt.Sprintf("no quest with id %d", questUpdate.Quest.ID)).WithCode(http.StatusNotFound)
+	} else if quest.GameID != p.CurrentGameID {
+		return api.HandleErrorString(fmt.Sprintf("quest %d is not allowed to request for the game %d", quest.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+	}
+	// ++ Add char check ++//
+
+	quest, err = api.storage.UpdateQuest(&questUpdate.Quest, questUpdate.Tasks, quest, p)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	questFullInfo := respData.QuestToQuestFullInfo(quest)
+	return api.Respond(r, w, http.StatusOK, questFullInfo)
+}
+
+// PATCH /quest/tasks/
+func (api *APIServer) handlePatchQuestTasks(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var tasksPatch reqData.QuestTasksPatch
+	err := ReadJsonBody(r, &tasksPatch)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	if tasksPatch.QuestID < 0 {
+		return api.HandleError(fmt.Errorf("error parsing id: quest id is invalid"))
+	}
+
+	quest, err := api.storage.GetQuestByID(tasksPatch.QuestID)
+	if err != nil {
+		return api.HandleError(err)
+	} else if quest == nil {
+		return api.HandleErrorString(fmt.Sprintf("no quest with id %d", tasksPatch.QuestID)).WithCode(http.StatusNotFound)
+	} else if quest.GameID != p.CurrentGameID {
+		return api.HandleErrorString(fmt.Sprintf("quest %d is not allowed to request for the game %d", quest.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+	}
+	// ++ Add char check ++//
+
+	tasks, err := api.storage.UpdateQuestTasks(tasksPatch.Tasks, quest, p)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	tasksArrayFullInfo := respData.TaskToTaskFullInfoArray(tasks)
+	return api.Respond(r, w, http.StatusOK, tasksArrayFullInfo)
 }
 
 // GET /suggestions

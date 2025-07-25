@@ -22,7 +22,8 @@ func (s *Storage) InitTables() {
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Location)(nil)).Exec(context.Background())
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Record)(nil)).Exec(context.Background())
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Session)(nil)).Exec(context.Background())
-	//_, _ = s.db.NewCreateTable().IfNotExists().Model((*Mention)(nil)).Exec(context.Background())
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Quest)(nil)).Exec(context.Background())
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*QuestTask)(nil)).Exec(context.Background())
 
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*PlayerGame)(nil)).Exec(context.Background())
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordChar)(nil)).Exec(context.Background())
@@ -51,6 +52,7 @@ type Game struct {
 	Locations []Location `bun:"rel:has-many,join:id=game_id"`
 
 	Records []Record `bun:"rel:has-many,join:id=game_id"`
+	Quests  []Quest  `bun:"rel:has-many,join:id=game_id"`
 
 	Created *time.Time `bun:"created,default:current_timestamp"`
 	Deleted *time.Time `bun:"deleted,default:null"`
@@ -68,7 +70,7 @@ type Player struct {
 	Chars []Char `bun:"rel:has-many,join:id=player_id"`
 	Games []Game `bun:"m2m:players_games,join:Player=Game"`
 
-	Records []Record `bun:"rel:has-many,join:id=game_id"`
+	//Records []Record `bun:"rel:has-many,join:id=game_id"`
 
 	CurrentGameID int   `bun:"current_game_id"`
 	CurrentGame   *Game `bun:"rel:belongs-to,join:current_game_id=id"`
@@ -95,9 +97,11 @@ type Char struct {
 
 	Description string `bun:"description"`
 
-	PlayerID int `bun:"player_id"`
-	GameID   int `bun:"game_id"`
-	HiddenBy int `bun:"hidden_by,default:0" json:"hiddenBy"`
+	PlayerID int     `bun:"player_id"`
+	Player   *Player `bun:"rel:belongs-to,join:player_id=id"`
+	GameID   int     `bun:"game_id"`
+	Game     *Game   `bun:"rel:belongs-to,join:game_id=id"`
+	HiddenBy int     `bun:"hidden_by,default:0" json:"hiddenBy"`
 
 	Records []Record `bun:"m2m:records_chars,join:Char=Record"`
 
@@ -124,6 +128,7 @@ type NPC struct {
 	Description string `bun:"description"`
 
 	GameID  int      `bun:"game_id"`
+	Game    *Game    `bun:"rel:belongs-to,join:game_id=id"`
 	Records []Record `bun:"m2m:records_npcs,join:NPC=Record"`
 
 	CreatedByID int     `bun:"created_by_id"`
@@ -138,13 +143,15 @@ type Location struct {
 	bun.BaseModel `bun:"table:location"`
 
 	ID          int    `bun:"id,pk,autoincrement"`
-	ParentID    int    `bun:"pid"` // TODO: Change to relations
 	Name        string `bun:"name,notnull"`
 	Title       string `bun:"title"`
 	Description string `bun:"description"`
 
-	GameID  int      `bun:"game_id"`
-	Records []Record `bun:"m2m:records_locations,join:Location=Record"`
+	GameID   int       `bun:"game_id"`
+	Game     *Game     `bun:"rel:belongs-to,join:game_id=id"`
+	ParentID int       `bun:"pid"`
+	Parent   *Location `bun:"rel:belongs-to,join:pid=id"`
+	Records  []Record  `bun:"m2m:records_locations,join:Location=Record"`
 
 	CreatedByID int     `bun:"created_by_id"`
 	CreatedBy   *Player `bun:"rel:belongs-to,join:created_by_id=id"`
@@ -164,9 +171,14 @@ type Record struct {
 	NPCs      []NPC      `bun:"m2m:records_npcs,join:Record=NPC" json:"npcs,omitempty"`
 	Locations []Location `bun:"m2m:records_locations,join:Record=Location" json:"locations,omitempty"`
 
-	PlayerID int `bun:"player_id" json:"playerID"`
-	GameID   int `bun:"game_id" json:"gameID"`
-	HiddenBy int `bun:"hidden_by,default:0" json:"hiddenBy"`
+	PlayerID int     `bun:"player_id" json:"playerID"`
+	Player   *Player `bun:"rel:belongs-to,join:player_id=id"`
+	GameID   int     `bun:"game_id" json:"gameID"`
+	Game     *Game   `bun:"rel:belongs-to,join:game_id=id"`
+	HiddenBy int     `bun:"hidden_by,default:0" json:"hiddenBy"`
+
+	QuestID int    `bun:"quest_id" json:"questID"`
+	Quest   *Quest `bun:"rel:belongs-to,join:quest_id=id" json:"quest"`
 
 	Created *time.Time `bun:"created,nullzero,notnull,default:current_timestamp" json:"created"`
 	Updated *time.Time `bun:"updated,nullzero,notnull,default:current_timestamp" json:"updated"`
@@ -212,4 +224,64 @@ type Session struct {
 	Name   string `bun:",notnull,default:''" json:"name"`
 
 	EndTime *time.Time `bun:"end_time,nullzero" json:"endTime"`
+}
+
+type Quest struct {
+	bun.BaseModel `bun:"quest"`
+
+	ID int `bun:"id,pk,autoincrement" json:"id"`
+
+	GameID int   `bun:"game_id,notnull"`
+	Game   *Game `bun:"rel:belongs-to,join:game_id=id"`
+
+	Name        string `bun:",notnull,default:''" json:"name"`
+	Title       string `bun:",notnull,default:''" json:"title"`
+	Description string `bun:",notnull,default:''" json:"description"`
+
+	Records []Record `bun:"rel:has-many,join:id=quest_id"`
+
+	ParentID int    `bun:"parent_id"`
+	Parent   *Quest `bun:"rel:belongs-to,join:parent_id=id"`
+	ChildID  int    `bun:"child_id"`
+	Child    *Quest `bun:"rel:belongs-to,join:child_id=id"`
+	HeadID   int    `bun:"head_id"`
+	Head     *Quest `bun:"rel:belongs-to,join:head_id=id"`
+
+	Tasks []QuestTask `bun:"rel:has-many,join:id=quest_id"`
+
+	Successful bool `bun:"successful,default:false" json:"successful"`
+
+	HiddenBy int `bun:"hidden_by,default:0" json:"hiddenBy"`
+
+	Created  *time.Time `bun:"created,default:current_timestamp"`
+	Deleted  *time.Time `bun:"deleted,default:null"`
+	Finished *time.Time `bun:"finished,default:null"`
+}
+
+type QuestTaskType int
+
+const (
+	Binary QuestTaskType = iota
+	Decimal
+)
+
+type QuestTask struct {
+	bun.BaseModel `bun:"quest_task"`
+
+	ID int `bun:"id,pk,autoincrement" json:"id"`
+
+	GameID  int    `bun:"game_id,notnull"`
+	Game    *Game  `bun:"rel:belongs-to,join:game_id=id"`
+	QuestID int    `bun:"quest_id,notnull"`
+	Quest   *Quest `bun:"rel:belongs-to,join:quest_id=id"`
+
+	Name        string        `bun:",notnull,default:''" json:"name"`
+	Description string        `bun:",notnull,default:''" json:"description"`
+	Type        QuestTaskType `bun:",default:0" json:"type"`
+	Capacity    int           `bun:"capacity,default:0"`
+	Current     int           `bun:"current,default:0"`
+
+	HiddenBy int `bun:"hidden_by,default:0" json:"hiddenBy"`
+
+	Finished *time.Time `bun:"finished,default:null"`
 }

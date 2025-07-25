@@ -101,3 +101,68 @@ func LocationToLocationFullInfo(location *data.Location) *LocationFullInfo {
 		HiddenBy:    location.HiddenBy,
 	}
 }
+
+func QuestToQuestInfoArray(quests []data.Quest) []QuestInfo {
+	questInfoArray := []QuestInfo{}
+	for _, quest := range quests {
+		finishedQuest := false
+		if quest.Finished != nil {
+			finishedQuest = true
+		}
+		questInfoArray = append(questInfoArray, QuestInfo{
+			ID:         quest.ID,
+			Name:       quest.Name,
+			Title:      quest.Title,
+			GameID:     quest.GameID,
+			Successful: quest.Successful,
+			HiddenBy:   quest.HiddenBy,
+			Finished:   finishedQuest,
+		})
+	}
+
+	return questInfoArray
+}
+
+func QuestToQuestFullInfo(quest *data.Quest) *QuestFullInfo {
+	finishedQuest := false
+	if quest.Finished != nil {
+		finishedQuest = true
+	}
+	return &QuestFullInfo{
+		ID:          quest.ID,
+		Name:        quest.Name,
+		Title:       quest.Title,
+		Description: quest.Description,
+		ParentID:    quest.ParentID,
+		ChildID:     quest.ChildID,
+		HeadID:      quest.HeadID,
+		GameID:      quest.GameID,
+		Successful:  quest.Successful,
+		HiddenBy:    quest.HiddenBy,
+		Finished:    finishedQuest,
+	}
+}
+
+func TaskToTaskFullInfoArray(tasks []data.QuestTask) []QuestTaskFullInfo {
+	taskInfoArray := []QuestTaskFullInfo{}
+	for _, task := range tasks {
+		finishedTask := false
+		if task.Finished != nil {
+			finishedTask = true
+		}
+		taskInfoArray = append(taskInfoArray, QuestTaskFullInfo{
+			ID:          task.ID,
+			QuestID:     task.QuestID,
+			Name:        task.Name,
+			Description: task.Description,
+			GameID:      task.GameID,
+			Type:        int(task.Type),
+			Capacity:    task.Capacity,
+			Current:     task.Current,
+			HiddenBy:    task.HiddenBy,
+			Finished:    finishedTask,
+		})
+	}
+
+	return taskInfoArray
+}

@@ -3,8 +3,11 @@ package data
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"personae-fasti/api/models/reqData"
+	gu "personae-fasti/gewi-utils"
+	"strings"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -34,14 +37,15 @@ func (s *Storage) GetCurrentGameRecordsForPlayer(game *Game, player *Player) ([]
 	var records []Record
 	err := s.db.NewSelect().Model(&records).
 		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
-			return q.Where("game_id = ?", game.ID)
+			return q.Where("record.game_id = ?", game.ID)
 		}).
 		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
-			return q.Where("hidden_by = 0").WhereOr("hidden_by = ?", player.ID)
+			return q.Where("record.hidden_by = 0").WhereOr("record.hidden_by = ?", player.ID)
 		}).
 		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
-			return q.Where("deleted IS NULL")
+			return q.Where("record.deleted IS NULL")
 		}).
+		Relation("Quest").
 		Scan(context.Background(), &records)
 	if err != nil {
 		return nil, err
@@ -164,6 +168,7 @@ func (s *Storage) UpdateRecord(recordUpdate *reqData.RecordUpdate, p *Player) er
 		ID:      recordUpdate.ID,
 		Text:    recordUpdate.Text,
 		Updated: &now,
+		QuestID: recordUpdate.QuestID,
 	}
 
 	if recordUpdate.Hidden {
@@ -174,7 +179,7 @@ func (s *Storage) UpdateRecord(recordUpdate *reqData.RecordUpdate, p *Player) er
 
 	err := s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
 		// Update Record
-		result, err := s.db.NewUpdate().Model(&record).Column("text", "updated", "hidden_by").WherePK().Exec(context.Background())
+		result, err := s.db.NewUpdate().Model(&record).Column("text", "updated", "hidden_by", "quest_id").WherePK().Exec(context.Background())
 		if err != nil {
 			return err
 		}
@@ -408,6 +413,244 @@ func (s *Storage) UpdateLocation(locationUpdate *reqData.LocationUpdate, locatio
 		Set("hidden_by = ?", hiddenBy).
 		Returning("*").Exec(context.Background())
 	return location, err
+}
+
+func (s *Storage) GetCurrentGameQuests(game *Game) ([]Quest, error) {
+	err := s.db.NewSelect().Model(game).WherePK().Relation("Quests").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows || game.Quests == nil {
+		return []Quest{}, nil
+	}
+
+	return game.Quests, nil
+}
+
+func (s *Storage) GetQuestByID(questID int) (*Quest, error) {
+	quest := Quest{
+		ID: questID,
+	}
+
+	err := s.db.NewSelect().Model(&quest).WherePK().Relation("Records").Relation("Tasks").Scan(context.Background())
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return &quest, nil
+}
+
+func (s *Storage) CreateQuest(questCreate *reqData.QuestCreate, tasksCreate []reqData.TaskCreate, player *Player) (*Quest, error) {
+	var quest *Quest
+	ctx := context.Background()
+
+	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		quest = &Quest{
+			Name:        questCreate.Name,
+			Title:       questCreate.Title,
+			Description: questCreate.Description,
+			GameID:      player.CurrentGameID,
+			ParentID:    questCreate.ParentID,
+			ChildID:     questCreate.ChildID,
+			HeadID:      questCreate.HeadID,
+			Successful:  questCreate.Successful,
+			HiddenBy:    gu.TernaryInt(questCreate.Hidden, player.ID, 0),
+		}
+
+		_, err := tx.NewInsert().Model(quest).
+			Column("name", "title", "description", "game_id", "parent_id", "child_id", "head_id", "successful", "hidden_by").
+			Returning("*").
+			Exec(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to insert quest: %w", err)
+		}
+
+		if len(tasksCreate) > 0 {
+			questTasks := make([]*QuestTask, len(tasksCreate))
+			for i, taskCreate := range tasksCreate {
+				questTasks[i] = &QuestTask{
+					GameID:      player.CurrentGameID,
+					QuestID:     quest.ID,
+					Name:        taskCreate.Name,
+					Description: taskCreate.Description,
+					Type:        QuestTaskType(taskCreate.Type),
+					Capacity:    taskCreate.Capacity,
+					HiddenBy:    gu.TernaryInt(taskCreate.Hidden, player.ID, 0),
+				}
+			}
+
+			_, err = tx.NewInsert().Model(&questTasks).Exec(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to insert tasks: %w", err)
+			}
+		}
+
+		err = tx.NewSelect().
+			Model(quest).
+			Relation("Tasks").
+			Where("id = ?", quest.ID).
+			Scan(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to load quest with tasks: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return quest, nil
+}
+
+func (s *Storage) UpdateQuest(questUpdate *reqData.QuestUpdate, tasksUpdate []reqData.TaskUpdate, quest *Quest, player *Player) (*Quest, error) {
+	ctx := context.Background()
+	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		// Update quest (already safe with Bun's ORM)
+		if _, err := tx.NewUpdate().
+			Model(quest).
+			WherePK().
+			Exec(ctx); err != nil {
+			return fmt.Errorf("failed to update quest: %w", err)
+		}
+
+		if len(tasksUpdate) == 0 {
+
+			if _, err := tx.NewDelete().
+				Model((*QuestTask)(nil)).
+				Where("quest_id = ?", quest.ID).
+				Exec(ctx); err != nil {
+				return fmt.Errorf("failed to update quest: %w", err)
+			}
+
+		} else {
+
+			var values []any
+			var valuePlaceholders []string
+
+			for _, task := range tasksUpdate {
+				hiddenBy := gu.TernaryInt(task.Hidden, player.ID, 0)
+				values = append(values,
+					task.ID,
+					task.Name,
+					task.Description,
+					task.Type,
+					task.Capacity,
+					hiddenBy,
+				)
+			}
+
+			for range tasksUpdate {
+				valuePlaceholders = append(valuePlaceholders, "(?,?,?,?,?,?)")
+			}
+
+			query := fmt.Sprintf(`
+				WITH input_data(id, name, description, type, capacity, hidden_by) AS (
+					VALUES %s
+				),
+				updated AS (
+					UPDATE quest_task t SET
+						name = i.name,
+						description = i.description,
+						type = i.type,
+						capacity = i.capacity,
+						hidden_by = i.hidden_by
+					FROM input_data i
+					WHERE t.id = i.id AND t.quest_id = ?
+					RETURNING t.id
+				),
+				inserted AS (
+					INSERT INTO quest_task
+						(quest_id, game_id, name, description, type, capacity, hidden_by)
+					SELECT
+						?, q.game_id, i.name, i.description, i.type, i.capacity, i.hidden_by
+					FROM input_data i
+					JOIN quest q ON q.id = ?
+					WHERE i.id = 0
+					RETURNING id
+				),
+				deleted AS (
+					DELETE FROM quest_task
+					WHERE quest_id = ?
+					AND id NOT IN (SELECT id FROM input_data WHERE id != 0)
+					RETURNING id
+				)
+				SELECT
+					(SELECT COUNT(*) FROM updated) AS updated_count,
+					(SELECT COUNT(*) FROM inserted) AS inserted_count,
+					(SELECT COUNT(*) FROM deleted) AS deleted_count
+			`,
+				strings.Join(valuePlaceholders, ","))
+
+			values = append(values, quest.ID, quest.ID, quest.ID, quest.ID)
+
+			if _, err := tx.Exec(query, values...); err != nil {
+				return fmt.Errorf("bulk task update failed: %w", err)
+			}
+
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("transaction failed: %w", err)
+	}
+
+	err = s.db.NewSelect().Model(quest).WherePK().Relation("Records").Relation("Tasks").Scan(context.Background())
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return quest, nil
+}
+
+func (s *Storage) GetTasksByQuest(quest *Quest) ([]QuestTask, error) {
+	tasks := []QuestTask{}
+
+	err := s.db.NewSelect().Model(&tasks).Where("quest_id = ?", quest.ID).Scan(context.Background())
+	if err == sql.ErrNoRows {
+		return tasks, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
+}
+
+func (s *Storage) UpdateQuestTasks(tasksUpdate []reqData.TaskPatch, quest *Quest, player *Player) ([]QuestTask, error) {
+	if len(tasksUpdate) == 0 || len(quest.Tasks) == 0 {
+		return nil, errors.New("empty tasks on update or quest itself")
+	}
+
+	var tasks = quest.Tasks
+	var finishTime = time.Now().UTC()
+	for i := range tasks {
+		for _, task := range tasksUpdate {
+			if tasks[i].ID == task.ID {
+				tasks[i].Current = task.Current
+				if tasks[i].Type == Binary {
+					if tasks[i].Current > 0 {
+						tasks[i].Finished = &finishTime
+					} else {
+						tasks[i].Finished = nil
+					}
+				} else if tasks[i].Type == Decimal {
+					if tasks[i].Current >= tasks[i].Capacity {
+						tasks[i].Finished = &finishTime
+					} else {
+						tasks[i].Finished = nil
+					}
+				}
+			}
+		}
+	}
+
+	_, err := s.db.NewUpdate().Model(&tasks).Column("current", "finished").Bulk().Returning("*").Exec(context.Background())
+	return tasks, err
 }
 
 func (s *Storage) GetSuggestions(player *Player) ([]Suggestion, error) {
