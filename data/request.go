@@ -508,11 +508,12 @@ func (s *Storage) CreateQuest(questCreate *reqData.QuestCreate, tasksCreate []re
 func (s *Storage) UpdateQuest(questUpdate *reqData.QuestUpdate, tasksUpdate []reqData.TaskUpdate, quest *Quest, player *Player) (*Quest, error) {
 	ctx := context.Background()
 	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
-		// Update quest (already safe with Bun's ORM)
-		if _, err := tx.NewUpdate().
-			Model(quest).
-			WherePK().
-			Exec(ctx); err != nil {
+		if _, err := s.db.NewUpdate().Model(quest).WherePK().
+			Set("name = ?", questUpdate.Name).
+			Set("title = ?", questUpdate.Title).
+			Set("description = ?", questUpdate.Description).
+			Set("hidden_by = ?", gu.TernaryInt(questUpdate.Hidden, player.ID, 0)).
+			Returning("*").Exec(context.Background()); err != nil {
 			return fmt.Errorf("failed to update quest: %w", err)
 		}
 
