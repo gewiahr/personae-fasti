@@ -224,7 +224,9 @@ func (api *APIServer) handleGetCharByID(w http.ResponseWriter, r *http.Request, 
 	} else if char == nil {
 		return api.HandleErrorString(fmt.Sprintf("no character with id %d", charID)).WithCode(http.StatusNotFound)
 	} else if char.GameID != p.CurrentGameID {
-		return api.HandleErrorString(fmt.Sprintf("char %d is not allowed to request for the game %d", char.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+		return api.HandleErrorString(fmt.Sprintf("char %d is not allowed to request for the game %d", char.ID, p.CurrentGameID)).WithCode(http.StatusUnprocessableEntity)
+	} else if char.HiddenBy != 0 && char.HiddenBy != p.ID {
+		return api.HandleErrorString(fmt.Sprintf("char %d is not allowed to request for the player %d", char.ID, p.ID)).WithCode(http.StatusForbidden)
 	}
 	// ++ Add char check ++//
 
@@ -272,7 +274,7 @@ func (api *APIServer) handleUpdateChar(w http.ResponseWriter, r *http.Request, p
 	} else if char == nil {
 		return api.HandleErrorString(fmt.Sprintf("no character with id %d", charUpdate.ID)).WithCode(http.StatusNotFound)
 	} else if char.GameID != p.CurrentGameID {
-		return api.HandleErrorString(fmt.Sprintf("char %d is not allowed to request for the game %d", char.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+		return api.HandleErrorString(fmt.Sprintf("char %d is not allowed to request for the game %d", char.ID, p.CurrentGameID)).WithCode(http.StatusUnprocessableEntity)
 	}
 	// ++ Add char check ++//
 
@@ -318,9 +320,10 @@ func (api *APIServer) handleGetNPCByID(w http.ResponseWriter, r *http.Request, p
 	} else if npc == nil {
 		return api.HandleErrorString(fmt.Sprintf("no npc with id %d", npcID)).WithCode(http.StatusNotFound)
 	} else if npc.GameID != p.CurrentGameID {
-		return api.HandleErrorString(fmt.Sprintf("npc %d is not allowed to request for the game %d", npc.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+		return api.HandleErrorString(fmt.Sprintf("npc %d is not allowed to request for the game %d", npc.ID, p.CurrentGameID)).WithCode(http.StatusUnprocessableEntity)
+	} else if npc.HiddenBy != 0 && npc.HiddenBy != p.ID {
+		return api.HandleErrorString(fmt.Sprintf("npc %d is not allowed to request for the player %d", npc.ID, p.ID)).WithCode(http.StatusForbidden)
 	}
-	// ++ Add char check ++//
 
 	records := []data.Record{}
 	if len(npc.Records) > 0 {
@@ -366,7 +369,7 @@ func (api *APIServer) handleUpdateNPC(w http.ResponseWriter, r *http.Request, p 
 	} else if npc == nil {
 		return api.HandleErrorString(fmt.Sprintf("no npc with id %d", npcUpdate.ID)).WithCode(http.StatusNotFound)
 	} else if npc.GameID != p.CurrentGameID {
-		return api.HandleErrorString(fmt.Sprintf("npc %d is not allowed to request for the game %d", npc.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+		return api.HandleErrorString(fmt.Sprintf("npc %d is not allowed to request for the game %d", npc.ID, p.CurrentGameID)).WithCode(http.StatusUnprocessableEntity)
 	}
 	// ++ Add char check ++//
 
@@ -412,9 +415,10 @@ func (api *APIServer) handleGetLocationByID(w http.ResponseWriter, r *http.Reque
 	} else if location == nil {
 		return api.HandleErrorString(fmt.Sprintf("no location with id %d", locationID)).WithCode(http.StatusNotFound)
 	} else if location.GameID != p.CurrentGameID {
-		return api.HandleErrorString(fmt.Sprintf("location %d is not allowed to request for the game %d", location.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+		return api.HandleErrorString(fmt.Sprintf("location %d is not allowed to request for the game %d", location.ID, p.CurrentGameID)).WithCode(http.StatusUnprocessableEntity)
+	} else if location.HiddenBy != 0 && location.HiddenBy != p.ID {
+		return api.HandleErrorString(fmt.Sprintf("location %d is not allowed to request for the player %d", location.ID, p.ID)).WithCode(http.StatusForbidden)
 	}
-	// ++ Add char check ++//
 
 	records := []data.Record{}
 	if len(location.Records) > 0 {
@@ -460,7 +464,7 @@ func (api *APIServer) handleUpdateLocation(w http.ResponseWriter, r *http.Reques
 	} else if location == nil {
 		return api.HandleErrorString(fmt.Sprintf("no location with id %d", locationUpdate.ID)).WithCode(http.StatusNotFound)
 	} else if location.GameID != p.CurrentGameID {
-		return api.HandleErrorString(fmt.Sprintf("location %d is not allowed to request for the game %d", location.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+		return api.HandleErrorString(fmt.Sprintf("location %d is not allowed to request for the game %d", location.ID, p.CurrentGameID)).WithCode(http.StatusUnprocessableEntity)
 	}
 	// ++ Add char check ++//
 
@@ -506,7 +510,7 @@ func (api *APIServer) handleGetQuestByID(w http.ResponseWriter, r *http.Request,
 	} else if quest == nil {
 		return api.HandleErrorString(fmt.Sprintf("no quest with id %d", questID)).WithCode(http.StatusNotFound)
 	} else if quest.GameID != p.CurrentGameID {
-		return api.HandleErrorString(fmt.Sprintf("quest %d is not allowed to request for the game %d", quest.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+		return api.HandleErrorString(fmt.Sprintf("quest %d is not allowed to request for the game %d", quest.ID, p.CurrentGameID)).WithCode(http.StatusUnprocessableEntity)
 	}
 	// ++ Add char check ++//
 
@@ -560,7 +564,7 @@ func (api *APIServer) handleUpdateQuest(w http.ResponseWriter, r *http.Request, 
 	} else if quest == nil {
 		return api.HandleErrorString(fmt.Sprintf("no quest with id %d", questUpdate.Quest.ID)).WithCode(http.StatusNotFound)
 	} else if quest.GameID != p.CurrentGameID {
-		return api.HandleErrorString(fmt.Sprintf("quest %d is not allowed to request for the game %d", quest.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+		return api.HandleErrorString(fmt.Sprintf("quest %d is not allowed to request for the game %d", quest.ID, p.CurrentGameID)).WithCode(http.StatusUnprocessableEntity)
 	}
 	// ++ Add char check ++//
 
@@ -591,7 +595,7 @@ func (api *APIServer) handlePatchQuestTasks(w http.ResponseWriter, r *http.Reque
 	} else if quest == nil {
 		return api.HandleErrorString(fmt.Sprintf("no quest with id %d", tasksPatch.QuestID)).WithCode(http.StatusNotFound)
 	} else if quest.GameID != p.CurrentGameID {
-		return api.HandleErrorString(fmt.Sprintf("quest %d is not allowed to request for the game %d", quest.ID, p.CurrentGameID)).WithCode(http.StatusForbidden)
+		return api.HandleErrorString(fmt.Sprintf("quest %d is not allowed to request for the game %d", quest.ID, p.CurrentGameID)).WithCode(http.StatusUnprocessableEntity)
 	}
 	// ++ Add char check ++//
 
