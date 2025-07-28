@@ -5,5 +5,6 @@ type Suggestion struct {
 	StringID string `bun:"sid" json:"sid"`
 	Type     string `bun:"type" json:"type"`
 	//TypeName string `bun:"typeName" json:"typeName"`
-	Name string `bun:"name" json:"name"`
+	Name   string `bun:"name" json:"name"`
+	Hidden bool   `bun:"hidden" json:"hidden"`
 }

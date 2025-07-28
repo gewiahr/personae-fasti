@@ -662,7 +662,11 @@ func (s *Storage) GetSuggestions(player *Player) ([]Suggestion, error) {
 			id,
 			CONCAT('char:', id) as sid,
 			'char' as type,
-			name
+			name,
+			CASE 
+				WHEN hidden_by = 0 OR hidden_by = ? THEN false
+				ELSE true
+			END as hidden
 		FROM char
 		WHERE game_id = ?
 
@@ -672,7 +676,11 @@ func (s *Storage) GetSuggestions(player *Player) ([]Suggestion, error) {
 			id,
 			CONCAT('npc:', id) as sid,
 			'npc' as type,
-			name
+			name,
+			CASE 
+				WHEN hidden_by = 0 OR hidden_by = ? THEN false
+				ELSE true
+			END as hidden
 		FROM npc
 		WHERE game_id = ?
 
@@ -682,10 +690,14 @@ func (s *Storage) GetSuggestions(player *Player) ([]Suggestion, error) {
 			id,
 			CONCAT('location:', id) as sid,
 			'location' as type,
-			name
+			name,
+			CASE 
+				WHEN hidden_by = 0 OR hidden_by = ? THEN false
+				ELSE true
+			END as hidden
 		FROM location
 		WHERE game_id = ?`,
-		player.CurrentGameID, player.CurrentGameID, player.CurrentGameID,
+		player.ID, player.CurrentGameID, player.ID, player.CurrentGameID, player.ID, player.CurrentGameID,
 	).Scan(context.Background(), &suggestions)
 
 	if suggestions == nil {
