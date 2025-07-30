@@ -54,6 +54,7 @@ jobs:
         docker rm ${{ vars.APPNAME }} || true
         docker build -t ${{ vars.APPNAME }}:${{ env.VERSION }} .
         docker run -d --name ${{ vars.APPNAME }} --network ${{ vars.DOCKERNETWORK }} --ip ${{ vars.DOCKERHOST }} -v ${{ vars.DOCKERVOLUME }}:/app/mnt -p ${{ vars.DOCKERPORT }}:${{ vars.DOCKERPORT }} ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ env.VERSION }}
+        docker network connect --ip ${{ vars.FILESERVER_DOCKERHOST }} ${{ vars.FILESERVER_DOCKERNETWORK }} ${{ vars.APPNAME }}
         EOF
       
 

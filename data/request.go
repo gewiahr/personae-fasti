@@ -93,37 +93,57 @@ func (s *Storage) GetCurrentGameSession(game *Game) (*Session, error) {
 
 func (s *Storage) StartNewGameSession(game *Game) (*Session, error) {
 	currentSession, err := s.GetCurrentGameSession(game)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
-	sessionNumber := 0
-	if currentSession != nil {
+	err = s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
+		sessionNumber := 0
 		currentTime := time.Now().UTC()
-		currentSession.EndTime = &currentTime
 
-		_, err := s.db.NewUpdate().Model(currentSession).Column("end_time").WherePK().Exec(context.Background())
-		if err != nil {
-			return nil, err
-		} else if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("cannot update previous session row")
+		// Start new session
+		if currentSession != nil {
+			currentSession.EndTime = &currentTime
+
+			_, err := s.db.NewUpdate().Model(currentSession).Column("end_time").WherePK().Exec(context.Background())
+			if err != nil {
+				return err
+			} else if err == sql.ErrNoRows {
+				return fmt.Errorf("cannot update previous session row")
+			}
+
+			sessionNumber = currentSession.Number + 1
+
+			// Start first session
+		} else {
+			sessionZero := &Session{
+				GameID:  game.ID,
+				Number:  sessionNumber,
+				EndTime: &currentTime,
+			}
+
+			_, err = s.db.NewInsert().Model(sessionZero).Exec(context.Background())
+			if err != nil {
+				return err
+			}
+
+			sessionNumber++
 		}
 
-		sessionNumber = currentSession.Number + 1
-	}
+		newSession := &Session{
+			GameID: game.ID,
+			Number: sessionNumber,
+		}
 
-	newSession := &Session{
-		GameID: game.ID,
-		Number: sessionNumber,
-	}
+		_, err = s.db.NewInsert().Model(newSession).Exec(context.Background())
+		if err != nil {
+			return err
+		} else if err == sql.ErrNoRows {
+			return fmt.Errorf("cannot create new session row")
+		}
 
-	// Made it transactional
-	_, err = s.db.NewInsert().Model(newSession).Exec(context.Background())
-	if err != nil {
-		return nil, err
-	} else if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("cannot create new session row")
-	}
+		return nil
+	})
 
 	return currentSession, nil
 }
