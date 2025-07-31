@@ -40,6 +40,7 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("GET /quest/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetQuestByID)))
 	router.HandleFunc("POST /quest", api.HTTPWrapper(api.PlayerWrapper(api.handleCreateQuest)))
 	router.HandleFunc("PUT /quest", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateQuest)))
+	router.HandleFunc("DELETE /quest/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleDeleteQuest)))
 
 	router.HandleFunc("PATCH /quest/tasks", api.HTTPWrapper(api.PlayerWrapper(api.handlePatchQuestTasks)))
 
@@ -575,6 +576,21 @@ func (api *APIServer) handleUpdateQuest(w http.ResponseWriter, r *http.Request, 
 
 	questFullInfo := respData.QuestToQuestFullInfo(quest)
 	return api.Respond(r, w, http.StatusOK, questFullInfo)
+}
+
+// DELETE /quest
+func (api *APIServer) handleDeleteQuest(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	questID := getPathValueInt(r, "id")
+	if questID < 0 {
+		return api.HandleError(fmt.Errorf("error parsing id: quest id is invalid"))
+	}
+
+	err := api.storage.DeleteQuest(questID, p)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusOK, nil)
 }
 
 // PATCH /quest/tasks/

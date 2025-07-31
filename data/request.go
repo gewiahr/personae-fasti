@@ -436,14 +436,15 @@ func (s *Storage) UpdateLocation(locationUpdate *reqData.LocationUpdate, locatio
 }
 
 func (s *Storage) GetCurrentGameQuests(game *Game) ([]Quest, error) {
-	err := s.db.NewSelect().Model(game).WherePK().Relation("Quests").Scan(context.Background())
+	var quests []Quest
+	err := s.db.NewSelect().Model(&quests).Where("game_id = ? AND deleted is NULL", game.ID).Scan(context.Background())
 	if err != nil {
 		return nil, err
-	} else if err == sql.ErrNoRows || game.Quests == nil {
-		return []Quest{}, nil
+	} else if err == sql.ErrNoRows || quests == nil {
+		return quests, nil
 	}
 
-	return game.Quests, nil
+	return quests, nil
 }
 
 func (s *Storage) GetQuestByID(questID int) (*Quest, error) {
@@ -627,6 +628,25 @@ func (s *Storage) UpdateQuest(questUpdate *reqData.QuestUpdate, tasksUpdate []re
 	}
 
 	return quest, nil
+}
+
+func (s *Storage) DeleteQuest(questID int, p *Player) error {
+	now := time.Now().UTC()
+	quest := Quest{
+		ID:      questID,
+		Deleted: &now,
+	}
+
+	// Delete Quest
+	result, err := s.db.NewUpdate().Model(&quest).Column("deleted").WherePK().Exec(context.Background())
+	if err != nil {
+		return err
+	}
+	if result == nil {
+		return fmt.Errorf("empty delete")
+	}
+
+	return nil
 }
 
 func (s *Storage) GetTasksByQuest(quest *Quest) ([]QuestTask, error) {
