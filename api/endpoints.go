@@ -421,6 +421,22 @@ func (api *APIServer) handleGetLocationByID(w http.ResponseWriter, r *http.Reque
 		return api.HandleErrorString(fmt.Sprintf("location %d is not allowed to request for the player %d", location.ID, p.ID)).WithCode(http.StatusForbidden)
 	}
 
+	// ** change to appropriate model field and join with location request ** //
+	var locationParent *data.Location
+	locationParent = location.Parent
+	// if location.ParentID != 0 {
+	// 	locationParent, err = api.storage.GetLocationByID(location.ParentID)
+	// 	if err != nil {
+	// 		locationParent = nil
+	// 	}
+	// }
+	// ** change to appropriate model field and join with location request ** //
+
+	locationChildren, err := api.storage.GetLocationChildren(location)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
 	records := []data.Record{}
 	if len(location.Records) > 0 {
 		records, err = api.storage.GetAllowedRecords(location.Records, p.ID)
@@ -429,6 +445,11 @@ func (api *APIServer) handleGetLocationByID(w http.ResponseWriter, r *http.Reque
 	locationPage := respData.LocationPage{
 		Location: *respData.LocationToLocationFullInfo(location),
 		Records:  records, // ** change to mention API type ** //
+		Includes: respData.LocationToLocationInfoArray(locationChildren),
+	}
+
+	if locationParent != nil {
+		locationPage.Parent = respData.LocationToLocationInfo(locationParent)
 	}
 
 	return api.Respond(r, w, http.StatusOK, locationPage)

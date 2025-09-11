@@ -76,6 +76,16 @@ func NPCToNPCFullInfo(npc *data.NPC) *NPCFullInfo {
 	}
 }
 
+func LocationToLocationInfo(location *data.Location) *LocationInfo {
+	return &LocationInfo{
+		ID:       location.ID,
+		Name:     location.Name,
+		Title:    location.Title,
+		GameID:   location.GameID,
+		HiddenBy: location.HiddenBy,
+	}
+}
+
 func LocationToLocationInfoArray(locations []data.Location) []LocationInfo {
 	locationInfoArray := []LocationInfo{}
 	for _, location := range locations {
@@ -97,6 +107,7 @@ func LocationToLocationFullInfo(location *data.Location) *LocationFullInfo {
 		Name:        location.Name,
 		Title:       location.Title,
 		Description: location.Description,
+		ParentID:    location.ParentID,
 		GameID:      location.GameID,
 		HiddenBy:    location.HiddenBy,
 	}

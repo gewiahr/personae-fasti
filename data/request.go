@@ -383,12 +383,25 @@ func (s *Storage) GetCurrentGameLocations(game *Game) ([]Location, error) {
 	return game.Locations, nil
 }
 
+func (s *Storage) GetLocationChildren(location *Location) ([]Location, error) {
+	var locations []Location
+
+	err := s.db.NewSelect().Model(&locations).Where("game_id = ? AND pid = ?", location.GameID, location.ID).Scan(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows || locations == nil {
+		return []Location{}, nil
+	}
+
+	return locations, nil
+}
+
 func (s *Storage) GetLocationByID(locationID int) (*Location, error) {
 	location := Location{
 		ID: locationID,
 	}
 
-	err := s.db.NewSelect().Model(&location).WherePK().Relation("Records").Scan(context.Background())
+	err := s.db.NewSelect().Model(&location).WherePK().Relation("Records").Relation("Parent").Scan(context.Background())
 	if err != nil {
 		return nil, err
 	} else if err == sql.ErrNoRows {
@@ -399,38 +412,30 @@ func (s *Storage) GetLocationByID(locationID int) (*Location, error) {
 }
 
 func (s *Storage) CreateLocation(locationCreate *reqData.LocationCreate, player *Player) (*Location, error) {
-	var hiddenBy = 0
-	if locationCreate.Hidden {
-		hiddenBy = player.ID
-	}
-
 	location := Location{
 		Name:        locationCreate.Name,
 		Title:       locationCreate.Title,
 		Description: locationCreate.Description,
-		HiddenBy:    hiddenBy,
+		ParentID:    locationCreate.ParentID,
+		HiddenBy:    gu.TernaryInt(locationCreate.Hidden, player.ID, 0),
 		CreatedByID: player.ID,
 		GameID:      player.CurrentGameID,
 	}
 
 	_, err := s.db.NewInsert().Model(&location).
-		Column("name", "title", "description", "hidden_by", "created_by_id", "game_id").
+		Column("name", "title", "description", "pid", "hidden_by", "created_by_id", "game_id").
 		Returning("*").Exec(context.Background(), &location)
 
 	return &location, err
 }
 
 func (s *Storage) UpdateLocation(locationUpdate *reqData.LocationUpdate, location *Location, player *Player) (*Location, error) {
-	var hiddenBy = 0
-	if locationUpdate.Hidden {
-		hiddenBy = player.ID
-	}
-
 	_, err := s.db.NewUpdate().Model(location).WherePK().
 		Set("name = ?", locationUpdate.Name).
 		Set("title = ?", locationUpdate.Title).
 		Set("description = ?", locationUpdate.Description).
-		Set("hidden_by = ?", hiddenBy).
+		Set("pid = ?", locationUpdate.ParentID).
+		Set("hidden_by = ?", gu.TernaryInt(locationUpdate.Hidden, player.ID, 0)).
 		Returning("*").Exec(context.Background())
 	return location, err
 }

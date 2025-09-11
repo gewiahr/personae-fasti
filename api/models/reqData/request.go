@@ -48,6 +48,7 @@ type LocationCreate struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	ParentID    int    `json:"pid"`
 	Hidden      bool   `json:"hidden"`
 }
 
@@ -56,6 +57,7 @@ type LocationUpdate struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	ParentID    int    `json:"pid"`
 	Hidden      bool   `json:"hidden"`
 }
 

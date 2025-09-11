@@ -136,6 +136,8 @@ type GameLocations struct {
 type LocationPage struct {
 	Location LocationFullInfo `json:"location"`
 	Records  []data.Record    `json:"records"`
+	Parent   *LocationInfo    `json:"parent"`
+	Includes []LocationInfo   `json:"includes"`
 }
 
 type LocationFullInfo struct {
@@ -143,6 +145,8 @@ type LocationFullInfo struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+
+	ParentID int `json:"pid"`
 
 	GameID   int `json:"gameID"`
 	HiddenBy int `json:"hiddenBy"`

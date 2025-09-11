@@ -149,7 +149,7 @@ type Location struct {
 
 	GameID   int       `bun:"game_id"`
 	Game     *Game     `bun:"rel:belongs-to,join:game_id=id"`
-	ParentID int       `bun:"pid"`
+	ParentID int       `bun:"pid,nullzero"`
 	Parent   *Location `bun:"rel:belongs-to,join:pid=id"`
 	Records  []Record  `bun:"m2m:records_locations,join:Location=Record"`
 
