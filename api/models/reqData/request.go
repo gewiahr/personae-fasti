@@ -5,6 +5,7 @@ type RecordInsert struct {
 	Hidden   bool   `json:"hidden"`
 	PlayerID int    `json:"-"`
 	GameID   int    `json:"-"`
+	QuestID  int    `json:"questID"`
 }
 
 type RecordUpdate struct {

@@ -153,10 +153,8 @@ func (s *Storage) InsertNewRecord(recordInsert *reqData.RecordInsert, p *Player)
 		Text:     recordInsert.Text,
 		PlayerID: p.ID,
 		GameID:   p.CurrentGameID,
-	}
-
-	if recordInsert.Hidden {
-		record.HiddenBy = p.ID
+		QuestID:  recordInsert.QuestID,
+		HiddenBy: gu.TernaryInt(recordInsert.Hidden, p.ID, 0),
 	}
 
 	err := s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
