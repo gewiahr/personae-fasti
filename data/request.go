@@ -16,7 +16,7 @@ import (
 func (s *Storage) GetPlayerByAccessKey(accesskey string) (*Player, error) {
 	var player Player
 
-	err := s.db.NewSelect().Model(&player).Where("accesskey = ?", accesskey).Relation("CurrentGame").Scan(context.Background(), &player)
+	err := s.db.NewSelect().Model(&player).Where("accesskey = ?", accesskey).Relation("CurrentGame.Settings").Scan(context.Background(), &player)
 	if err != nil {
 		return nil, err
 	}
@@ -181,21 +181,28 @@ func (s *Storage) InsertNewRecord(recordInsert *reqData.RecordInsert, p *Player)
 }
 
 func (s *Storage) UpdateRecord(recordUpdate *reqData.RecordUpdate, p *Player) error {
+	var oldRecord = Record{ID: recordUpdate.ID}
+	err := s.db.NewSelect().Model(&oldRecord).WherePK().Scan(context.Background(), &oldRecord)
+	if err != nil {
+		return err
+	}
+
+	if p.ID != oldRecord.PlayerID && p.ID != p.CurrentGame.GMID {
+		if !p.CurrentGame.Settings.AllowAllEditRecords {
+			return fmt.Errorf("player %s cannot edit other players' records", p.Username)
+		}
+	}
+
 	now := time.Now().UTC()
 	record := Record{
-		ID:      recordUpdate.ID,
-		Text:    recordUpdate.Text,
-		Updated: &now,
-		QuestID: recordUpdate.QuestID,
+		ID:       recordUpdate.ID,
+		Text:     recordUpdate.Text,
+		Updated:  &now,
+		QuestID:  recordUpdate.QuestID,
+		HiddenBy: gu.TernaryInt(recordUpdate.Hidden, p.ID, 0),
 	}
 
-	if recordUpdate.Hidden {
-		record.HiddenBy = p.ID
-	} else {
-		record.HiddenBy = 0
-	}
-
-	err := s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
+	err = s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
 		// Update Record
 		result, err := s.db.NewUpdate().Model(&record).Column("text", "updated", "hidden_by", "quest_id").WherePK().Exec(context.Background())
 		if err != nil {
@@ -225,6 +232,18 @@ func (s *Storage) UpdateRecord(recordUpdate *reqData.RecordUpdate, p *Player) er
 }
 
 func (s *Storage) DeleteRecord(recordID int, p *Player) error {
+	var oldRecord = Record{ID: recordID}
+	err := s.db.NewSelect().Model(&oldRecord).WherePK().Scan(context.Background(), &oldRecord)
+	if err != nil {
+		return err
+	}
+
+	if p.ID != oldRecord.PlayerID && p.ID != p.CurrentGame.GMID {
+		if !p.CurrentGame.Settings.AllowAllEditRecords {
+			return fmt.Errorf("player %s cannot delete other players' records", p.Username)
+		}
+	}
+
 	now := time.Now().UTC()
 	record := Record{
 		ID:      recordID,
@@ -766,10 +785,32 @@ func (s *Storage) ChangeCurrentGame(player *Player, gameID int) (*Game, error) {
 		return nil, err
 	}
 	// ** Get to know why RETURNING is not working here properly ** //
-	err = s.db.NewSelect().Model(player).WherePK().Relation("CurrentGame").Scan(context.Background(), player)
+	//err = s.db.NewSelect().Model(player).WherePK().Relation("CurrentGame").Scan(context.Background(), player)
+	var currentGame Game
+	err = s.db.NewSelect().Model(&currentGame).Where("id = ?", player.CurrentGameID).Relation("Settings").Scan(context.Background(), &currentGame)
 	if err != nil {
 		return nil, err
 	}
 	// ** Get to know why RETURNING is not working here properly ** //
-	return player.CurrentGame, nil
+	return &currentGame, nil
+}
+
+func (s *Storage) UpdateGameSettings(gameSettingsUpdate *reqData.GameSettingsUpdate) (*Game, error) {
+	gameSettings := GameSettings{
+		GameID:              gameSettingsUpdate.GameID,
+		AllowAllEditRecords: gameSettingsUpdate.AllowAllEditRecords,
+	}
+
+	_, err := s.db.NewUpdate().Model(&gameSettings).Column("allow_all_edit_records").WherePK().Returning("*").Exec(context.Background(), &gameSettings)
+	if err != nil {
+		return nil, err
+	}
+
+	var currentGame Game
+	err = s.db.NewSelect().Model(&currentGame).Where("game_id = ?", gameSettings.GameID).Relation("Settings").Scan(context.Background(), &currentGame)
+	if err != nil {
+		return nil, err
+	}
+
+	return &currentGame, nil
 }

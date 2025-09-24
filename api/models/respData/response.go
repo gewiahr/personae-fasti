@@ -3,9 +3,9 @@ package respData
 import "personae-fasti/data"
 
 type LoginInfo struct {
-	AccessKey   string     `json:"accesskey"`
-	Player      PlayerInfo `json:"player"`
-	CurrentGame GameInfo   `json:"currentGame"`
+	AccessKey   string       `json:"accesskey"`
+	Player      PlayerInfo   `json:"player"`
+	CurrentGame GameFullInfo `json:"currentGame"`
 }
 
 type PlayerInfo struct {
@@ -14,18 +14,18 @@ type PlayerInfo struct {
 }
 
 type PlayerSettings struct {
-	CurrentGame GameInfo   `json:"currentGame"`
-	PlayerGames []GameInfo `json:"playerGames"`
+	CurrentGame GameFullInfo `json:"currentGame"`
+	PlayerGames []GameInfo   `json:"playerGames"`
 }
 
-func FormPlayerSettings(playerGames []data.Game, currentGame data.Game) *PlayerSettings {
+func FormPlayerSettings(playerGames []data.Game, currentGame *data.Game) *PlayerSettings {
 	var playerGameInfo []GameInfo
 	for _, game := range playerGames {
 		playerGameInfo = append(playerGameInfo, *GameToGameInfo(&game))
 	}
 
 	return &PlayerSettings{
-		CurrentGame: *GameToGameInfo(&currentGame),
+		CurrentGame: *GameToGameFullInfo(currentGame),
 		PlayerGames: playerGameInfo,
 	}
 }
@@ -36,11 +36,23 @@ type GameInfo struct {
 	GMID  int    `json:"gmID"`
 }
 
+type GameFullInfo struct {
+	ID    int    `json:"id"`
+	Title string `json:"title"`
+	GMID  int    `json:"gmID"`
+
+	Settings *GameSettings `json:"settings"`
+}
+
 type GameRecords struct {
 	Records     []data.Record  `json:"records"`
 	Sessions    []data.Session `json:"sessions"`
 	Players     []PlayerInfo   `json:"players"`
 	CurrentGame GameInfo       `json:"currentGame"`
+}
+
+type GameSettings struct {
+	AllowAllEditRecords bool `json:"allowAllEditRecords"`
 }
 
 func FormGameRecords(p *data.Player, rs []data.Record, ps []data.Player, ss []data.Session) *GameRecords {

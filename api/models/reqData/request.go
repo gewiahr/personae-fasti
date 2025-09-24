@@ -136,3 +136,8 @@ type TaskPatch struct {
 type GameChange struct {
 	GameID int `json:"gameID"`
 }
+
+type GameSettingsUpdate struct {
+	GameID              int  `json:"gameID"`
+	AllowAllEditRecords bool `json:"allowAllEditRecords"`
+}

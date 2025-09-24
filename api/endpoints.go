@@ -46,10 +46,11 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 
 	router.HandleFunc("GET /suggestions", api.HTTPWrapper(api.PlayerWrapper(api.handleGetSuggestions)))
 
-	router.HandleFunc("GET /player/settings", api.HTTPWrapper(api.PlayerWrapper(api.handleGetPlayerSetings)))
+	router.HandleFunc("GET /player/settings", api.HTTPWrapper(api.PlayerWrapper(api.handleGetPlayerSettings)))
 	router.HandleFunc("PUT /player/game", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerGame)))
 
 	router.HandleFunc("POST /game/session/new", api.HTTPWrapper(api.PlayerWrapper(api.handleStartNewGameSession)))
+	router.HandleFunc("PUT /game/settings", api.HTTPWrapper(api.PlayerWrapper(api.handlePutGameSettings)))
 
 	router.HandleFunc("GET /image/{type}/{id}", api.HTTPWrapper(api.handleGetImage))
 	router.HandleFunc("POST /image/{type}/{id}", api.HTTPWrapper(api.handlePostImage))
@@ -78,11 +79,7 @@ func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIEr
 			ID:       player.ID,
 			Username: player.Username,
 		},
-		CurrentGame: respData.GameInfo{
-			ID:    player.CurrentGame.ID,
-			Title: player.CurrentGame.Name,
-			GMID:  player.CurrentGame.GMID,
-		},
+		CurrentGame: *respData.GameToGameFullInfo(player.CurrentGame),
 	}
 
 	return api.Respond(r, w, http.StatusOK, loginInfo)
@@ -656,13 +653,13 @@ func (api *APIServer) handleGetSuggestions(w http.ResponseWriter, r *http.Reques
 }
 
 // GET /player/settings
-func (api *APIServer) handleGetPlayerSetings(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+func (api *APIServer) handleGetPlayerSettings(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
 	playerGames, err := api.storage.GetPlayerGames(p)
 	if err != nil {
 		return api.HandleError(err)
 	}
 
-	playerSettings := respData.FormPlayerSettings(playerGames, *p.CurrentGame)
+	playerSettings := respData.FormPlayerSettings(playerGames, p.CurrentGame)
 	return api.Respond(r, w, http.StatusOK, playerSettings)
 }
 
@@ -679,7 +676,7 @@ func (api *APIServer) handleChangePlayerGame(w http.ResponseWriter, r *http.Requ
 		return api.HandleError(err)
 	}
 
-	currentGameInfo := respData.GameToGameInfo(currentGame)
+	currentGameInfo := respData.GameToGameFullInfo(currentGame)
 	return api.Respond(r, w, http.StatusOK, currentGameInfo)
 }
 
@@ -695,6 +692,23 @@ func (api *APIServer) handleStartNewGameSession(w http.ResponseWriter, r *http.R
 	}
 
 	return api.Respond(r, w, http.StatusCreated, newSession)
+}
+
+// PUT /game/settings
+func (api *APIServer) handlePutGameSettings(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var gameSettingsUpdate reqData.GameSettingsUpdate
+	err := ReadJsonBody(r, &gameSettingsUpdate)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	currentGame, err := api.storage.UpdateGameSettings(&gameSettingsUpdate)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	currentGameInfo := respData.GameToGameFullInfo(currentGame)
+	return api.Respond(r, w, http.StatusOK, currentGameInfo)
 }
 
 // GET /image/{type}/{id}

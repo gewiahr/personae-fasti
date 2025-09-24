@@ -15,6 +15,7 @@ func (s *Storage) InitTables() {
 	s.db.RegisterModel((*RecordLocation)(nil))
 
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Game)(nil)).Exec(context.Background())
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*GameSettings)(nil)).Exec(context.Background())
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Player)(nil)).Exec(context.Background())
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Telegram)(nil)).Exec(context.Background())
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Char)(nil)).Exec(context.Background())
@@ -54,8 +55,19 @@ type Game struct {
 	Records []Record `bun:"rel:has-many,join:id=game_id"`
 	Quests  []Quest  `bun:"rel:has-many,join:id=game_id"`
 
+	Settings *GameSettings `bun:"rel:has-one,join:id=game_id"`
+
 	Created *time.Time `bun:"created,default:current_timestamp"`
 	Deleted *time.Time `bun:"deleted,default:null"`
+}
+
+type GameSettings struct {
+	bun.BaseModel `bun:"table:game_settings"`
+
+	GameID int   `bun:"game_id,pk"`
+	Game   *Game `bun:"rel:belongs-to,join:game_id=id"`
+
+	AllowAllEditRecords bool `bun:"allow_all_edit_records,default:false"`
 }
 
 type Player struct {

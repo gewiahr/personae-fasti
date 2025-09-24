@@ -10,6 +10,18 @@ func GameToGameInfo(game *data.Game) *GameInfo {
 	}
 }
 
+func GameToGameFullInfo(game *data.Game) *GameFullInfo {
+	return &GameFullInfo{
+		ID:    game.ID,
+		Title: game.Name,
+		GMID:  game.GMID,
+
+		Settings: &GameSettings{
+			AllowAllEditRecords: game.Settings.AllowAllEditRecords,
+		},
+	}
+}
+
 func PlayersToPlayersInfoArray(players []data.Player) []PlayerInfo {
 	playerInfoArray := []PlayerInfo{}
 	for _, player := range players {

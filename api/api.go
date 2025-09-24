@@ -115,5 +115,4 @@ func InitServer(c *opt.Conf, s *data.Storage) *APIServer {
 	}
 
 	return api
-
 }
