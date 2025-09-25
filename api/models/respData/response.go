@@ -1,6 +1,9 @@
 package respData
 
-import "personae-fasti/data"
+import (
+	"personae-fasti/data"
+	"time"
+)
 
 type LoginInfo struct {
 	AccessKey   string       `json:"accesskey"`
@@ -42,6 +45,7 @@ type GameFullInfo struct {
 	GMID  int    `json:"gmID"`
 
 	Settings *GameSettings `json:"settings"`
+	Sessions []SessionInfo `json:"sessions"`
 }
 
 type GameRecords struct {
@@ -53,6 +57,12 @@ type GameRecords struct {
 
 type GameSettings struct {
 	AllowAllEditRecords bool `json:"allowAllEditRecords"`
+}
+
+type SessionInfo struct {
+	Number  int        `json:"number"`
+	Name    string     `json:"name"`
+	EndTime *time.Time `json:"endTime"`
 }
 
 func FormGameRecords(p *data.Player, rs []data.Record, ps []data.Player, ss []data.Session) *GameRecords {

@@ -19,7 +19,21 @@ func GameToGameFullInfo(game *data.Game) *GameFullInfo {
 		Settings: &GameSettings{
 			AllowAllEditRecords: game.Settings.AllowAllEditRecords,
 		},
+		Sessions: SessionToSessionInfoArray(game.Sessions),
 	}
+}
+
+func SessionToSessionInfoArray(sessions []data.Session) []SessionInfo {
+	sessionInfoArray := []SessionInfo{}
+	for _, session := range sessions {
+		sessionInfoArray = append(sessionInfoArray, SessionInfo{
+			Number:  session.Number,
+			Name:    session.Name,
+			EndTime: session.EndTime,
+		})
+	}
+
+	return sessionInfoArray
 }
 
 func PlayersToPlayersInfoArray(players []data.Player) []PlayerInfo {

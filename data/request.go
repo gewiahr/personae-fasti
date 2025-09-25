@@ -16,7 +16,7 @@ import (
 func (s *Storage) GetPlayerByAccessKey(accesskey string) (*Player, error) {
 	var player Player
 
-	err := s.db.NewSelect().Model(&player).Where("accesskey = ?", accesskey).Relation("CurrentGame.Settings").Scan(context.Background(), &player)
+	err := s.db.NewSelect().Model(&player).Where("accesskey = ?", accesskey).Relation("CurrentGame.Settings").Relation("CurrentGame.Sessions").Scan(context.Background())
 	if err != nil {
 		return nil, err
 	}

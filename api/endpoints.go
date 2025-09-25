@@ -97,12 +97,12 @@ func (api *APIServer) handleGetRecords(w http.ResponseWriter, r *http.Request, p
 		return api.HandleError(err)
 	}
 
-	sessions, err := api.storage.GetCurrentGameSessions(p.CurrentGame)
-	if err != nil {
-		return api.HandleError(err)
-	}
+	// sessions, err := api.storage.GetCurrentGameSessions(p.CurrentGame)
+	// if err != nil {
+	// 	return api.HandleError(err)
+	// }
 
-	gameRecords := respData.FormGameRecords(p, records, players, sessions)
+	gameRecords := respData.FormGameRecords(p, records, players, p.CurrentGame.Sessions)
 
 	return api.Respond(r, w, http.StatusOK, gameRecords)
 }
