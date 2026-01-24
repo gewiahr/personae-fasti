@@ -1,5 +1,9 @@
 package reqData
 
+type LoginTGRequest struct {
+	InitDataRaw string `json:"initDataRaw"`
+}
+
 type RecordInsert struct {
 	Text     string `json:"text"`
 	Hidden   bool   `json:"hidden"`
@@ -133,8 +137,26 @@ type TaskPatch struct {
 	Current int `json:"current"`
 }
 
+type GameCreate struct {
+	Name string `json:"name"`
+}
+
+type GameUpdate struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+	GMID int    `json:"gmID"`
+}
+
 type GameChange struct {
 	GameID int `json:"gameID"`
+}
+
+type UsernameCheckAvailability struct {
+	CheckUsername string `json:"checkUsername"`
+}
+
+type UsernameChange struct {
+	NewUsername string `json:"newUsername"`
 }
 
 type GameSettingsUpdate struct {

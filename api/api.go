@@ -20,6 +20,7 @@ type APIServer struct {
 	server     *http.Server
 	storage    *data.Storage
 	fileServer *opt.FileServer
+	auth       *opt.AuthConfig
 }
 
 type APIError struct {
@@ -104,6 +105,7 @@ func InitServer(c *opt.Conf, s *data.Storage) *APIServer {
 		},
 		storage:    s,
 		fileServer: &c.FileServer,
+		auth:       &c.Auth,
 	}
 
 	api.SetHandlers(router)

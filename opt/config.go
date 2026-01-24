@@ -12,7 +12,8 @@ type Conf struct {
 		Port  string `json:"port"`
 		Debug bool   `json:"debug"`
 	} `json:"app"`
-	DB struct {
+	Auth AuthConfig `json:"auth"`
+	DB   struct {
 		Host     string `json:"host"`
 		Port     string `json:"port"`
 		User     string `json:"user"`
@@ -26,6 +27,12 @@ type FileServer struct {
 	Addr string `json:"addr"`
 	Pass string `json:"pass"`
 	Proj string `json:"proj"`
+}
+
+type AuthConfig struct {
+	JWTSecret             string `json:"jwtSecret"`
+	JWTTokenLifetimeHours int64  `json:"jwtTokenLifetimeHours"`
+	BotToken              string `json:"botToken"`
 }
 
 func InitConfig() *Conf {

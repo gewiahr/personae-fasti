@@ -2,7 +2,9 @@ package data
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"personae-fasti/api/models/reqData"
@@ -10,11 +12,16 @@ import (
 	"strings"
 	"time"
 
+	tgInitData "github.com/telegram-mini-apps/init-data-golang"
 	"github.com/uptrace/bun"
 )
 
 func (s *Storage) GetPlayerByAccessKey(accesskey string) (*Player, error) {
 	var player Player
+
+	if accesskey == "" {
+		return nil, fmt.Errorf("accesskey cannot be empty")
+	}
 
 	err := s.db.NewSelect().Model(&player).Where("accesskey = ?", accesskey).Relation("CurrentGame.Settings").Relation("CurrentGame.Sessions").Scan(context.Background())
 	if err != nil {
@@ -22,6 +29,103 @@ func (s *Storage) GetPlayerByAccessKey(accesskey string) (*Player, error) {
 	}
 
 	return &player, nil
+}
+
+func (s *Storage) GetPlayerByTGToken(tokenString string) (*Player, error) {
+	//var player Player
+
+	if tokenString == "" {
+		return nil, fmt.Errorf("token cannot be empty")
+	}
+
+	tokenHash := sha256.Sum256([]byte(tokenString))
+	tokenHashHex := hex.EncodeToString(tokenHash[:])
+
+	var token Token
+	err := s.db.NewSelect().Model(&token).Where("token_hash = ?", tokenHashHex).Relation("Player").Relation("Player.RegData").Relation("Player.CurrentGame.Settings").Relation("Player.CurrentGame.Sessions").Scan(context.Background())
+
+	//err := s.db.NewSelect().Model(&player).Where("accesskey = ?", accesskey).Relation("CurrentGame.Settings").Relation("CurrentGame.Sessions").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	return token.Player, nil
+}
+
+func (s *Storage) CreateAuthToken(player *Player, jwtSecret string, jwtTime time.Duration) (string, error) {
+	expirationTime := time.Now().Add(jwtTime)
+
+	tokenString := s.GeneratePlayerToken(player, expirationTime)
+	// tokenString, err := s.GeneratePlayerJWTToken(player, jwtSecret, expirationTime)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	tokenHash := sha256.Sum256([]byte(tokenString))
+	tokenHashHex := hex.EncodeToString(tokenHash[:])
+
+	dbToken := &Token{
+		PlayerID:  player.ID,
+		TokenHash: tokenHashHex,
+		ExpiresAt: expirationTime,
+		Revoked:   false,
+	}
+
+	_, err := s.db.NewInsert().Model(dbToken).Returning("*").Exec(context.Background(), dbToken)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
+func (s *Storage) GetTelegramPlayer(tgID int64) (*Player, error) {
+	var player Player
+
+	err := s.db.NewSelect().Model(&player).Where("telegram_id = ?", tgID).Relation("Telegram").Relation("RegData").Relation("CurrentGame.Settings").Relation("CurrentGame.Sessions").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	return &player, nil
+}
+
+func (s *Storage) CreateTelegramPlayer(data tgInitData.InitData) (*Player, error) {
+	var player *Player
+	ctx := context.Background()
+
+	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		telegram := &Telegram{
+			ID:       data.User.ID,
+			Username: data.User.Username,
+			Lang:     data.User.LanguageCode,
+			PicURL:   data.User.PhotoURL,
+		}
+		_, err := s.db.NewInsert().Model(telegram).Exec(ctx)
+		if err != nil {
+			return err
+		}
+
+		player = &Player{
+			Username:   fmt.Sprintf("tguser_%d", data.AuthDate().Unix()),
+			AccessKey:  "",
+			TelegramID: telegram.ID,
+		}
+		_, err = s.db.NewInsert().Model(player).Exec(ctx)
+		if err != nil {
+			return err
+		}
+
+		playerRegData := &PlayerRegData{
+			PlayerID:    player.ID,
+			UsernameSet: false,
+		}
+		_, err = s.db.NewInsert().Model(playerRegData).Exec(ctx)
+
+		return nil
+	})
+
+	return player, err
 }
 
 func (s *Storage) GetCurrentGamePlayers(game *Game) ([]Player, error) {
@@ -289,6 +393,10 @@ func (s *Storage) GetCharByID(charID int) (*Char, error) {
 }
 
 func (s *Storage) CreateChar(charCreate *reqData.CharCreate, player *Player) (*Char, error) {
+	if charCreate.Name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
+	}
+
 	var hiddenBy = 0
 	if charCreate.Hidden {
 		hiddenBy = player.ID
@@ -312,6 +420,10 @@ func (s *Storage) CreateChar(charCreate *reqData.CharCreate, player *Player) (*C
 }
 
 func (s *Storage) UpdateChar(charUpdate *reqData.CharUpdate, char *Char, player *Player) (*Char, error) {
+	if charUpdate.Name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
+	}
+
 	var hiddenBy = 0
 	if charUpdate.Hidden {
 		hiddenBy = player.ID
@@ -353,6 +465,10 @@ func (s *Storage) GetNPCByID(npcID int) (*NPC, error) {
 }
 
 func (s *Storage) CreateNPC(npcCreate *reqData.NPCCreate, player *Player) (*NPC, error) {
+	if npcCreate.Name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
+	}
+
 	var hiddenBy = 0
 	if npcCreate.Hidden {
 		hiddenBy = player.ID
@@ -375,6 +491,10 @@ func (s *Storage) CreateNPC(npcCreate *reqData.NPCCreate, player *Player) (*NPC,
 }
 
 func (s *Storage) UpdateNPC(npcUpdate *reqData.NPCUpdate, npc *NPC, player *Player) (*NPC, error) {
+	if npcUpdate.Name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
+	}
+
 	var hiddenBy = 0
 	if npcUpdate.Hidden {
 		hiddenBy = player.ID
@@ -429,6 +549,10 @@ func (s *Storage) GetLocationByID(locationID int) (*Location, error) {
 }
 
 func (s *Storage) CreateLocation(locationCreate *reqData.LocationCreate, player *Player) (*Location, error) {
+	if locationCreate.Name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
+	}
+
 	location := Location{
 		Name:        locationCreate.Name,
 		Title:       locationCreate.Title,
@@ -447,6 +571,10 @@ func (s *Storage) CreateLocation(locationCreate *reqData.LocationCreate, player 
 }
 
 func (s *Storage) UpdateLocation(locationUpdate *reqData.LocationUpdate, location *Location, player *Player) (*Location, error) {
+	if locationUpdate.Name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
+	}
+
 	_, err := s.db.NewUpdate().Model(location).WherePK().
 		Set("name = ?", locationUpdate.Name).
 		Set("title = ?", locationUpdate.Title).
@@ -485,6 +613,10 @@ func (s *Storage) GetQuestByID(questID int) (*Quest, error) {
 }
 
 func (s *Storage) CreateQuest(questCreate *reqData.QuestCreate, tasksCreate []reqData.TaskCreate, player *Player) (*Quest, error) {
+	if questCreate.Name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
+	}
+
 	var quest *Quest
 	ctx := context.Background()
 
@@ -549,6 +681,10 @@ func (s *Storage) CreateQuest(questCreate *reqData.QuestCreate, tasksCreate []re
 }
 
 func (s *Storage) UpdateQuest(questUpdate *reqData.QuestUpdate, tasksUpdate []reqData.TaskUpdate, quest *Quest, player *Player) (*Quest, error) {
+	if questUpdate.Name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
+	}
+
 	ctx := context.Background()
 	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		if _, err := s.db.NewUpdate().Model(quest).WherePK().
@@ -695,13 +831,14 @@ func (s *Storage) UpdateQuestTasks(tasksUpdate []reqData.TaskPatch, quest *Quest
 		for _, task := range tasksUpdate {
 			if tasks[i].ID == task.ID {
 				tasks[i].Current = task.Current
-				if tasks[i].Type == Binary {
+				switch tasks[i].Type {
+				case Binary:
 					if tasks[i].Current > 0 {
 						tasks[i].Finished = &finishTime
 					} else {
 						tasks[i].Finished = nil
 					}
-				} else if tasks[i].Type == Decimal {
+				case Decimal:
 					if tasks[i].Current >= tasks[i].Capacity {
 						tasks[i].Finished = &finishTime
 					} else {
@@ -793,6 +930,70 @@ func (s *Storage) ChangeCurrentGame(player *Player, gameID int) (*Game, error) {
 	}
 	// ** Get to know why RETURNING is not working here properly ** //
 	return &currentGame, nil
+}
+
+func (s *Storage) CreateGame(player *Player, newGameRequest *reqData.GameCreate) (*Game, error) {
+	if newGameRequest.Name == "" {
+		return nil, fmt.Errorf("game name cannot be empty")
+	}
+	ctx := context.Background()
+
+	// ** Run in Transaction ** //
+	newGame := Game{
+		Name: newGameRequest.Name,
+		GMID: player.ID,
+	}
+	_, err := s.db.NewInsert().Model(&newGame).ExcludeColumn("id").Returning("*").Exec(ctx, &newGame)
+	if err != nil {
+		return nil, err
+	}
+	newGameSettings := GameSettings{
+		GameID: newGame.ID,
+	}
+	_, err = s.db.NewInsert().Model(&newGameSettings).Returning("*").Exec(ctx, &newGameSettings)
+	if err != nil {
+		return nil, err
+	}
+	// ** Run in Transaction ** //
+
+	s.db.NewSelect().Model(&newGame).Relation("Settings").WherePK().Exec(ctx, &newGame)
+
+	return &newGame, err
+}
+
+func (s *Storage) CheckUsernameAvailability(player *Player, usernameToCheck string) (bool, error) {
+	count, err := s.db.NewSelect().Model(player).Where("username = ?", usernameToCheck).Count(context.Background())
+	if err != nil {
+		return false, err
+	}
+
+	return count == 0, nil
+}
+
+func (s *Storage) ChangeUsername(player *Player, newUsername string) (*Player, error) {
+	available, err := s.CheckUsernameAvailability(player, newUsername)
+	if err != nil {
+		return nil, err
+	}
+	if !available {
+		return nil, fmt.Errorf("username %s is not available", newUsername)
+	}
+
+	// ## Wrap in transaction ## //
+	player.Username = newUsername
+	_, err = s.db.NewUpdate().Model(player).Column("username").WherePK().Returning("*").Exec(context.Background(), player)
+	if err != nil {
+		return nil, err
+	}
+
+	player.RegData.UsernameSet = true
+	_, err = s.db.NewUpdate().Model(player.RegData).Column("username_set").WherePK().Exec(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	// ## Wrap in transaction ## //
+
+	return player, nil
 }
 
 func (s *Storage) UpdateGameSettings(gameSettingsUpdate *reqData.GameSettingsUpdate) (*Game, error) {

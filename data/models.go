@@ -2,36 +2,46 @@ package data
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/uptrace/bun"
 )
 
 func (s *Storage) InitTables() {
+	ctx := context.Background()
 
 	s.db.RegisterModel((*PlayerGame)(nil))
 	s.db.RegisterModel((*RecordChar)(nil))
 	s.db.RegisterModel((*RecordNPC)(nil))
 	s.db.RegisterModel((*RecordLocation)(nil))
 
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Game)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*GameSettings)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Player)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Telegram)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Char)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*NPC)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Location)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Record)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Session)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Quest)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*QuestTask)(nil)).Exec(context.Background())
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Game)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*GameSettings)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Player)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*PlayerRegData)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Token)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Telegram)(nil)).Exec(ctx)
 
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*PlayerGame)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordChar)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordNPC)(nil)).Exec(context.Background())
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordLocation)(nil)).Exec(context.Background())
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Char)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*NPC)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Location)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Record)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Session)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Quest)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*QuestTask)(nil)).Exec(ctx)
 
-	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Log)(nil)).Exec(context.Background())
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*PlayerGame)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordChar)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordNPC)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordLocation)(nil)).Exec(ctx)
+
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Log)(nil)).Exec(ctx)
+
+	_, err := s.db.NewCreateIndex().IfNotExists().Model((*Token)(nil)).Index("token_idx").Column("token_hash").Exec(ctx)
+	if err != nil {
+		fmt.Printf("error occured during index creation: %v", err.Error())
+	}
 
 }
 
@@ -90,14 +100,39 @@ type Player struct {
 	Registered *time.Time `bun:"registeredTime,nullzero,notnull,default:current_timestamp"`
 	LastAction *time.Time `bun:"lastActionTime,nullzero,notnull,default:current_timestamp"`
 	Deleted    *time.Time `bun:"deleted,default:null"`
+
+	RegData *PlayerRegData `bun:"rel:has-one,join:id=player_id"`
+}
+
+type PlayerRegData struct {
+	bun.BaseModel `bun:"table:player_reg_data"`
+
+	PlayerID int     `bun:"player_id,pk"`
+	Player   *Player `bun:"rel:belongs-to,join:player_id=id"`
+
+	UsernameSet bool `bun:"username_set,default:false"`
 }
 
 type Telegram struct {
 	bun.BaseModel `bun:"table:telegram"`
 
 	ID       int64  `bun:"id,pk"`
-	Username string `bun:"username,notnull"`
+	Username string `bun:"username,notnull,default:''"`
 	Lang     string `bun:"lang,default:'en'"`
+	PicURL   string `bun:"pic_url,notnull,default:''"`
+}
+
+type Token struct {
+	bun.BaseModel `bun:"table:tokens"`
+
+	ID        int64     `bun:"id,pk,autoincrement"`
+	PlayerID  int       `bun:"player_id,notnull"`
+	TokenHash string    `bun:"token_hash,unique,notnull"`
+	ExpiresAt time.Time `bun:"expires_at,notnull"`
+	CreatedAt time.Time `bun:"created_at,nullzero,default:current_timestamp"`
+	Revoked   bool      `bun:"revoked,default:false"`
+
+	Player *Player `bun:"rel:belongs-to,join:player_id=id"`
 }
 
 type Char struct {

@@ -5,15 +5,26 @@ import (
 	"time"
 )
 
+// type LoginInfo struct {
+// 	AccessKey   string       `json:"accesskey"`
+// 	Player      PlayerInfo   `json:"player"`
+// 	CurrentGame GameFullInfo `json:"currentGame"`
+// }
+
 type LoginInfo struct {
-	AccessKey   string       `json:"accesskey"`
-	Player      PlayerInfo   `json:"player"`
-	CurrentGame GameFullInfo `json:"currentGame"`
+	Authorization string          `json:"authorization"`
+	Player        LoginPlayerInfo `json:"player"`
+	CurrentGame   *GameFullInfo   `json:"currentGame"`
 }
 
-type PlayerInfo struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
+type LoginPlayerInfo struct {
+	ID       int                      `json:"id"`
+	Username string                   `json:"username"`
+	Settings *LoginPlayerInfoSettings `json:"settings"`
+}
+
+type LoginPlayerInfoSettings struct {
+	CouldChangeUsername bool `json:"couldChangeUsername"`
 }
 
 type PlayerSettings struct {
@@ -31,6 +42,11 @@ func FormPlayerSettings(playerGames []data.Game, currentGame *data.Game) *Player
 		CurrentGame: *GameToGameFullInfo(currentGame),
 		PlayerGames: playerGameInfo,
 	}
+}
+
+type PlayerInfo struct {
+	ID       int    `json:"id"`
+	Username string `json:"username"`
 }
 
 type GameInfo struct {

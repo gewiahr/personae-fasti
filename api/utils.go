@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -32,4 +33,30 @@ func getPathValueInt(r *http.Request, param string) int {
 	}
 
 	return wrongValue
+}
+
+func (api *APIServer) checkTGUserChatMembership(userID int64) (bool, error) {
+	url := fmt.Sprintf(
+		"https://api.telegram.org/bot%s/getChatMember?chat_id=%s&user_id=%d",
+		api.auth.BotToken, "@dierolled", userID,
+	)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	var data map[string]any
+	json.NewDecoder(resp.Body).Decode(&data)
+
+	if !data["ok"].(bool) {
+		return false, fmt.Errorf("API error: %s", data["description"])
+	}
+
+	result := data["result"].(map[string]any)
+	status := result["status"].(string)
+
+	return status == "creator" || status == "administrator" ||
+		status == "member" || status == "restricted", nil
 }

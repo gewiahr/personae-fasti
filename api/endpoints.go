@@ -2,19 +2,21 @@ package api
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"personae-fasti/api/models/reqData"
 	"personae-fasti/api/models/respData"
 	"personae-fasti/data"
-	"strings"
+	"time"
+
+	tgInitData "github.com/telegram-mini-apps/init-data-golang"
 )
 
 func (api *APIServer) SetHandlers(router *http.ServeMux) {
 
 	router.HandleFunc("GET /login/{accesskey}", api.HTTPWrapper(api.handleLogin))
+	router.HandleFunc("POST /login/tg", api.HTTPWrapper(api.handleLoginTG))
 
 	router.HandleFunc("GET /records", api.HTTPWrapper(api.PlayerWrapper(api.handleGetRecords)))
 	router.HandleFunc("POST /record", api.HTTPWrapper(api.PlayerWrapper(api.handlePostRecord)))
@@ -48,7 +50,10 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 
 	router.HandleFunc("GET /player/settings", api.HTTPWrapper(api.PlayerWrapper(api.handleGetPlayerSettings)))
 	router.HandleFunc("PUT /player/game", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerGame)))
+	router.HandleFunc("GET /player/username/checkAvailability/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleCheckUsernameAvailability)))
+	router.HandleFunc("PATCH /player/username", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerUsername)))
 
+	router.HandleFunc("POST /game", api.HTTPWrapper(api.PlayerWrapper(api.handleStartNewGame)))
 	router.HandleFunc("POST /game/session/new", api.HTTPWrapper(api.PlayerWrapper(api.handleStartNewGameSession)))
 	router.HandleFunc("PUT /game/settings", api.HTTPWrapper(api.PlayerWrapper(api.handlePutGameSettings)))
 
@@ -61,26 +66,117 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 // }
 
 // GET /login/{accesskey}
+// DEPRICATED
 func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIError {
-	accesskey := r.PathValue("accesskey")
 
-	player, err := api.storage.GetPlayerByAccessKey(accesskey)
+	return api.HandleErrorString("accesskey not supported anymore").WithCode(http.StatusUnauthorized)
+
+	// accesskey := r.PathValue("accesskey")
+
+	// player, err := api.storage.GetPlayerByAccessKey(accesskey)
+	// if err != nil {
+	// 	if err == sql.ErrNoRows {
+	// 		return api.HandleError(fmt.Errorf("login failed: no user info for the passkey %s", strings.ToLower(accesskey))).WithCode(http.StatusUnauthorized)
+	// 	} else {
+	// 		return api.HandleError(err)
+	// 	}
+	// }
+
+	// loginInfo := respData.LoginInfo{
+	// 	AccessKey: player.AccessKey,
+	// 	Player: respData.PlayerInfo{
+	// 		ID:       player.ID,
+	// 		Username: player.Username,
+	// 	},
+	// 	CurrentGame: *respData.GameToGameFullInfo(player.CurrentGame),
+	// }
+
+	// return api.Respond(r, w, http.StatusOK, loginInfo)
+}
+
+// POST /login/TG
+func (api *APIServer) handleLoginTG(w http.ResponseWriter, r *http.Request) *APIError {
+	var loginTG reqData.LoginTGRequest
+	err := ReadJsonBody(r, &loginTG)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return api.HandleError(errors.New(fmt.Sprintf("login failed: no user info for the passkey %s", strings.ToLower(accesskey)))).WithCode(http.StatusUnauthorized)
-		} else {
+		return api.HandleError(fmt.Errorf("cannot read token: %v", err)).WithCode(http.StatusUnauthorized)
+	}
+
+	err = tgInitData.Validate(loginTG.InitDataRaw, api.auth.BotToken, 24000*time.Hour)
+	if err != nil {
+		return api.HandleError(fmt.Errorf("token is invalid: %v", err)).WithCode(http.StatusUnauthorized)
+	}
+
+	initData, err := tgInitData.Parse(loginTG.InitDataRaw)
+	if err != nil {
+		return api.HandleError(fmt.Errorf("can't parse userdata: %v", err))
+	}
+
+	player, err := api.storage.GetTelegramPlayer(initData.User.ID)
+	if err == sql.ErrNoRows {
+		player, err = api.storage.CreateTelegramPlayer(initData)
+		if err != nil {
 			return api.HandleError(err)
 		}
+	} else if err != nil {
+		return api.HandleError(err)
+	}
+
+	isMember, err := api.checkTGUserChatMembership(player.Telegram.ID)
+	if err != nil {
+		return api.HandleError(err)
+	} else if !isMember {
+		return api.HandleErrorString("you are not member of the group").WithCode(http.StatusForbidden)
+	}
+
+	token, err := api.storage.CreateAuthToken(player, api.auth.JWTSecret, time.Duration(api.auth.JWTTokenLifetimeHours)*time.Hour)
+	if err != nil {
+		return api.HandleError(err).WithMessage("error creating token")
 	}
 
 	loginInfo := respData.LoginInfo{
-		AccessKey: player.AccessKey,
-		Player: respData.PlayerInfo{
+		Authorization: fmt.Sprintf("TG %s", token),
+		Player: respData.LoginPlayerInfo{
 			ID:       player.ID,
 			Username: player.Username,
+			Settings: nil,
 		},
-		CurrentGame: *respData.GameToGameFullInfo(player.CurrentGame),
+		CurrentGame: nil,
 	}
+
+	if player.RegData.UsernameSet {
+		loginInfo.Player.Settings = &respData.LoginPlayerInfoSettings{
+			CouldChangeUsername: false,
+		}
+	}
+
+	if player.CurrentGame != nil {
+		loginInfo.CurrentGame = respData.GameToGameFullInfo(player.CurrentGame)
+	}
+
+	// response := AuthResponse{
+	// 	Token: tokenString,
+	// }
+
+	// check subscription
+
+	// player, err := api.storage.GetPlayerByAccessKey(accesskey)
+	// if err != nil {
+	// 	if err == sql.ErrNoRows {
+	// 		return api.HandleError(fmt.Errorf("login failed: no user info for the passkey %s", strings.ToLower(accesskey))).WithCode(http.StatusUnauthorized)
+	// 	} else {
+	// 		return api.HandleError(err)
+	// 	}
+	// }
+
+	// loginInfo := respData.LoginInfo{
+	// 	AccessKey: player.AccessKey,
+	// 	Player: respData.PlayerInfo{
+	// 		ID:       player.ID,
+	// 		Username: player.Username,
+	// 	},
+	// 	CurrentGame: *respData.GameToGameFullInfo(player.CurrentGame),
+	// }
 
 	return api.Respond(r, w, http.StatusOK, loginInfo)
 }
@@ -96,11 +192,6 @@ func (api *APIServer) handleGetRecords(w http.ResponseWriter, r *http.Request, p
 	if err != nil {
 		return api.HandleError(err)
 	}
-
-	// sessions, err := api.storage.GetCurrentGameSessions(p.CurrentGame)
-	// if err != nil {
-	// 	return api.HandleError(err)
-	// }
 
 	gameRecords := respData.FormGameRecords(p, records, players, p.CurrentGame.Sessions)
 
@@ -130,12 +221,7 @@ func (api *APIServer) handlePostRecord(w http.ResponseWriter, r *http.Request, p
 		return api.HandleError(err)
 	}
 
-	sessions, err := api.storage.GetCurrentGameSessions(p.CurrentGame)
-	if err != nil {
-		return api.HandleError(err)
-	}
-
-	gameRecords := respData.FormGameRecords(p, records, players, sessions)
+	gameRecords := respData.FormGameRecords(p, records, players, p.CurrentGame.Sessions)
 
 	return api.Respond(r, w, http.StatusCreated, gameRecords)
 }
@@ -163,13 +249,7 @@ func (api *APIServer) handleChangeRecord(w http.ResponseWriter, r *http.Request,
 		return api.HandleError(err)
 	}
 
-	sessions, err := api.storage.GetCurrentGameSessions(p.CurrentGame)
-	if err != nil {
-		return api.HandleError(err)
-	}
-
-	gameRecords := respData.FormGameRecords(p, records, players, sessions)
-
+	gameRecords := respData.FormGameRecords(p, records, players, p.CurrentGame.Sessions)
 	return api.Respond(r, w, http.StatusOK, gameRecords)
 }
 
@@ -251,7 +331,7 @@ func (api *APIServer) handleCreateChar(w http.ResponseWriter, r *http.Request, p
 
 	char, err := api.storage.CreateChar(&charCreate, p)
 	if err != nil {
-		return api.HandleError(err)
+		return api.HandleError(err).WithCode(http.StatusBadRequest)
 	}
 
 	charFullInfo := respData.CharToCharFullInfo(char)
@@ -278,7 +358,7 @@ func (api *APIServer) handleUpdateChar(w http.ResponseWriter, r *http.Request, p
 
 	char, err = api.storage.UpdateChar(&charUpdate, char, p)
 	if err != nil {
-		return api.HandleError(err)
+		return api.HandleError(err).WithCode(http.StatusBadRequest)
 	}
 
 	charFullInfo := respData.CharToCharFullInfo(char)
@@ -678,6 +758,75 @@ func (api *APIServer) handleChangePlayerGame(w http.ResponseWriter, r *http.Requ
 
 	currentGameInfo := respData.GameToGameFullInfo(currentGame)
 	return api.Respond(r, w, http.StatusOK, currentGameInfo)
+}
+
+// GET /player/username/checkAvailability
+func (api *APIServer) handleCheckUsernameAvailability(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	username := r.PathValue("username")
+	if username == "" {
+		return api.HandleErrorString("username cannot be empty")
+	}
+
+	available, err := api.storage.CheckUsernameAvailability(p, username)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusOK, struct {
+		Available     bool   `json:"available"`
+		CheckUsername string `json:"checkUsername"`
+	}{
+		Available:     available,
+		CheckUsername: username,
+	})
+}
+
+// PATCH /player/username
+func (api *APIServer) handleChangePlayerUsername(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var usernameChange reqData.UsernameChange
+	err := ReadJsonBody(r, &usernameChange)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	p, err = api.storage.ChangeUsername(p, usernameChange.NewUsername)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusOK, respData.LoginPlayerInfo{
+		ID:       p.ID,
+		Username: p.Username,
+		Settings: &respData.LoginPlayerInfoSettings{
+			CouldChangeUsername: false,
+		},
+	})
+}
+
+// POST /game
+func (api *APIServer) handleStartNewGame(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var newGame reqData.GameCreate
+	err := ReadJsonBody(r, &newGame)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	g, err := api.storage.CreateGame(p, &newGame)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	var currentGame = p.CurrentGame
+	if currentGame == nil {
+		currentGame, err = api.storage.ChangeCurrentGame(p, g.ID)
+		if err != nil {
+			return api.HandleError(err)
+		}
+	}
+
+	currentGameInfo := respData.GameToGameFullInfo(currentGame)
+	return api.Respond(r, w, http.StatusCreated, currentGameInfo)
+	//return api.HandleErrorString("not implemented").WithCode(http.StatusNotImplemented)
 }
 
 // POST /game/session/new
