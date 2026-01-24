@@ -1,40 +1,48 @@
-name: Build and Deploy
+name: "Release"
 
 on:
   push:
     branches:
-      - main
+     - main
+    tags:
+      - 'v*'
 
 jobs:
   build-and-deploy:
+    name: "📦 Build and Deploy"
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout Code
-    - name: Checkout Code
-      uses: actions/checkout@v3
+    #- name: Checkout Code
+    - uses: actions/checkout@v4
+      with:
+          fetch-depth: 0 
+    - uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # Step 2: Set Version
-    - name: Read version from file
-      run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+    # - name: Read version from file
+    #   run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
-    # Step 3: Build Docker Image
     - name: Build Docker Image
       env:
-        VERSION: ${{ env.VERSION }}
+        VERSION: ${{ github.ref_name }}
       run: |
-        docker build -t ${{ vars.APPNAME }}:${{ env.VERSION }} .
+        docker build -t ${{ vars.APPNAME }}:${{ github.ref_name }} .
 
-    # Step 4: Push Docker Image to Registry
     - name: Push Docker Image
       env:
-        VERSION: ${{ env.VERSION }}
+        VERSION: ${{ github.ref_name }}
       run: |
         echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        docker tag ${{ vars.APPNAME }}:${{ env.VERSION }} ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ env.VERSION }}
-        docker push ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ env.VERSION }}         
+        docker tag ${{ vars.APPNAME }}:${{ github.ref_name }} ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ github.ref_name }}
+        docker push ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ github.ref_name }}         
         
-    # Step 5: Set Access
     - name: Set Access
       uses: shimataro/ssh-key-action@v2
       with:
@@ -42,18 +50,17 @@ jobs:
         name: id_rsa
         known_hosts: unnecessary
 
-    # Step 6: Deploy to Server
     - name: Deploy to Server
       env:
-        VERSION: ${{ env.VERSION }}
+        VERSION: ${{ github.ref_name }}
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
         echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        docker pull ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ env.VERSION }}
+        docker pull ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ github.ref_name }}
         docker stop ${{ vars.APPNAME }} || true
         docker rm ${{ vars.APPNAME }} || true
-        docker build -t ${{ vars.APPNAME }}:${{ env.VERSION }} .
-        docker run -d --name ${{ vars.APPNAME }} --network ${{ vars.DOCKERNETWORK }} --ip ${{ vars.DOCKERHOST }} -v ${{ vars.DOCKERVOLUME }}:/app/mnt -p ${{ vars.DOCKERPORT }}:${{ vars.DOCKERPORT }} ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ env.VERSION }}
+        docker build -t ${{ vars.APPNAME }}:${{ github.ref_name }} .
+        docker run -d --name ${{ vars.APPNAME }} --network ${{ vars.DOCKERNETWORK }} --ip ${{ vars.DOCKERHOST }} -v ${{ vars.DOCKERVOLUME }}:/app/mnt -p ${{ vars.DOCKERPORT }}:${{ vars.DOCKERPORT }} ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ github.ref_name }}
         docker network connect --ip ${{ vars.FILESERVER_DOCKERHOST }} ${{ vars.FILESERVER_DOCKERNETWORK }} ${{ vars.APPNAME }}
         EOF
       
