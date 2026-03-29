@@ -33,6 +33,18 @@ docker-rm:
 	@docker container rm $(APP)
 	@docker image rm $(APP):v$(cv)
 
+docker-test:
+	docker-compose -p personae -f docker-compose.test.yml up -d
+
+docker-test-down:
+	docker-compose -p personae -f docker-compose.test.yml down
+
+docker-prod:
+	docker-compose -p personae -f docker-compose.prod.yml up -d
+
+docker-prod-down:
+	docker-compose -p personae -f docker-compose.prod.yml down
+
 test: clean
 	@go test -v ./...
 

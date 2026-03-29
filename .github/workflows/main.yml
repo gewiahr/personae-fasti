@@ -1,66 +1,64 @@
-name: "Release"
+# name: "Release"
 
-on:
-  push:
-    tags:
-      - 'v*'
+# on:
+#   push:
+#     tags:
+#       - 'v*'
 
-jobs:
-  build-and-deploy:
-    name: "📦 Build and Deploy"
-    runs-on: ubuntu-latest
+# jobs:
+#   build-and-deploy:
+#     name: "📦 Build and Deploy"
+#     runs-on: ubuntu-latest
 
-    steps:
-    # - name: Checkout Code
-    - uses: actions/checkout@v4
-      with:
-          fetch-depth: 0 
-    - uses: softprops/action-gh-release@v1
-      with:
-        name: Release ${{ github.ref_name }}
-        draft: false
-        prerelease: false
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#     steps:
+#     # - name: Checkout Code
+#     - uses: actions/checkout@v4
+#       with:
+#           fetch-depth: 0 
+#     - uses: softprops/action-gh-release@v1
+#       with:
+#         name: Release ${{ github.ref_name }}
+#         draft: false
+#         prerelease: false
+#         generate_release_notes: true
+#       env:
+#         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # - name: Read version from file
-    #   run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+#     # - name: Read version from file
+#     #   run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
-    - name: Build Docker Image
-      env:
-        VERSION: ${{ github.ref_name }}
-      run: |
-        docker build -t ${{ vars.APPNAME }}:${{ github.ref_name }} .
+#     - name: Build Docker Image
+#       env:
+#         VERSION: ${{ github.ref_name }}
+#       run: |
+#         docker build -t ${{ vars.APPNAME }}:${{ github.ref_name }} .
 
-    - name: Push Docker Image
-      env:
-        VERSION: ${{ github.ref_name }}
-      run: |
-        echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        docker tag ${{ vars.APPNAME }}:${{ github.ref_name }} ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ github.ref_name }}
-        docker push ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ github.ref_name }}         
+#     - name: Push Docker Image
+#       env:
+#         VERSION: ${{ github.ref_name }}
+#       run: |
+#         echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+#         docker tag ${{ vars.APPNAME }}:${{ github.ref_name }} ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ github.ref_name }}
+#         docker push ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ github.ref_name }}         
         
-    - name: Set Access
-      uses: shimataro/ssh-key-action@v2
-      with:
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        name: id_rsa
-        known_hosts: unnecessary
+#     - name: Set Access
+#       uses: shimataro/ssh-key-action@v2
+#       with:
+#         key: ${{ secrets.SSH_PRIVATE_KEY }}
+#         name: id_rsa
+#         known_hosts: unnecessary
 
-    - name: Deploy to Server
-      env:
-        VERSION: ${{ github.ref_name }}
-      run: |
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
-        echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        docker pull ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ github.ref_name }}
-        docker stop ${{ vars.APPNAME }} || true
-        docker rm ${{ vars.APPNAME }} || true
-        docker build -t ${{ vars.APPNAME }}:${{ github.ref_name }} .
-        docker run -d --name ${{ vars.APPNAME }} --network ${{ vars.DOCKERNETWORK }} --ip ${{ vars.DOCKERHOST }} -v ${{ vars.DOCKERVOLUME }}:/app/mnt -p ${{ vars.DOCKERPORT }}:${{ vars.DOCKERPORT }} ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ github.ref_name }}
-        docker network connect --ip ${{ vars.FILESERVER_DOCKERHOST }} ${{ vars.FILESERVER_DOCKERNETWORK }} ${{ vars.APPNAME }}
-        EOF
-      
-
+#     - name: Deploy to Server
+#       env:
+#         VERSION: ${{ github.ref_name }}
+#       run: |
+#         ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
+#         echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+#         docker pull ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ github.ref_name }}
+#         docker stop ${{ vars.APPNAME }} || true
+#         docker rm ${{ vars.APPNAME }} || true
+#         docker build -t ${{ vars.APPNAME }}:${{ github.ref_name }} .
+#         docker run -d --name ${{ vars.APPNAME }} --network ${{ vars.DOCKERNETWORK }} --ip ${{ vars.DOCKERHOST }} -v ${{ vars.DOCKERVOLUME }}:/app/mnt -p ${{ vars.DOCKERPORT }}:${{ vars.DOCKERPORT }} ${{ vars.DOCKER_REGISTRY }}/${{ vars.APPNAME }}:${{ github.ref_name }}
+#         docker network connect --ip ${{ vars.FILESERVER_DOCKERHOST }} ${{ vars.FILESERVER_DOCKERNETWORK }} ${{ vars.APPNAME }}
+#         EOF
 

@@ -1,23 +1,16 @@
-# Build stage 
 FROM golang:1.24.2 AS builder
 
 WORKDIR /app
-
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o personae-fasti .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /personae-fasti
-
-# Final stage
-FROM alpine
+FROM alpine:latest
 
 WORKDIR /app
-
-COPY --from=builder /personae-fasti /app/personae-fasti
-
-EXPOSE 4121
+COPY --from=builder /personae-fasti .
 
 ENV CONFIG_PATH="/app/mnt"
 ENV CONFIG_NAME="fasti.json"

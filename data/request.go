@@ -55,7 +55,7 @@ func (s *Storage) GetPlayerByTGToken(tokenString string) (*Player, error) {
 func (s *Storage) CreateAuthToken(player *Player, jwtSecret string, jwtTime time.Duration) (string, error) {
 	expirationTime := time.Now().Add(jwtTime)
 
-	tokenString := s.GeneratePlayerToken(player, expirationTime)
+	tokenString := s.GeneratePlayerToken()
 	// tokenString, err := s.GeneratePlayerJWTToken(player, jwtSecret, expirationTime)
 	// if err != nil {
 	// 	return nil, err
@@ -932,6 +932,21 @@ func (s *Storage) ChangeCurrentGame(player *Player, gameID int) (*Game, error) {
 	return &currentGame, nil
 }
 
+func (s *Storage) GetGameByID(gameID int) (*Game, error) {
+	game := Game{
+		ID: gameID,
+	}
+
+	err := s.db.NewSelect().Model(&game).WherePK().Relation("Sessions").Relation("Settings").Relation("Players").Scan(context.Background())
+	if err != nil {
+		return nil, err
+	} else if err == sql.ErrNoRows {
+		return nil, nil
+	}
+
+	return &game, nil
+}
+
 func (s *Storage) CreateGame(player *Player, newGameRequest *reqData.GameCreate) (*Game, error) {
 	if newGameRequest.Name == "" {
 		return nil, fmt.Errorf("game name cannot be empty")
@@ -956,9 +971,47 @@ func (s *Storage) CreateGame(player *Player, newGameRequest *reqData.GameCreate)
 	}
 	// ** Run in Transaction ** //
 
-	s.db.NewSelect().Model(&newGame).Relation("Settings").WherePK().Exec(ctx, &newGame)
+	s.db.NewSelect().Model(&newGame).Relation("Sessions").Relation("Settings").Relation("Players").WherePK().Exec(ctx, &newGame)
 
 	return &newGame, err
+}
+
+func (s *Storage) UpdateGame(player *Player, updateGameRequest *reqData.GameUpdate) (*Game, error) {
+	if updateGameRequest.Name == "" {
+		return nil, fmt.Errorf("game name cannot be empty")
+	}
+	if updateGameRequest.GMID <= 0 {
+		return nil, fmt.Errorf("gmID cannot be 0 or negative")
+	}
+
+	ctx := context.Background()
+
+	updateGame := Game{
+		ID: updateGameRequest.ID,
+	}
+	_, err := s.db.NewSelect().Model(&updateGame).Relation("Sessions").Relation("Settings").Relation("Players").WherePK().Exec(ctx, &updateGame)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("game not found")
+	} else if err != nil {
+		return nil, err
+	}
+
+	if updateGame.GMID != player.ID {
+		return nil, fmt.Errorf("only GM may edit game")
+	}
+
+	updateGame.Name = updateGameRequest.Name
+	updateGame.GMID = updateGameRequest.GMID
+
+	_, err = s.db.NewUpdate().Model(&updateGame).WherePK().
+		Set("name = ?", updateGameRequest.Name).
+		Set("gm_id = ?", updateGameRequest.GMID).
+		Returning("*").Exec(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	return &updateGame, err
 }
 
 func (s *Storage) CheckUsernameAvailability(player *Player, usernameToCheck string) (bool, error) {

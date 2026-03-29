@@ -1,0 +1,26 @@
+services:
+  fasti:
+    build: .
+    image: fasti-app:${TAG:-latest}
+    container_name: fasti-app
+    hostname: fasti-app
+    volumes:
+      - personae:/app/mnt
+    networks:
+      personae:
+        ipv4_address: 172.41.2.1
+    expose:
+      - 4121
+    labels:
+      - "com.docker.compose.project=fasti"
+      - "com.docker.compose.service=app"
+      - "com.fasti.environment=${ENV:-prod}"
+
+volumes:
+  personae:
+    name: personae
+
+networks:
+  personae:
+    external: true
+    name: personae

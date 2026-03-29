@@ -64,6 +64,11 @@ type GameFullInfo struct {
 	Sessions []SessionInfo `json:"sessions"`
 }
 
+type GamePage struct {
+	Game    GameFullInfo `json:"game"`
+	Players []PlayerInfo `json:"players"`
+}
+
 type GameRecords struct {
 	Records     []data.Record  `json:"records"`
 	Sessions    []data.Session `json:"sessions"`
@@ -203,8 +208,8 @@ type QuestInfo struct {
 }
 
 type GameQuests struct {
-	Quests      []QuestInfo `json:"quests"`
-	CurrentGame GameInfo    `json:"currentGame"`
+	Quests []QuestInfo `json:"quests"`
+	//CurrentGame GameInfo    `json:"currentGame"`
 }
 
 type QuestPage struct {

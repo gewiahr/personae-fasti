@@ -4,6 +4,12 @@ type LoginTGRequest struct {
 	InitDataRaw string `json:"initDataRaw"`
 }
 
+type LoginUsernameRequest struct {
+	Username    string `json:"username"`
+	LoginSource string `json:"loginSource"`
+	LoginData   string `json:"loginData"`
+}
+
 type RecordInsert struct {
 	Text     string `json:"text"`
 	Hidden   bool   `json:"hidden"`

@@ -14,7 +14,7 @@ import (
 	"github.com/uptrace/bun"
 )
 
-func (s *Storage) GeneratePlayerToken(player *Player, expTime time.Time) string {
+func (s *Storage) GeneratePlayerToken() string {
 	data := make([]byte, 16)
 	rand.Read(data[0:16])
 
