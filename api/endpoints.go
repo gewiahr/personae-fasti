@@ -402,10 +402,11 @@ func (api *APIServer) handleGetNPCs(w http.ResponseWriter, r *http.Request, p *d
 	if err != nil {
 		return api.HandleError(err)
 	}
-
-	npcs, err = api.storage.GetAllowedNPCs(npcs, p.ID)
-	if err != nil {
-		return api.HandleError(err)
+	if len(npcs) > 0 {
+		npcs, err = api.storage.GetAllowedNPCs(npcs, p.ID)
+		if err != nil {
+			return api.HandleError(err)
+		}
 	}
 
 	gameNPCs := respData.GameNPCs{
@@ -497,10 +498,11 @@ func (api *APIServer) handleGetLocations(w http.ResponseWriter, r *http.Request,
 	if err != nil {
 		return api.HandleError(err)
 	}
-
-	locations, err = api.storage.GetAllowedLocations(locations, p.ID)
-	if err != nil {
-		return api.HandleError(err)
+	if len(locations) > 0 {
+		locations, err = api.storage.GetAllowedLocations(locations, p.ID)
+		if err != nil {
+			return api.HandleError(err)
+		}
 	}
 
 	gameLocations := respData.GameLocations{
@@ -613,10 +615,11 @@ func (api *APIServer) handleGetQuests(w http.ResponseWriter, r *http.Request, p 
 	if err != nil {
 		return api.HandleError(err)
 	}
-
-	quests, err = api.storage.GetAllowedQuests(quests, p.ID)
-	if err != nil {
-		return api.HandleError(err)
+	if len(quests) > 0 {
+		quests, err = api.storage.GetAllowedQuests(quests, p.ID)
+		if err != nil {
+			return api.HandleError(err)
+		}
 	}
 
 	gameQuests := respData.GameQuests{
