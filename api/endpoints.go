@@ -284,31 +284,41 @@ func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIEr
 // POST /signup
 func (api *APIServer) handleSignUp(w http.ResponseWriter, r *http.Request) *APIError {
 	var signup reqData.SignUpRequest
-	err := ReadJsonBody(r, &signup)
-	if err != nil {
+	if err := ReadJsonBody(r, &signup); err != nil {
 		return api.HandleError(err)
 	}
 
-	if signup.Username == "" {
-		return api.HandleErrorString("Пустой логин").WithCode(http.StatusBadRequest)
-	}
-	if utf8.RuneCountInString(signup.Username) < 6 {
-		return api.HandleErrorString("Логин не может быть меньше 6 символов").WithCode(http.StatusBadRequest)
+	if valid, count := api.isValidLength(signup.Username, 6, 30); !valid {
+		if count > 0 {
+			return api.HandleErrorString("Логин не может быть больше 30 символов").WithCode(http.StatusBadRequest)
+		} else if count < 0 {
+			return api.HandleErrorString("Логин не может быть меньше 6 символов").WithCode(http.StatusBadRequest)
+		}
 	}
 
-	available, err := api.storage.CheckUsernameAvailability(&data.Player{}, signup.Username)
-	if err != nil {
-		return api.HandleError(err)
+	if valid := api.isValidString(signup.Username, true, true, []rune{'.', '-', '_'}); !valid {
+		return api.HandleErrorString("Логин может содержать только латинские буквы, цифры, точку, дефис и нижнее подчёркивание").WithCode(http.StatusBadRequest)
 	}
-	if !available {
+
+	if available, err := api.storage.CheckUsernameAvailability(&data.Player{}, signup.Username); err != nil {
+		return api.HandleError(err)
+	} else if !available {
 		return api.HandleErrorString("Логин занят").WithCode(http.StatusBadRequest)
 	}
 
-	if utf8.RuneCountInString(signup.Password) < 8 {
-		return api.HandleErrorString("Пароль не может быть меньше 8 символов").WithCode(http.StatusBadRequest)
+	if valid, count := api.isValidLength(signup.Password, 8, 64); !valid {
+		if count > 0 {
+			return api.HandleErrorString("Пароль не может быть больше 64 символов").WithCode(http.StatusBadRequest)
+		} else if count < 0 {
+			return api.HandleErrorString("Пароль не может быть меньше 8 символов").WithCode(http.StatusBadRequest)
+		}
 	}
 
-	if _, err = mail.ParseAddress(signup.Email); err != nil {
+	if valid := api.isValidString(signup.Password, true, true, []rune{'.', '-', '_', '!', '@', '#', '$', '%', '^', '&', '*'}); !valid {
+		return api.HandleErrorString("Пароль содержит некорректные символы - возможно введены не латинские буквы или скобки").WithCode(http.StatusBadRequest)
+	}
+
+	if _, err := mail.ParseAddress(signup.Email); err != nil {
 		return api.HandleErrorString("Почта неверна").WithCode(http.StatusBadRequest)
 	}
 
