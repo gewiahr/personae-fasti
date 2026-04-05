@@ -187,6 +187,10 @@ func (s *Storage) GetCurrentGamePlayers(game *Game) ([]Player, error) {
 }
 
 func (s *Storage) GetCurrentGameRecordsForPlayer(game *Game, player *Player) ([]Record, error) {
+	if game == nil {
+		return []Record{}, nil
+	}
+
 	var records []Record
 	err := s.db.NewSelect().Model(&records).
 		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {

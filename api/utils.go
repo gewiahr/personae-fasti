@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"slices"
 	"strconv"
-	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -79,46 +77,4 @@ func (api *APIServer) checkTGUserChatMembership(userID int64) (bool, error) {
 
 	return status == "creator" || status == "administrator" ||
 		status == "member" || status == "restricted", nil
-}
-
-func (api *APIServer) isValidLength(s string, min, max int) (bool, int) {
-	charCount := utf8.RuneCountInString(s)
-	if charCount < min {
-		return false, charCount - min
-	} else if charCount > max {
-		return false, charCount - max
-	}
-
-	return true, 0
-}
-
-func (api *APIServer) isValidString(s string, letters bool, numbers bool, additional []rune) bool {
-	for _, r := range s {
-
-		isLetter := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
-		if isLetter {
-			if !letters {
-				return false
-			}
-			continue
-		}
-
-		isNumber := (r >= '0' && r <= '9')
-		if isNumber {
-			if !numbers {
-				return false
-			}
-			continue
-		}
-
-		isAdditional := slices.Contains(additional, r)
-		if isAdditional {
-			continue
-		}
-
-		return false
-
-	}
-
-	return true
 }

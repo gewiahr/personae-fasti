@@ -10,7 +10,6 @@ import (
 	"personae-fasti/api/models/respData"
 	"personae-fasti/data"
 	"time"
-	"unicode/utf8"
 
 	tgInitData "github.com/telegram-mini-apps/init-data-golang"
 )
@@ -193,11 +192,8 @@ func (api *APIServer) handleLoginTG(w http.ResponseWriter, r *http.Request) *API
 // GET /login/{username}
 func (api *APIServer) handleLoginUsername(w http.ResponseWriter, r *http.Request) *APIError {
 	username := r.PathValue("username")
-	if username == "" {
-		return api.HandleErrorString("Пустой логин").WithCode(http.StatusBadRequest)
-	}
-	if utf8.RuneCountInString(username) < 6 {
-		return api.HandleErrorString("Логин не может быть меньше 6 символов").WithCode(http.StatusBadRequest)
+	if valid, message := api.storage.ValidatePlayerUsername(username); !valid {
+		return api.HandleErrorString(message).WithCode(http.StatusBadRequest)
 	}
 
 	available, err := api.storage.CheckUsernameAvailability(&data.Player{}, username)
@@ -235,8 +231,8 @@ func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIEr
 
 	// ** TEMP for restoring password ** //
 	if player.PasswordHash == "" {
-		if utf8.RuneCountInString(loginReq.LoginData) < 8 {
-			return api.HandleErrorString("Пароль не может быть меньше 8 символов").WithCode(http.StatusBadRequest)
+		if valid, message := api.storage.ValidatePlayerPassword(loginReq.LoginData); !valid {
+			return api.HandleErrorString(message).WithCode(http.StatusBadRequest)
 		}
 		newPWHash, err := api.generateHash(loginReq.LoginData)
 		if err != nil {
@@ -288,16 +284,8 @@ func (api *APIServer) handleSignUp(w http.ResponseWriter, r *http.Request) *APIE
 		return api.HandleError(err)
 	}
 
-	if valid, count := api.isValidLength(signup.Username, 6, 30); !valid {
-		if count > 0 {
-			return api.HandleErrorString("Логин не может быть больше 30 символов").WithCode(http.StatusBadRequest)
-		} else if count < 0 {
-			return api.HandleErrorString("Логин не может быть меньше 6 символов").WithCode(http.StatusBadRequest)
-		}
-	}
-
-	if valid := api.isValidString(signup.Username, true, true, []rune{'.', '-', '_'}); !valid {
-		return api.HandleErrorString("Логин может содержать только латинские буквы, цифры, точку, дефис и нижнее подчёркивание").WithCode(http.StatusBadRequest)
+	if valid, message := api.storage.ValidatePlayerUsername(signup.Username); !valid {
+		return api.HandleErrorString(message).WithCode(http.StatusBadRequest)
 	}
 
 	if available, err := api.storage.CheckUsernameAvailability(&data.Player{}, signup.Username); err != nil {
@@ -306,16 +294,8 @@ func (api *APIServer) handleSignUp(w http.ResponseWriter, r *http.Request) *APIE
 		return api.HandleErrorString("Логин занят").WithCode(http.StatusBadRequest)
 	}
 
-	if valid, count := api.isValidLength(signup.Password, 8, 64); !valid {
-		if count > 0 {
-			return api.HandleErrorString("Пароль не может быть больше 64 символов").WithCode(http.StatusBadRequest)
-		} else if count < 0 {
-			return api.HandleErrorString("Пароль не может быть меньше 8 символов").WithCode(http.StatusBadRequest)
-		}
-	}
-
-	if valid := api.isValidString(signup.Password, true, true, []rune{'.', '-', '_', '!', '@', '#', '$', '%', '^', '&', '*'}); !valid {
-		return api.HandleErrorString("Пароль содержит некорректные символы - возможно введены не латинские буквы или скобки").WithCode(http.StatusBadRequest)
+	if valid, message := api.storage.ValidatePlayerPassword(signup.Password); !valid {
+		return api.HandleErrorString(message).WithCode(http.StatusBadRequest)
 	}
 
 	if _, err := mail.ParseAddress(signup.Email); err != nil {
@@ -358,6 +338,10 @@ func (api *APIServer) handleSignUp(w http.ResponseWriter, r *http.Request) *APIE
 
 // GET /records
 func (api *APIServer) handleGetRecords(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	if p.CurrentGame == nil {
+		return api.HandleErrorString("no current game").WithCode(http.StatusPreconditionFailed)
+	}
+
 	records, err := api.storage.GetCurrentGameRecordsForPlayer(p.CurrentGame, p)
 	if err != nil {
 		return api.HandleError(err)
