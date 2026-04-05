@@ -19,6 +19,9 @@ func (api *APIServer) PlayerWrapper(f APIFuncAuth) APIFunc {
 	return func(w http.ResponseWriter, r *http.Request) *APIError {
 		var player *data.Player
 		var err error
+
+		//defer api.storage.Log()
+
 		//accesskey := r.Header.Get("AccessKey")
 		token := r.Header.Get("Authorization")
 

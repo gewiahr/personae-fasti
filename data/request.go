@@ -31,6 +31,23 @@ func (s *Storage) GetPlayerByAccessKey(accesskey string) (*Player, error) {
 	return &player, nil
 }
 
+func (s *Storage) GetPlayerByUsername(username string) (*Player, error) {
+	if username == "" {
+		return nil, fmt.Errorf("username cannot be empty")
+	}
+
+	var player Player
+
+	err := s.db.NewSelect().Model(&player).Where("username = ?", username).Relation("RegData").Relation("CurrentGame.Settings").Relation("CurrentGame.Sessions").Scan(context.Background(), &player)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return &player, nil
+}
+
 func (s *Storage) GetPlayerByTGToken(tokenString string) (*Player, error) {
 	//var player Player
 
@@ -108,7 +125,6 @@ func (s *Storage) CreateTelegramPlayer(data tgInitData.InitData) (*Player, error
 
 		player = &Player{
 			Username:   fmt.Sprintf("tguser_%d", data.AuthDate().Unix()),
-			AccessKey:  "",
 			TelegramID: telegram.ID,
 		}
 		_, err = s.db.NewInsert().Model(player).Exec(ctx)
@@ -126,6 +142,39 @@ func (s *Storage) CreateTelegramPlayer(data tgInitData.InitData) (*Player, error
 	})
 
 	return player, err
+}
+
+func (s *Storage) CreatePlayer(player *Player) (*Player, error) {
+	ctx := context.Background()
+
+	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		_, err := s.db.NewInsert().Model(player).Returning("*").Exec(ctx)
+		if err != nil {
+			return err
+		}
+
+		playerRegData := &PlayerRegData{
+			PlayerID:    player.ID,
+			UsernameSet: true,
+		}
+		_, err = s.db.NewInsert().Model(playerRegData).Exec(ctx)
+
+		return nil
+	})
+
+	return player, err
+}
+
+func (s *Storage) ChangePlayerPassword(player *Player, passwordHash string) (*Player, error) {
+	ctx := context.Background()
+
+	player.PasswordHash = passwordHash
+	_, err := s.db.NewUpdate().Model(player).WherePK().Column("password_hash").Returning("*").Exec(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return player, nil
 }
 
 func (s *Storage) GetCurrentGamePlayers(game *Game) ([]Player, error) {

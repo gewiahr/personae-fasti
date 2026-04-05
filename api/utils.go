@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func ReadBody(r *http.Request) []byte {
@@ -33,6 +35,22 @@ func getPathValueInt(r *http.Request, param string) int {
 	}
 
 	return wrongValue
+}
+
+func (api *APIServer) generateHash(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
+}
+
+func (api *APIServer) validateHash(password string, hash string) (bool, error) {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (api *APIServer) checkTGUserChatMembership(userID int64) (bool, error) {

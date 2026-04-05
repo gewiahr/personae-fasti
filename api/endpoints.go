@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/mail"
 	"personae-fasti/api/models/reqData"
 	"personae-fasti/api/models/respData"
 	"personae-fasti/data"
 	"time"
+	"unicode/utf8"
 
 	tgInitData "github.com/telegram-mini-apps/init-data-golang"
 )
@@ -17,7 +19,10 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 
 	//router.HandleFunc("GET /login/{accesskey}", api.HTTPWrapper(api.handleLogin))
 	router.HandleFunc("POST /login/tg", api.HTTPWrapper(api.handleLoginTG))
-	router.HandleFunc("POST /login/byUsername", api.HTTPWrapper(api.handleLoginUsername))
+	router.HandleFunc("GET /login/{username}", api.HTTPWrapper(api.handleLoginUsername))
+	router.HandleFunc("POST /login", api.HTTPWrapper(api.handleLogin))
+	//router.HandleFunc("POST /login/byUsername", api.HTTPWrapper(api.handleLoginUsername))
+	router.HandleFunc("POST /signup", api.HTTPWrapper(api.handleSignUp))
 
 	router.HandleFunc("GET /records", api.HTTPWrapper(api.PlayerWrapper(api.handleGetRecords)))
 	router.HandleFunc("POST /record", api.HTTPWrapper(api.PlayerWrapper(api.handlePostRecord)))
@@ -70,32 +75,32 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 
 // GET /login/{accesskey}
 // DEPRICATED
-func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIError {
+// func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIError {
 
-	return api.HandleErrorString("accesskey not supported anymore").WithCode(http.StatusUnauthorized)
+// 	return api.HandleErrorString("accesskey not supported anymore").WithCode(http.StatusUnauthorized)
 
-	// accesskey := r.PathValue("accesskey")
+// 	// accesskey := r.PathValue("accesskey")
 
-	// player, err := api.storage.GetPlayerByAccessKey(accesskey)
-	// if err != nil {
-	// 	if err == sql.ErrNoRows {
-	// 		return api.HandleError(fmt.Errorf("login failed: no user info for the passkey %s", strings.ToLower(accesskey))).WithCode(http.StatusUnauthorized)
-	// 	} else {
-	// 		return api.HandleError(err)
-	// 	}
-	// }
+// 	// player, err := api.storage.GetPlayerByAccessKey(accesskey)
+// 	// if err != nil {
+// 	// 	if err == sql.ErrNoRows {
+// 	// 		return api.HandleError(fmt.Errorf("login failed: no user info for the passkey %s", strings.ToLower(accesskey))).WithCode(http.StatusUnauthorized)
+// 	// 	} else {
+// 	// 		return api.HandleError(err)
+// 	// 	}
+// 	// }
 
-	// loginInfo := respData.LoginInfo{
-	// 	AccessKey: player.AccessKey,
-	// 	Player: respData.PlayerInfo{
-	// 		ID:       player.ID,
-	// 		Username: player.Username,
-	// 	},
-	// 	CurrentGame: *respData.GameToGameFullInfo(player.CurrentGame),
-	// }
+// 	// loginInfo := respData.LoginInfo{
+// 	// 	AccessKey: player.AccessKey,
+// 	// 	Player: respData.PlayerInfo{
+// 	// 		ID:       player.ID,
+// 	// 		Username: player.Username,
+// 	// 	},
+// 	// 	CurrentGame: *respData.GameToGameFullInfo(player.CurrentGame),
+// 	// }
 
-	// return api.Respond(r, w, http.StatusOK, loginInfo)
-}
+// 	// return api.Respond(r, w, http.StatusOK, loginInfo)
+// }
 
 // POST /login/TG
 func (api *APIServer) handleLoginTG(w http.ResponseWriter, r *http.Request) *APIError {
@@ -187,15 +192,12 @@ func (api *APIServer) handleLoginTG(w http.ResponseWriter, r *http.Request) *API
 
 // GET /login/{username}
 func (api *APIServer) handleLoginUsername(w http.ResponseWriter, r *http.Request) *APIError {
-	var loginReq reqData.LoginUsernameRequest
-	err := ReadJsonBody(r, &loginReq)
-	if err != nil {
-		return api.HandleError(err)
-	}
-
 	username := r.PathValue("username")
 	if username == "" {
 		return api.HandleErrorString("Пустой логин").WithCode(http.StatusBadRequest)
+	}
+	if utf8.RuneCountInString(username) < 6 {
+		return api.HandleErrorString("Логин не может быть меньше 6 символов").WithCode(http.StatusBadRequest)
 	}
 
 	available, err := api.storage.CheckUsernameAvailability(&data.Player{}, username)
@@ -210,6 +212,138 @@ func (api *APIServer) handleLoginUsername(w http.ResponseWriter, r *http.Request
 		Available:     available,
 		CheckUsername: username,
 	})
+}
+
+// POST /login
+func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIError {
+	var loginReq reqData.LoginUsernameRequest
+	err := ReadJsonBody(r, &loginReq)
+	if err != nil {
+		return api.HandleError(err)
+	}
+	if loginReq.LoginSource != "Web" {
+		return api.HandleErrorString("wrong login source").WithCode(http.StatusPreconditionFailed)
+	}
+
+	player, err := api.storage.GetPlayerByUsername(loginReq.Username)
+	if err != nil {
+		return api.HandleError(err)
+	}
+	if player == nil {
+		return api.HandleErrorString("no user with such username").WithCode(http.StatusBadRequest)
+	}
+
+	// ** TEMP for restoring password ** //
+	if player.PasswordHash == "" {
+		if utf8.RuneCountInString(loginReq.LoginData) < 8 {
+			return api.HandleErrorString("Пароль не может быть меньше 8 символов").WithCode(http.StatusBadRequest)
+		}
+		newPWHash, err := api.generateHash(loginReq.LoginData)
+		if err != nil {
+			return api.HandleError(err)
+		}
+		player, err = api.storage.ChangePlayerPassword(player, newPWHash)
+		if err != nil {
+			return api.HandleError(err)
+		}
+	} else {
+		valid, err := api.validateHash(loginReq.LoginData, player.PasswordHash)
+		if err != nil || !valid {
+			return api.HandleErrorString("Неверный пароль").WithCode(http.StatusUnauthorized)
+		}
+	}
+
+	token, err := api.storage.CreateAuthToken(player, api.auth.JWTSecret, time.Duration(api.auth.JWTTokenLifetimeHours)*time.Hour)
+	if err != nil {
+		return api.HandleError(err).WithMessage("error creating token")
+	}
+
+	loginInfo := respData.LoginInfo{
+		Authorization: fmt.Sprintf("Web %s", token),
+		Player: respData.LoginPlayerInfo{
+			ID:       player.ID,
+			Username: player.Username,
+			Settings: nil,
+		},
+		CurrentGame: nil,
+	}
+
+	if player.RegData.UsernameSet {
+		loginInfo.Player.Settings = &respData.LoginPlayerInfoSettings{
+			CouldChangeUsername: false,
+		}
+	}
+
+	if player.CurrentGame != nil {
+		loginInfo.CurrentGame = respData.GameToGameFullInfo(player.CurrentGame)
+	}
+
+	return api.Respond(r, w, http.StatusOK, &loginInfo)
+}
+
+// POST /signup
+func (api *APIServer) handleSignUp(w http.ResponseWriter, r *http.Request) *APIError {
+	var signup reqData.SignUpRequest
+	err := ReadJsonBody(r, &signup)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	if signup.Username == "" {
+		return api.HandleErrorString("Пустой логин").WithCode(http.StatusBadRequest)
+	}
+	if utf8.RuneCountInString(signup.Username) < 6 {
+		return api.HandleErrorString("Логин не может быть меньше 6 символов").WithCode(http.StatusBadRequest)
+	}
+
+	available, err := api.storage.CheckUsernameAvailability(&data.Player{}, signup.Username)
+	if err != nil {
+		return api.HandleError(err)
+	}
+	if !available {
+		return api.HandleErrorString("Логин занят").WithCode(http.StatusBadRequest)
+	}
+
+	if utf8.RuneCountInString(signup.Password) < 8 {
+		return api.HandleErrorString("Пароль не может быть меньше 8 символов").WithCode(http.StatusBadRequest)
+	}
+
+	if _, err = mail.ParseAddress(signup.Email); err != nil {
+		return api.HandleErrorString("Почта неверна").WithCode(http.StatusBadRequest)
+	}
+
+	hash, err := api.generateHash(signup.Password)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	player, err := api.storage.CreatePlayer(&data.Player{
+		Username:     signup.Username,
+		PasswordHash: hash,
+		Email:        signup.Email,
+	})
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	token, err := api.storage.CreateAuthToken(player, api.auth.JWTSecret, time.Duration(api.auth.JWTTokenLifetimeHours)*time.Hour)
+	if err != nil {
+		return api.HandleError(err).WithMessage("error creating token")
+	}
+
+	loginInfo := respData.LoginInfo{
+		Authorization: fmt.Sprintf("Web %s", token),
+		Player: respData.LoginPlayerInfo{
+			ID:       player.ID,
+			Username: player.Username,
+			Settings: &respData.LoginPlayerInfoSettings{
+				CouldChangeUsername: false,
+			},
+		},
+		CurrentGame: nil,
+	}
+
+	return api.Respond(r, w, http.StatusCreated, loginInfo)
 }
 
 // GET /records

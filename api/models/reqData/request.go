@@ -10,6 +10,12 @@ type LoginUsernameRequest struct {
 	LoginData   string `json:"loginData"`
 }
 
+type SignUpRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Email    string `json:"email"`
+}
+
 type RecordInsert struct {
 	Text     string `json:"text"`
 	Hidden   bool   `json:"hidden"`

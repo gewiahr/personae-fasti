@@ -52,3 +52,7 @@ func NewStorage(c *opt.Conf) *Storage {
 func (s *Storage) Log(log *Log, ctx context.Context) {
 	s.db.NewInsert().Model(log).Exec(ctx)
 }
+
+func (s *Storage) LogAuthorized(log *Log, ctx context.Context) {
+	s.db.NewInsert().Model(log).Exec(ctx)
+}

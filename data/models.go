@@ -83,9 +83,11 @@ type GameSettings struct {
 type Player struct {
 	bun.BaseModel `bun:"table:player"`
 
-	ID         int       `bun:"id,pk,autoincrement"`
-	Username   string    `bun:"username,unique,notnull"`
-	AccessKey  string    `bun:"accesskey,notnull"`
+	ID           int    `bun:"id,pk,autoincrement"`
+	Username     string `bun:"username,unique,notnull"`
+	Email        string `bun:"email,type:varchar(255)"`
+	PasswordHash string `bun:"password_hash,type:varchar(255)"`
+	//AccessKey  string    `bun:"accesskey,notnull"`
 	TelegramID int64     `bun:"telegram_id"`
 	Telegram   *Telegram `bun:"rel:belongs-to,join:telegram_id=id"`
 
