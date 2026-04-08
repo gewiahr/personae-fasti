@@ -24,7 +24,6 @@ func (api *APIServer) PlayerWrapper(f APIFuncAuth) APIFunc {
 
 		//accesskey := r.Header.Get("AccessKey")
 		token := r.Header.Get("Authorization")
-
 		if token == "" {
 			return api.HandleErrorString("authorization is invalid").WithCode(http.StatusUnauthorized)
 		}

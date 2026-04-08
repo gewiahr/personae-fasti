@@ -1004,22 +1004,42 @@ func (s *Storage) CreateGame(player *Player, newGameRequest *reqData.GameCreate)
 	if newGameRequest.Name == "" {
 		return nil, fmt.Errorf("game name cannot be empty")
 	}
+	var err error
 	ctx := context.Background()
-
-	// ** Run in Transaction ** //
 	newGame := Game{
 		Name: newGameRequest.Name,
 		GMID: player.ID,
 	}
-	_, err := s.db.NewInsert().Model(&newGame).ExcludeColumn("id").Returning("*").Exec(ctx, &newGame)
-	if err != nil {
-		return nil, err
-	}
-	newGameSettings := GameSettings{
-		GameID: newGame.ID,
-	}
-	_, err = s.db.NewInsert().Model(&newGameSettings).Returning("*").Exec(ctx, &newGameSettings)
-	if err != nil {
+
+	// ** Run in Transaction ** //
+	if err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		_, err := s.db.NewInsert().Model(&newGame).ExcludeColumn("id").Returning("*").Exec(ctx, &newGame)
+		if err != nil {
+			return err
+		}
+		newGameSettings := GameSettings{
+			GameID: newGame.ID,
+		}
+		_, err = s.db.NewInsert().Model(&newGameSettings).Returning("*").Exec(ctx, &newGameSettings)
+		if err != nil {
+			return err
+		}
+		newPlayerGame := PlayerGame{
+			PlayerID: player.ID,
+			GameID:   newGame.ID,
+		}
+		_, err = s.db.NewInsert().Model(&newPlayerGame).Returning("*").Exec(ctx, &newPlayerGame)
+		if err != nil {
+			return err
+		}
+		if player.CurrentGameID == 0 {
+			_, err := s.ChangeCurrentGame(player, newGame.ID)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 	// ** Run in Transaction ** //
