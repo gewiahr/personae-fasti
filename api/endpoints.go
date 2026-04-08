@@ -9,6 +9,7 @@ import (
 	"personae-fasti/api/models/reqData"
 	"personae-fasti/api/models/respData"
 	"personae-fasti/data"
+	"strings"
 	"time"
 
 	tgInitData "github.com/telegram-mini-apps/init-data-golang"
@@ -19,6 +20,7 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	//router.HandleFunc("GET /login/{accesskey}", api.HTTPWrapper(api.handleLogin))
 	router.HandleFunc("POST /login/tg", api.HTTPWrapper(api.handleLoginTG))
 	router.HandleFunc("GET /login/{username}", api.HTTPWrapper(api.handleLoginUsername))
+	router.HandleFunc("GET /login", api.HTTPWrapper(api.handleTokenValidate))
 	router.HandleFunc("POST /login", api.HTTPWrapper(api.handleLogin))
 	//router.HandleFunc("POST /login/byUsername", api.HTTPWrapper(api.handleLoginUsername))
 	router.HandleFunc("POST /signup", api.HTTPWrapper(api.handleSignUp))
@@ -208,6 +210,52 @@ func (api *APIServer) handleLoginUsername(w http.ResponseWriter, r *http.Request
 		Available:     available,
 		CheckUsername: username,
 	})
+}
+
+// GET /login
+func (api *APIServer) handleTokenValidate(w http.ResponseWriter, r *http.Request) *APIError {
+	token := r.Header.Get("Authorization")
+	if token == "" {
+		return api.HandleErrorString("authorization is invalid").WithCode(http.StatusUnauthorized)
+	}
+
+	var player *data.Player
+	var err error
+
+	tokenArray := strings.Split(token, " ")
+	if len(tokenArray) == 1 {
+		player, err = api.storage.GetPlayerByTGToken(tokenArray[0])
+	} else if len(tokenArray) == 2 {
+		player, err = api.storage.GetPlayerByTGToken(tokenArray[1])
+	} else {
+		return api.HandleErrorString("token is invalid").WithCode(http.StatusUnauthorized)
+	}
+
+	if err == sql.ErrNoRows {
+		return api.HandleErrorString("token is invalid").WithCode(http.StatusUnauthorized)
+	}
+
+	loginInfo := respData.LoginInfo{
+		Authorization: fmt.Sprintf("%s", token),
+		Player: respData.LoginPlayerInfo{
+			ID:       player.ID,
+			Username: player.Username,
+			Settings: nil,
+		},
+		CurrentGame: nil,
+	}
+
+	if player.RegData.UsernameSet {
+		loginInfo.Player.Settings = &respData.LoginPlayerInfoSettings{
+			CouldChangeUsername: false,
+		}
+	}
+
+	if player.CurrentGame != nil {
+		loginInfo.CurrentGame = respData.GameToGameFullInfo(player.CurrentGame)
+	}
+
+	return api.Respond(r, w, http.StatusOK, loginInfo)
 }
 
 // POST /login
@@ -996,6 +1044,10 @@ func (api *APIServer) handleStartNewGame(w http.ResponseWriter, r *http.Request,
 	err := ReadJsonBody(r, &newGame)
 	if err != nil {
 		return api.HandleError(err)
+	}
+
+	if valid, message := api.storage.ValidateGameName(newGame.Name); !valid {
+		return api.HandleErrorString(message).WithCode(http.StatusBadRequest)
 	}
 
 	g, err := api.storage.CreateGame(p, &newGame)

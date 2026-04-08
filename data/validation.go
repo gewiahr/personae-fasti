@@ -15,7 +15,7 @@ func (s *Storage) ValidatePlayerUsername(username string) (bool, string) {
 	}
 
 	if valid := s.isValidString(username, true, true, []rune{'.', '-', '_'}); !valid {
-		return false, "Логин может содержать только латинские буквы, цифры, точку, дефис и нижнее подчёркивание"
+		return false, "Логин может содержать только латинские буквы, цифры, точку, дефис или нижнее подчёркивание"
 	}
 
 	return true, "Логин валиден"
@@ -35,6 +35,22 @@ func (s *Storage) ValidatePlayerPassword(password string) (bool, string) {
 	}
 
 	return true, "Пароль валиден"
+}
+
+func (s *Storage) ValidateGameName(name string) (bool, string) {
+	if valid, count := s.isValidLength(name, 3, 100); !valid {
+		if count > 0 {
+			return false, "Название не может быть больше 100 символов"
+		} else if count < 0 {
+			return false, "Название не может быть меньше 3 символов"
+		}
+	}
+
+	if valid := s.isValidString(name, true, true, []rune{'.', ',', '-', '_', '!'}); !valid {
+		return false, "Название может содержать только латинские буквы, цифры, точку, запятую, дефис, нижнее подчёркивание или восклицательный знак"
+	}
+
+	return true, "Название валидно"
 }
 
 func (s *Storage) isValidLength(str string, min, max int) (bool, int) {
