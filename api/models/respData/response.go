@@ -28,19 +28,26 @@ type LoginPlayerInfoSettings struct {
 }
 
 type PlayerSettings struct {
-	CurrentGame GameFullInfo `json:"currentGame"`
-	PlayerGames []GameInfo   `json:"playerGames"`
+	CurrentGame   GameFullInfo `json:"currentGame"`
+	PlayerGames   []GameInfo   `json:"playerGames"`
+	PlayerInvites []GameInfo   `json:"playerInvites"`
 }
 
-func FormPlayerSettings(playerGames []data.Game, currentGame *data.Game) *PlayerSettings {
+func FormPlayerSettings(playerGames, playerInvites []data.Game, currentGame *data.Game) *PlayerSettings {
 	var playerGameInfo []GameInfo
 	for _, game := range playerGames {
 		playerGameInfo = append(playerGameInfo, *GameToGameInfo(&game))
 	}
 
+	var playerInvitesInfo []GameInfo
+	for _, invite := range playerInvites {
+		playerInvitesInfo = append(playerInvitesInfo, *GameToGameInfo(&invite))
+	}
+
 	return &PlayerSettings{
-		CurrentGame: *GameToGameFullInfo(currentGame),
-		PlayerGames: playerGameInfo,
+		CurrentGame:   *GameToGameFullInfo(currentGame),
+		PlayerGames:   playerGameInfo,
+		PlayerInvites: playerInvitesInfo,
 	}
 }
 
@@ -67,6 +74,7 @@ type GameFullInfo struct {
 type GamePage struct {
 	Game    GameFullInfo `json:"game"`
 	Players []PlayerInfo `json:"players"`
+	Invites []PlayerInfo `json:"invites"`
 }
 
 type GameRecords struct {

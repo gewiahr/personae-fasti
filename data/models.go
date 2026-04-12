@@ -12,6 +12,7 @@ func (s *Storage) InitTables() {
 	ctx := context.Background()
 
 	s.db.RegisterModel((*PlayerGame)(nil))
+	s.db.RegisterModel((*GameInvite)(nil))
 	s.db.RegisterModel((*RecordChar)(nil))
 	s.db.RegisterModel((*RecordNPC)(nil))
 	s.db.RegisterModel((*RecordLocation)(nil))
@@ -32,6 +33,7 @@ func (s *Storage) InitTables() {
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*QuestTask)(nil)).Exec(ctx)
 
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*PlayerGame)(nil)).Exec(ctx)
+	_, _ = s.db.NewCreateTable().IfNotExists().Model((*GameInvite)(nil)).Exec(ctx)
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordChar)(nil)).Exec(ctx)
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordNPC)(nil)).Exec(ctx)
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*RecordLocation)(nil)).Exec(ctx)
@@ -57,8 +59,9 @@ type Game struct {
 	Sessions []Session `bun:"rel:has-many,join:id=game_id"`
 
 	Players []Player `bun:"m2m:players_games,join:Game=Player"`
-	Chars   []Char   `bun:"rel:has-many,join:id=game_id"`
+	Invites []Player `bun:"m2m:game_invites,join:Game=Player"`
 
+	Chars     []Char     `bun:"rel:has-many,join:id=game_id"`
 	NPCs      []NPC      `bun:"rel:has-many,join:id=game_id"`
 	Locations []Location `bun:"rel:has-many,join:id=game_id"`
 
@@ -91,8 +94,9 @@ type Player struct {
 	TelegramID int64     `bun:"telegram_id"`
 	Telegram   *Telegram `bun:"rel:belongs-to,join:telegram_id=id"`
 
-	Chars []Char `bun:"rel:has-many,join:id=player_id"`
-	Games []Game `bun:"m2m:players_games,join:Player=Game"`
+	Chars   []Char `bun:"rel:has-many,join:id=player_id"`
+	Games   []Game `bun:"m2m:players_games,join:Player=Game"`
+	Invites []Game `bun:"m2m:game_invites,join:Player=Game"`
 
 	//Records []Record `bun:"rel:has-many,join:id=game_id"`
 
@@ -158,13 +162,35 @@ type Char struct {
 	Deleted *time.Time `bun:"deleted,default:null"`
 }
 
+// type PlayerGameStatus int8
+
+// const (
+// 	PlayerGameStatusBanned      PlayerGameStatus = -2
+// 	PlayerGameStatusLeft        PlayerGameStatus = -1
+// 	PlayerGameStatusInvited     PlayerGameStatus = 0
+// 	PlayerGameStatusParticipant PlayerGameStatus = 1
+// 	PlayerGameStatusSpectator   PlayerGameStatus = 2
+// )
+
 type PlayerGame struct {
 	bun.BaseModel `bun:"players_games"`
 
-	PlayerID int     `bun:"player_id,pk,autoincrement"`
+	PlayerID int     `bun:"player_id,pk"`
 	Player   *Player `bun:"rel:belongs-to,join:player_id=id"`
 	GameID   int     `bun:"game_id,pk"`
 	Game     *Game   `bun:"rel:belongs-to,join:game_id=id"`
+	// Status   PlayerGameStatus `bun:"status,default:1"`
+}
+
+type GameInvite struct {
+	bun.BaseModel `bun:"game_invites"`
+
+	PlayerID int     `bun:"player_id,pk"`
+	Player   *Player `bun:"rel:belongs-to,join:player_id=id"`
+	GameID   int     `bun:"game_id,pk"`
+	Game     *Game   `bun:"rel:belongs-to,join:game_id=id"`
+
+	Created *time.Time `bun:"created,default:current_timestamp"`
 }
 
 type NPC struct {

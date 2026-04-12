@@ -57,6 +57,8 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 
 	router.HandleFunc("GET /player/settings", api.HTTPWrapper(api.PlayerWrapper(api.handleGetPlayerSettings)))
 	router.HandleFunc("PUT /player/game", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerGame)))
+	router.HandleFunc("POST /player/invite/accept/{gameID}", api.HTTPWrapper(api.PlayerWrapper(api.handlePlayerInviteAccept)))
+	router.HandleFunc("POST /player/invite/refuse/{gameID}", api.HTTPWrapper(api.PlayerWrapper(api.handlePlayerInviteRefuse)))
 	router.HandleFunc("GET /player/username/checkAvailability/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleCheckUsernameAvailability)))
 	router.HandleFunc("PATCH /player/username", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerUsername)))
 
@@ -64,6 +66,7 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("POST /game", api.HTTPWrapper(api.PlayerWrapper(api.handleStartNewGame)))
 	router.HandleFunc("PUT /game", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateGame)))
 	router.HandleFunc("POST /game/session/new", api.HTTPWrapper(api.PlayerWrapper(api.handleStartNewGameSession)))
+	router.HandleFunc("POST /game/invite/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleInvitePlayer)))
 	router.HandleFunc("PUT /game/settings", api.HTTPWrapper(api.PlayerWrapper(api.handlePutGameSettings)))
 
 	router.HandleFunc("GET /image/{type}/{id}", api.HTTPWrapper(api.handleGetImage))
@@ -944,12 +947,12 @@ func (api *APIServer) handleGetSuggestions(w http.ResponseWriter, r *http.Reques
 
 // GET /player/settings
 func (api *APIServer) handleGetPlayerSettings(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-	playerGames, err := api.storage.GetPlayerGames(p)
+	player, err := api.storage.GetPlayerGamesAndInvites(p)
 	if err != nil {
 		return api.HandleError(err)
 	}
 
-	playerSettings := respData.FormPlayerSettings(playerGames, p.CurrentGame)
+	playerSettings := respData.FormPlayerSettings(player.Games, player.Invites, p.CurrentGame)
 	return api.Respond(r, w, http.StatusOK, playerSettings)
 }
 
@@ -971,6 +974,50 @@ func (api *APIServer) handleChangePlayerGame(w http.ResponseWriter, r *http.Requ
 
 	currentGameInfo := respData.GameToGameFullInfo(currentGame)
 	return api.Respond(r, w, http.StatusOK, currentGameInfo)
+}
+
+// POST /player/invite/accept/{gameID}
+func (api *APIServer) handlePlayerInviteAccept(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	gameID := getPathValueInt(r, "gameID")
+	if gameID == 0 {
+		return api.HandleErrorString("gameID cannot be 0")
+	}
+
+	invite, err := api.storage.GetInvite(p.ID, gameID)
+	if err != nil {
+		return api.HandleError(err)
+	}
+	if invite == nil {
+		return api.HandleErrorString("invite does not exist").WithCode(http.StatusNotFound)
+	}
+
+	if err := api.storage.AddPlayerToGame(p.ID, gameID); err != nil {
+		return api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusOK, nil)
+}
+
+// POST /player/invite/refuse/{gameID}
+func (api *APIServer) handlePlayerInviteRefuse(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	gameID := getPathValueInt(r, "gameID")
+	if gameID == 0 {
+		return api.HandleErrorString("gameID cannot be 0")
+	}
+
+	invite, err := api.storage.GetInvite(p.ID, gameID)
+	if err != nil {
+		return api.HandleError(err)
+	}
+	if invite == nil {
+		return api.HandleErrorString("invite does not exist").WithCode(http.StatusNotFound)
+	}
+
+	if err := api.storage.DeleteInvite(invite); err != nil {
+		return api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusOK, nil)
 }
 
 // GET /player/username/checkAvailability/{username}
@@ -1033,6 +1080,7 @@ func (api *APIServer) handleGetGameByID(w http.ResponseWriter, r *http.Request, 
 	gamePage := respData.GamePage{
 		Game:    *respData.GameToGameFullInfo(game),
 		Players: respData.PlayersToPlayersInfoArray(game.Players),
+		Invites: respData.PlayersToPlayersInfoArray(game.Invites),
 	}
 
 	return api.Respond(r, w, http.StatusOK, gamePage)
@@ -1098,6 +1146,33 @@ func (api *APIServer) handleStartNewGameSession(w http.ResponseWriter, r *http.R
 	}
 
 	return api.Respond(r, w, http.StatusCreated, newSession)
+}
+
+// POST /game/invite/{username}
+func (api *APIServer) handleInvitePlayer(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	if p.CurrentGame.GMID != p.ID {
+		return api.HandleErrorString("only GM may invite players").WithCode(http.StatusForbidden)
+	}
+
+	playerInvitedUsername := r.PathValue("username")
+	if playerInvitedUsername == "" {
+		return api.HandleErrorString("error parsing username: username is invalid").WithCode(http.StatusBadRequest)
+	}
+
+	playerInvited, err := api.storage.GetPlayerByUsername(playerInvitedUsername)
+	if err != nil {
+		return api.HandleError(err)
+	}
+	if playerInvited == nil {
+		return api.HandleErrorString("no player with such username").WithCode(http.StatusNotFound)
+	}
+
+	err = api.storage.InvitePlayer(p.CurrentGame, playerInvited)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusCreated, nil)
 }
 
 // PUT /game/settings

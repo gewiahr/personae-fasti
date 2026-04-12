@@ -959,13 +959,13 @@ func (s *Storage) GetSuggestions(player *Player) ([]Suggestion, error) {
 	return suggestions, err
 }
 
-func (s *Storage) GetPlayerGames(player *Player) ([]Game, error) {
-	err := s.db.NewSelect().Model(player).WherePK().Relation("Games").Scan(context.Background())
+func (s *Storage) GetPlayerGamesAndInvites(player *Player) (*Player, error) {
+	err := s.db.NewSelect().Model(player).WherePK().Relation("Games").Relation("Invites").Scan(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	return player.Games, nil
+	return player, nil
 }
 
 func (s *Storage) ChangeCurrentGame(player *Player, gameID int) (*Game, error) {
@@ -990,7 +990,7 @@ func (s *Storage) GetGameByID(gameID int) (*Game, error) {
 		ID: gameID,
 	}
 
-	err := s.db.NewSelect().Model(&game).WherePK().Relation("Sessions").Relation("Settings").Relation("Players").Scan(context.Background())
+	err := s.db.NewSelect().Model(&game).WherePK().Relation("Sessions").Relation("Settings").Relation("Players").Relation("Invites").Scan(context.Background())
 	if err != nil {
 		return nil, err
 	} else if err == sql.ErrNoRows {
@@ -1044,7 +1044,7 @@ func (s *Storage) CreateGame(player *Player, newGameRequest *reqData.GameCreate)
 	}
 	// ** Run in Transaction ** //
 
-	s.db.NewSelect().Model(&newGame).Relation("Sessions").Relation("Settings").Relation("Players").WherePK().Exec(ctx, &newGame)
+	s.db.NewSelect().Model(&newGame).Relation("Sessions").Relation("Settings").Relation("Players").Relation("Invites").WherePK().Exec(ctx, &newGame)
 
 	return &newGame, err
 }
@@ -1062,7 +1062,7 @@ func (s *Storage) UpdateGame(player *Player, updateGameRequest *reqData.GameUpda
 	updateGame := Game{
 		ID: updateGameRequest.ID,
 	}
-	_, err := s.db.NewSelect().Model(&updateGame).Relation("Sessions").Relation("Settings").Relation("Players").WherePK().Exec(ctx, &updateGame)
+	_, err := s.db.NewSelect().Model(&updateGame).Relation("Sessions").Relation("Settings").Relation("Players").Relation("Invites").WherePK().Exec(ctx, &updateGame)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("game not found")
 	} else if err != nil {
@@ -1085,6 +1085,84 @@ func (s *Storage) UpdateGame(player *Player, updateGameRequest *reqData.GameUpda
 	}
 
 	return &updateGame, err
+}
+
+func (s *Storage) AddPlayerToGame(playerID, gameID int) error {
+	ctx := context.Background()
+
+	if err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		newPlayerGame := PlayerGame{
+			PlayerID: playerID,
+			GameID:   gameID,
+		}
+		if _, err := s.db.NewInsert().Model(&newPlayerGame).Returning("*").Exec(ctx, &newPlayerGame); err != nil {
+			return err
+		}
+
+		gameInvite := GameInvite{
+			PlayerID: playerID,
+			GameID:   gameID,
+		}
+		if _, err := s.db.NewDelete().Model(&gameInvite).WherePK().Exec(context.Background()); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) InvitePlayer(game *Game, player *Player) error {
+	playerGame := &PlayerGame{
+		PlayerID: player.ID,
+		GameID:   game.ID,
+	}
+	if count, err := s.db.NewSelect().Model(playerGame).WherePK().Count(context.Background()); err != nil && err != sql.ErrNoRows {
+		return err
+	} else if count > 0 {
+		return fmt.Errorf("player is a participant already")
+	}
+
+	invite := &GameInvite{
+		PlayerID: player.ID,
+		GameID:   game.ID,
+	}
+	if count, err := s.db.NewSelect().Model(invite).WherePK().Count(context.Background()); err != nil && err != sql.ErrNoRows {
+		return err
+	} else if count > 0 {
+		return fmt.Errorf("player is invited already")
+	}
+
+	if _, err := s.db.NewInsert().Model(invite).Exec(context.Background(), invite); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) GetInvite(playerID, gameID int) (*GameInvite, error) {
+	invite := &GameInvite{
+		PlayerID: playerID,
+		GameID:   gameID,
+	}
+	if err := s.db.NewSelect().Model(invite).WherePK().Scan(context.Background(), invite); err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return invite, nil
+}
+
+func (s *Storage) DeleteInvite(invite *GameInvite) error {
+	if _, err := s.db.NewDelete().Model(invite).WherePK().Exec(context.Background()); err == sql.ErrNoRows {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Storage) CheckUsernameAvailability(player *Player, usernameToCheck string) (bool, error) {
