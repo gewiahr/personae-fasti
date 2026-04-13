@@ -150,13 +150,13 @@ type TaskPatch struct {
 }
 
 type GameCreate struct {
-	Name string `json:"name"`
+	Title string `json:"title"`
 }
 
 type GameUpdate struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-	GMID int    `json:"gmID"`
+	ID    int    `json:"id"`
+	Title string `json:"title"`
+	GMID  int    `json:"gmID"`
 }
 
 type GameChange struct {

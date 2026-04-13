@@ -952,7 +952,12 @@ func (api *APIServer) handleGetPlayerSettings(w http.ResponseWriter, r *http.Req
 		return api.HandleError(err)
 	}
 
-	playerSettings := respData.FormPlayerSettings(player.Games, player.Invites, p.CurrentGame)
+	game, err := api.storage.GetGameByID(p.CurrentGame.ID)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	playerSettings := respData.FormPlayerSettings(player.Games, player.Invites, game)
 	return api.Respond(r, w, http.StatusOK, playerSettings)
 }
 
@@ -1094,7 +1099,7 @@ func (api *APIServer) handleStartNewGame(w http.ResponseWriter, r *http.Request,
 		return api.HandleError(err)
 	}
 
-	if valid, message := api.storage.ValidateGameName(newGame.Name); !valid {
+	if valid, message := api.storage.ValidateGameTitle(newGame.Title); !valid {
 		return api.HandleErrorString(message).WithCode(http.StatusBadRequest)
 	}
 

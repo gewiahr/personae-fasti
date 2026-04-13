@@ -1001,13 +1001,13 @@ func (s *Storage) GetGameByID(gameID int) (*Game, error) {
 }
 
 func (s *Storage) CreateGame(player *Player, newGameRequest *reqData.GameCreate) (*Game, error) {
-	if newGameRequest.Name == "" {
-		return nil, fmt.Errorf("game name cannot be empty")
+	if newGameRequest.Title == "" {
+		return nil, fmt.Errorf("game title cannot be empty")
 	}
 	var err error
 	ctx := context.Background()
 	newGame := Game{
-		Name: newGameRequest.Name,
+		Name: newGameRequest.Title,
 		GMID: player.ID,
 	}
 
@@ -1050,8 +1050,8 @@ func (s *Storage) CreateGame(player *Player, newGameRequest *reqData.GameCreate)
 }
 
 func (s *Storage) UpdateGame(player *Player, updateGameRequest *reqData.GameUpdate) (*Game, error) {
-	if updateGameRequest.Name == "" {
-		return nil, fmt.Errorf("game name cannot be empty")
+	if updateGameRequest.Title == "" {
+		return nil, fmt.Errorf("game title cannot be empty")
 	}
 	if updateGameRequest.GMID <= 0 {
 		return nil, fmt.Errorf("gmID cannot be 0 or negative")
@@ -1073,11 +1073,11 @@ func (s *Storage) UpdateGame(player *Player, updateGameRequest *reqData.GameUpda
 		return nil, fmt.Errorf("only GM may edit game")
 	}
 
-	updateGame.Name = updateGameRequest.Name
+	updateGame.Name = updateGameRequest.Title
 	updateGame.GMID = updateGameRequest.GMID
 
 	_, err = s.db.NewUpdate().Model(&updateGame).WherePK().
-		Set("name = ?", updateGameRequest.Name).
+		Set("name = ?", updateGameRequest.Title).
 		Set("gm_id = ?", updateGameRequest.GMID).
 		Returning("*").Exec(context.Background())
 	if err != nil {
