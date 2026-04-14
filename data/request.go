@@ -38,8 +38,7 @@ func (s *Storage) GetPlayerByUsername(username string) (*Player, error) {
 
 	var player Player
 
-	err := s.db.NewSelect().Model(&player).Where("username = ?", username).Relation("RegData").Relation("CurrentGame.Settings").Relation("CurrentGame.Sessions").Scan(context.Background(), &player)
-	if err == sql.ErrNoRows {
+	if err := s.db.NewSelect().Model(&player).Where("username = ?", username).Relation("RegData").Relation("CurrentGame.Settings").Relation("CurrentGame.Sessions").Scan(context.Background(), &player); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -192,7 +191,7 @@ func (s *Storage) GetCurrentGameRecordsForPlayer(game *Game, player *Player) ([]
 	}
 
 	var records []Record
-	err := s.db.NewSelect().Model(&records).
+	if err := s.db.NewSelect().Model(&records).
 		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
 			return q.Where("record.game_id = ?", game.ID)
 		}).
@@ -203,33 +202,20 @@ func (s *Storage) GetCurrentGameRecordsForPlayer(game *Game, player *Player) ([]
 			return q.Where("record.deleted IS NULL")
 		}).
 		Relation("Quest").
-		Scan(context.Background(), &records)
-	if err != nil {
-		return nil, err
-	} else if err == sql.ErrNoRows {
+		Scan(context.Background(), &records); err == sql.ErrNoRows {
 		return []Record{}, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	return records, nil
-
-	// === Old implementation without hidden records === //
-	//
-	// err := s.db.NewSelect().Model(game).WherePK().Relation("Records").Scan(context.Background())
-	// if err != nil {
-	// 	return nil, err
-	// } else if err == sql.ErrNoRows || game.Records == nil {
-	// 	return []Record{}, nil
-	// }
-	//
-	// return game.Records, nil
 }
 
 func (s *Storage) GetCurrentGameSessions(game *Game) ([]Session, error) {
-	err := s.db.NewSelect().Model(game).WherePK().Relation("Sessions").Scan(context.Background())
-	if err != nil {
-		return nil, err
-	} else if err == sql.ErrNoRows || game.Sessions == nil {
+	if err := s.db.NewSelect().Model(game).WherePK().Relation("Sessions").Scan(context.Background()); err == sql.ErrNoRows || game.Sessions == nil {
 		return []Session{}, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	return game.Sessions, nil
@@ -238,11 +224,10 @@ func (s *Storage) GetCurrentGameSessions(game *Game) ([]Session, error) {
 func (s *Storage) GetCurrentGameSession(game *Game) (*Session, error) {
 	var currentSession Session
 
-	err := s.db.NewSelect().Model(&currentSession).Where("game_id = ? AND end_time IS NULL", game.ID).Scan(context.Background())
-	if err != nil {
-		return nil, err
-	} else if err == sql.ErrNoRows {
+	if err := s.db.NewSelect().Model(&currentSession).Where("game_id = ? AND end_time IS NULL", game.ID).Scan(context.Background()); err == sql.ErrNoRows {
 		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	return &currentSession, nil
@@ -262,11 +247,10 @@ func (s *Storage) StartNewGameSession(game *Game) (*Session, error) {
 		if currentSession != nil {
 			currentSession.EndTime = &currentTime
 
-			_, err := s.db.NewUpdate().Model(currentSession).Column("end_time").WherePK().Exec(context.Background())
-			if err != nil {
-				return err
-			} else if err == sql.ErrNoRows {
+			if _, err := s.db.NewUpdate().Model(currentSession).Column("end_time").WherePK().Exec(context.Background()); err == sql.ErrNoRows {
 				return fmt.Errorf("cannot update previous session row")
+			} else if err != nil {
+				return err
 			}
 
 			sessionNumber = currentSession.Number + 1
@@ -292,11 +276,10 @@ func (s *Storage) StartNewGameSession(game *Game) (*Session, error) {
 			Number: sessionNumber,
 		}
 
-		_, err = s.db.NewInsert().Model(newSession).Exec(context.Background())
-		if err != nil {
-			return err
-		} else if err == sql.ErrNoRows {
+		if _, err = s.db.NewInsert().Model(newSession).Exec(context.Background()); err == sql.ErrNoRows {
 			return fmt.Errorf("cannot create new session row")
+		} else if err != nil {
+			return err
 		}
 
 		return nil
@@ -420,11 +403,10 @@ func (s *Storage) DeleteRecord(recordID int, p *Player) error {
 }
 
 func (s *Storage) GetCurrentGameChars(game *Game) ([]Char, error) {
-	err := s.db.NewSelect().Model(game).WherePK().Relation("Chars").Scan(context.Background())
-	if err != nil {
-		return nil, err
-	} else if err == sql.ErrNoRows || game.Chars == nil {
+	if err := s.db.NewSelect().Model(game).WherePK().Relation("Chars").Scan(context.Background()); err == sql.ErrNoRows || game.Chars == nil {
 		return []Char{}, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	return game.Chars, nil
@@ -435,11 +417,10 @@ func (s *Storage) GetCharByID(charID int) (*Char, error) {
 		ID: charID,
 	}
 
-	err := s.db.NewSelect().Model(&char).WherePK().Relation("Records").Scan(context.Background())
-	if err != nil {
-		return nil, err
-	} else if err == sql.ErrNoRows {
+	if err := s.db.NewSelect().Model(&char).WherePK().Relation("Records").Scan(context.Background()); err == sql.ErrNoRows {
 		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	return &char, nil
@@ -492,11 +473,10 @@ func (s *Storage) UpdateChar(charUpdate *reqData.CharUpdate, char *Char, player 
 }
 
 func (s *Storage) GetCurrentGameNPCs(game *Game) ([]NPC, error) {
-	err := s.db.NewSelect().Model(game).WherePK().Relation("NPCs").Scan(context.Background())
-	if err != nil {
-		return nil, err
-	} else if err == sql.ErrNoRows || game.NPCs == nil {
+	if err := s.db.NewSelect().Model(game).WherePK().Relation("NPCs").Scan(context.Background()); err == sql.ErrNoRows || game.NPCs == nil {
 		return []NPC{}, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	return game.NPCs, nil
@@ -507,11 +487,10 @@ func (s *Storage) GetNPCByID(npcID int) (*NPC, error) {
 		ID: npcID,
 	}
 
-	err := s.db.NewSelect().Model(&npc).WherePK().Relation("Records").Scan(context.Background())
-	if err != nil {
-		return nil, err
-	} else if err == sql.ErrNoRows {
+	if err := s.db.NewSelect().Model(&npc).WherePK().Relation("Records").Scan(context.Background()); err == sql.ErrNoRows {
 		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	return &npc, nil
@@ -563,11 +542,10 @@ func (s *Storage) UpdateNPC(npcUpdate *reqData.NPCUpdate, npc *NPC, player *Play
 }
 
 func (s *Storage) GetCurrentGameLocations(game *Game) ([]Location, error) {
-	err := s.db.NewSelect().Model(game).WherePK().Relation("Locations").Scan(context.Background())
-	if err != nil {
-		return nil, err
-	} else if err == sql.ErrNoRows || game.Locations == nil {
+	if err := s.db.NewSelect().Model(game).WherePK().Relation("Locations").Scan(context.Background()); err == sql.ErrNoRows || game.Locations == nil {
 		return []Location{}, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	return game.Locations, nil
@@ -576,11 +554,10 @@ func (s *Storage) GetCurrentGameLocations(game *Game) ([]Location, error) {
 func (s *Storage) GetLocationChildren(location *Location) ([]Location, error) {
 	var locations []Location
 
-	err := s.db.NewSelect().Model(&locations).Where("game_id = ? AND pid = ?", location.GameID, location.ID).Scan(context.Background())
-	if err != nil {
-		return nil, err
-	} else if err == sql.ErrNoRows || locations == nil {
+	if err := s.db.NewSelect().Model(&locations).Where("game_id = ? AND pid = ?", location.GameID, location.ID).Scan(context.Background()); err == sql.ErrNoRows || locations == nil {
 		return []Location{}, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	return locations, nil
@@ -591,11 +568,10 @@ func (s *Storage) GetLocationByID(locationID int) (*Location, error) {
 		ID: locationID,
 	}
 
-	err := s.db.NewSelect().Model(&location).WherePK().Relation("Records").Relation("Parent").Scan(context.Background())
-	if err != nil {
-		return nil, err
-	} else if err == sql.ErrNoRows {
+	if err := s.db.NewSelect().Model(&location).WherePK().Relation("Records").Relation("Parent").Scan(context.Background()); err == sql.ErrNoRows {
 		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	return &location, nil
@@ -640,11 +616,10 @@ func (s *Storage) UpdateLocation(locationUpdate *reqData.LocationUpdate, locatio
 
 func (s *Storage) GetCurrentGameQuests(game *Game) ([]Quest, error) {
 	var quests []Quest
-	err := s.db.NewSelect().Model(&quests).Where("game_id = ? AND deleted is NULL", game.ID).Scan(context.Background())
-	if err != nil {
+	if err := s.db.NewSelect().Model(&quests).Where("game_id = ? AND deleted is NULL", game.ID).Scan(context.Background()); err == sql.ErrNoRows || quests == nil {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
-	} else if err == sql.ErrNoRows || quests == nil {
-		return quests, nil
 	}
 
 	return quests, nil
@@ -655,8 +630,7 @@ func (s *Storage) GetQuestByID(questID int) (*Quest, error) {
 		ID: questID,
 	}
 
-	err := s.db.NewSelect().Model(&quest).WherePK().Relation("Records").Relation("Tasks").Scan(context.Background())
-	if err == sql.ErrNoRows {
+	if err := s.db.NewSelect().Model(&quest).WherePK().Relation("Records").Relation("Tasks").Scan(context.Background()); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -831,8 +805,7 @@ func (s *Storage) UpdateQuest(questUpdate *reqData.QuestUpdate, tasksUpdate []re
 		return nil, fmt.Errorf("transaction failed: %w", err)
 	}
 
-	err = s.db.NewSelect().Model(quest).WherePK().Relation("Records").Relation("Tasks").Scan(context.Background())
-	if err == sql.ErrNoRows {
+	if err = s.db.NewSelect().Model(quest).WherePK().Relation("Records").Relation("Tasks").Scan(context.Background()); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -863,8 +836,7 @@ func (s *Storage) DeleteQuest(questID int, p *Player) error {
 func (s *Storage) GetTasksByQuest(quest *Quest) ([]QuestTask, error) {
 	tasks := []QuestTask{}
 
-	err := s.db.NewSelect().Model(&tasks).Where("quest_id = ?", quest.ID).Scan(context.Background())
-	if err == sql.ErrNoRows {
+	if err := s.db.NewSelect().Model(&tasks).Where("quest_id = ?", quest.ID).Scan(context.Background()); err == sql.ErrNoRows {
 		return tasks, nil
 	} else if err != nil {
 		return nil, err
@@ -990,11 +962,10 @@ func (s *Storage) GetGameByID(gameID int) (*Game, error) {
 		ID: gameID,
 	}
 
-	err := s.db.NewSelect().Model(&game).WherePK().Relation("Sessions").Relation("Settings").Relation("Players").Relation("Invites").Scan(context.Background())
-	if err != nil {
-		return nil, err
-	} else if err == sql.ErrNoRows {
+	if err := s.db.NewSelect().Model(&game).WherePK().Relation("Sessions").Relation("Settings").Relation("Players").Relation("Invites").Scan(context.Background()); err == sql.ErrNoRows {
 		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	return &game, nil
@@ -1062,9 +1033,8 @@ func (s *Storage) UpdateGame(player *Player, updateGameRequest *reqData.GameUpda
 	updateGame := Game{
 		ID: updateGameRequest.ID,
 	}
-	_, err := s.db.NewSelect().Model(&updateGame).Relation("Sessions").Relation("Settings").Relation("Players").Relation("Invites").WherePK().Exec(ctx, &updateGame)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("game not found")
+	if _, err := s.db.NewSelect().Model(&updateGame).Relation("Sessions").Relation("Settings").Relation("Players").Relation("Invites").WherePK().Exec(ctx, &updateGame); err == sql.ErrNoRows {
+		return nil, nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -1076,15 +1046,14 @@ func (s *Storage) UpdateGame(player *Player, updateGameRequest *reqData.GameUpda
 	updateGame.Name = updateGameRequest.Title
 	updateGame.GMID = updateGameRequest.GMID
 
-	_, err = s.db.NewUpdate().Model(&updateGame).WherePK().
+	if _, err := s.db.NewUpdate().Model(&updateGame).WherePK().
 		Set("name = ?", updateGameRequest.Title).
 		Set("gm_id = ?", updateGameRequest.GMID).
-		Returning("*").Exec(context.Background())
-	if err != nil {
+		Returning("*").Exec(context.Background()); err != nil {
 		return nil, err
 	}
 
-	return &updateGame, err
+	return &updateGame, nil
 }
 
 func (s *Storage) AddPlayerToGame(playerID, gameID int) error {
@@ -1159,6 +1128,8 @@ func (s *Storage) GetInvite(playerID, gameID int) (*GameInvite, error) {
 
 func (s *Storage) DeleteInvite(invite *GameInvite) error {
 	if _, err := s.db.NewDelete().Model(invite).WherePK().Exec(context.Background()); err == sql.ErrNoRows {
+		return err
+	} else if err != nil {
 		return err
 	}
 

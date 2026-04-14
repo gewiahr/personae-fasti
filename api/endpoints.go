@@ -1133,6 +1133,9 @@ func (api *APIServer) handleUpdateGame(w http.ResponseWriter, r *http.Request, p
 	if err != nil {
 		return api.HandleError(err)
 	}
+	if game == nil {
+		return api.HandleErrorString("game not found")
+	}
 
 	currentGameInfo := respData.GameToGameFullInfo(game)
 	return api.Respond(r, w, http.StatusCreated, currentGameInfo)
