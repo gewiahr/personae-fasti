@@ -23,6 +23,14 @@ func GameToGameFullInfo(game *data.Game) *GameFullInfo {
 	}
 }
 
+func SessionToSessionInfo(session *data.Session) *SessionInfo {
+	return &SessionInfo{
+		Number:  session.Number,
+		Name:    session.Name,
+		EndTime: session.EndTime,
+	}
+}
+
 func SessionToSessionInfoArray(sessions []data.Session) []SessionInfo {
 	sessionInfoArray := []SessionInfo{}
 	for _, session := range sessions {

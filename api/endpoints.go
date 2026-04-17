@@ -65,12 +65,19 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("GET /game/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetGameByID)))
 	router.HandleFunc("POST /game", api.HTTPWrapper(api.PlayerWrapper(api.handleStartNewGame)))
 	router.HandleFunc("PUT /game", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateGame)))
+
 	router.HandleFunc("POST /game/session/new", api.HTTPWrapper(api.PlayerWrapper(api.handleStartNewGameSession)))
+	router.HandleFunc("PATCH /game/session", api.HTTPWrapper(api.PlayerWrapper(api.handleEditGameSession)))
+	router.HandleFunc("DELETE /game/session/remove", api.HTTPWrapper(api.PlayerWrapper(api.handleRemoveLastGameSession)))
+
 	router.HandleFunc("POST /game/invite/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleInvitePlayer)))
+
 	router.HandleFunc("PUT /game/settings", api.HTTPWrapper(api.PlayerWrapper(api.handlePutGameSettings)))
 
 	router.HandleFunc("GET /image/{type}/{id}", api.HTTPWrapper(api.handleGetImage))
 	router.HandleFunc("POST /image/{type}/{id}", api.HTTPWrapper(api.handlePostImage))
+
+	router.HandleFunc("POST /feedback", api.HTTPWrapper(api.PlayerWrapper(api.handlePostFeedback)))
 }
 
 // func (api *APIServer) handleHome(w http.ResponseWriter, r *http.Request) *APIError {
@@ -1153,7 +1160,41 @@ func (api *APIServer) handleStartNewGameSession(w http.ResponseWriter, r *http.R
 		return api.HandleError(err)
 	}
 
-	return api.Respond(r, w, http.StatusCreated, newSession)
+	return api.Respond(r, w, http.StatusCreated, respData.SessionToSessionInfo(newSession))
+}
+
+// PATCH /game/session
+func (api *APIServer) handleEditGameSession(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var updateSession reqData.SessionUpdate
+	err := ReadJsonBody(r, &updateSession)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	if p.CurrentGame.GMID != p.ID {
+		return api.HandleErrorString("only GM may edit sessions").WithCode(http.StatusForbidden)
+	}
+
+	updatedSession, err := api.storage.EditGameSession(p.CurrentGame, updateSession)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusOK, respData.SessionToSessionInfo(updatedSession))
+}
+
+// DELETE /game/session/remove
+func (api *APIServer) handleRemoveLastGameSession(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	if p.CurrentGame.GMID != p.ID {
+		return api.HandleErrorString("only GM may remove sessions").WithCode(http.StatusForbidden)
+	}
+
+	err := api.storage.RemoveLastGameSession(p.CurrentGame)
+	if err != nil {
+		return api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusOK, nil)
 }
 
 // POST /game/invite/{username}
@@ -1293,4 +1334,18 @@ func (api *APIServer) handlePostImage(w http.ResponseWriter, r *http.Request) *A
 		resBody, _ := io.ReadAll(res.Body)
 		return api.HandleErrorString(fmt.Sprintf("file server error: %s", string(resBody)))
 	}
+}
+
+// POST /feedback
+func (api *APIServer) handlePostFeedback(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	var serviceFeedback reqData.ServiceFeedback
+	if err := ReadJsonBody(r, &serviceFeedback); err != nil {
+		return api.HandleError(err)
+	}
+
+	if err := api.storage.AddServiceFeedback(p, &serviceFeedback); err != nil {
+		return api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusCreated, nil)
 }

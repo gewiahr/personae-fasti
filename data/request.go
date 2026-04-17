@@ -221,10 +221,22 @@ func (s *Storage) GetCurrentGameSessions(game *Game) ([]Session, error) {
 	return game.Sessions, nil
 }
 
-func (s *Storage) GetCurrentGameSession(game *Game) (*Session, error) {
+func (s *Storage) GetCurrentGameSession(gameID int) (*Session, error) {
 	var currentSession Session
 
-	if err := s.db.NewSelect().Model(&currentSession).Where("game_id = ? AND end_time IS NULL", game.ID).Scan(context.Background()); err == sql.ErrNoRows {
+	if err := s.db.NewSelect().Model(&currentSession).Where("game_id = ? AND end_time IS NULL", gameID).Scan(context.Background()); err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return &currentSession, nil
+}
+
+func (s *Storage) GetGameSessionByNumber(gameID int, sessionNumber int) (*Session, error) {
+	var currentSession Session
+
+	if err := s.db.NewSelect().Model(&currentSession).Where("game_id = ? AND number = ?", gameID, sessionNumber).Scan(context.Background()); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -234,12 +246,13 @@ func (s *Storage) GetCurrentGameSession(game *Game) (*Session, error) {
 }
 
 func (s *Storage) StartNewGameSession(game *Game) (*Session, error) {
-	currentSession, err := s.GetCurrentGameSession(game)
+	var newSession *Session
+	currentSession, err := s.GetCurrentGameSession(game.ID)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
-	err = s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
+	err = s.db.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
 		sessionNumber := 0
 		currentTime := time.Now().UTC()
 
@@ -247,7 +260,7 @@ func (s *Storage) StartNewGameSession(game *Game) (*Session, error) {
 		if currentSession != nil {
 			currentSession.EndTime = &currentTime
 
-			if _, err := s.db.NewUpdate().Model(currentSession).Column("end_time").WherePK().Exec(context.Background()); err == sql.ErrNoRows {
+			if _, err := tx.NewUpdate().Model(currentSession).Column("end_time").WherePK().Exec(context.Background()); err == sql.ErrNoRows {
 				return fmt.Errorf("cannot update previous session row")
 			} else if err != nil {
 				return err
@@ -263,7 +276,7 @@ func (s *Storage) StartNewGameSession(game *Game) (*Session, error) {
 				EndTime: &currentTime,
 			}
 
-			_, err = s.db.NewInsert().Model(sessionZero).Exec(context.Background())
+			_, err = tx.NewInsert().Model(sessionZero).Exec(context.Background())
 			if err != nil {
 				return err
 			}
@@ -271,12 +284,12 @@ func (s *Storage) StartNewGameSession(game *Game) (*Session, error) {
 			sessionNumber++
 		}
 
-		newSession := &Session{
+		newSession = &Session{
 			GameID: game.ID,
 			Number: sessionNumber,
 		}
 
-		if _, err = s.db.NewInsert().Model(newSession).Exec(context.Background()); err == sql.ErrNoRows {
+		if _, err = tx.NewInsert().Model(newSession).Exec(context.Background()); err == sql.ErrNoRows {
 			return fmt.Errorf("cannot create new session row")
 		} else if err != nil {
 			return err
@@ -285,7 +298,70 @@ func (s *Storage) StartNewGameSession(game *Game) (*Session, error) {
 		return nil
 	})
 
-	return currentSession, nil
+	return newSession, nil
+}
+
+func (s *Storage) EditGameSession(game *Game, sessionUpdate reqData.SessionUpdate) (*Session, error) {
+	sessionToUpdate, err := s.GetGameSessionByNumber(game.ID, sessionUpdate.Number)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	err = s.db.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
+		sessionToUpdate.Name = sessionUpdate.Name
+
+		if _, err := tx.NewUpdate().Model(sessionToUpdate).Column("name").WherePK().Returning("*").Exec(context.Background()); err == sql.ErrNoRows {
+			return fmt.Errorf("cannot update session")
+		} else if err != nil {
+			return err
+		}
+
+		if sessionToUpdate.Number > 0 {
+			previousSession, err := s.GetGameSessionByNumber(game.ID, sessionUpdate.Number-1)
+			if err != nil {
+				return err
+			}
+			previousSession.EndTime = &sessionUpdate.StartTime
+			if _, err := tx.NewUpdate().Model(previousSession).Column("end_time").WherePK().Returning("*").Exec(context.Background()); err == sql.ErrNoRows {
+				return fmt.Errorf("cannot update previous session end time")
+			} else if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return sessionToUpdate, nil
+}
+
+func (s *Storage) RemoveLastGameSession(game *Game) error {
+	ctx := context.Background()
+	currentSession, err := s.GetCurrentGameSession(game.ID)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
+	if err := s.db.RunInTx(ctx, &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
+		var previousSession Session
+		if currentSession.Number > 0 {
+			if err := tx.NewSelect().Model(&previousSession).Where("game_id = ? AND number = ?", game.ID, currentSession.Number-1).Scan(ctx, &previousSession); err != nil {
+				return err
+			}
+		}
+		if _, err := tx.NewUpdate().Model((*Session)(nil)).Set("end_time = NULL").Where("id = ?", previousSession.ID).Returning("*").Exec(ctx, &previousSession); err != nil {
+			return err
+		}
+		if _, err := tx.NewDelete().Model(currentSession).WherePK().Returning("*").Exec(ctx, currentSession); err != nil {
+			return err
+		}
+		return nil
+
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Storage) InsertNewRecord(recordInsert *reqData.RecordInsert, p *Player) error {
@@ -1203,4 +1279,20 @@ func (s *Storage) UpdateGameSettings(gameSettingsUpdate *reqData.GameSettingsUpd
 	}
 
 	return &currentGame, nil
+}
+
+func (s *Storage) AddServiceFeedback(p *Player, serviceFeedback *reqData.ServiceFeedback) error {
+	feedback := ServiceFeedback{
+		PlayerID: p.ID,
+		GameID:   p.CurrentGameID,
+		Type:     serviceFeedback.Type,
+		Text:     serviceFeedback.Text,
+	}
+
+	_, err := s.db.NewInsert().Model(&feedback).Returning("*").Exec(context.Background(), &feedback)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

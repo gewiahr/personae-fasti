@@ -1,5 +1,7 @@
 package reqData
 
+import "time"
+
 type LoginTGRequest struct {
 	InitDataRaw string `json:"initDataRaw"`
 }
@@ -149,6 +151,12 @@ type TaskPatch struct {
 	Current int `json:"current"`
 }
 
+type SessionUpdate struct {
+	Number    int       `json:"number"`
+	Name      string    `json:"name"`
+	StartTime time.Time `json:"startTime"`
+}
+
 type GameCreate struct {
 	Title string `json:"title"`
 }
@@ -174,4 +182,9 @@ type UsernameChange struct {
 type GameSettingsUpdate struct {
 	GameID              int  `json:"gameID"`
 	AllowAllEditRecords bool `json:"allowAllEditRecords"`
+}
+
+type ServiceFeedback struct {
+	Type string `json:"feedbackType"`
+	Text string `json:"feedbackText"`
 }

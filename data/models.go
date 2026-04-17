@@ -40,8 +40,12 @@ func (s *Storage) InitTables() {
 
 	_, _ = s.db.NewCreateTable().IfNotExists().Model((*Log)(nil)).Exec(ctx)
 
-	_, err := s.db.NewCreateIndex().IfNotExists().Model((*Token)(nil)).Index("token_idx").Column("token_hash").Exec(ctx)
+	_, err := s.db.NewCreateTable().IfNotExists().Model((*ServiceFeedback)(nil)).Exec(ctx)
 	if err != nil {
+		fmt.Printf("error occured during index creation: %v", err.Error())
+	}
+
+	if _, err := s.db.NewCreateIndex().IfNotExists().Model((*Token)(nil)).Index("token_idx").Column("token_hash").Exec(ctx); err != nil {
 		fmt.Printf("error occured during index creation: %v", err.Error())
 	}
 
@@ -97,6 +101,8 @@ type Player struct {
 	Chars   []Char `bun:"rel:has-many,join:id=player_id"`
 	Games   []Game `bun:"m2m:players_games,join:Player=Game"`
 	Invites []Game `bun:"m2m:game_invites,join:Player=Game"`
+
+	Feedback []ServiceFeedback `bun:"rel:has-many,join:id=player_id"`
 
 	//Records []Record `bun:"rel:has-many,join:id=game_id"`
 
@@ -359,4 +365,21 @@ type QuestTask struct {
 	HiddenBy int `bun:"hidden_by,default:0" json:"hiddenBy"`
 
 	Finished *time.Time `bun:"finished,default:null"`
+}
+
+type ServiceFeedback struct {
+	bun.BaseModel `bun:"table:service_feedback"`
+
+	ID       int    `bun:"id,pk,autoincrement"`
+	Type     string `bun:"type,notnull,default:''"`
+	Text     string `bun:"text,notnull" json:"text"`
+	Response string `bun:"response" json:"response"`
+
+	PlayerID int     `bun:"player_id" json:"playerID"`
+	Player   *Player `bun:"rel:belongs-to,join:player_id=id"`
+	GameID   int     `bun:"game_id,notnull"`
+	Game     *Game   `bun:"rel:belongs-to,join:game_id=id"`
+
+	Created *time.Time `bun:"created,nullzero,notnull,default:current_timestamp" json:"created"`
+	Updated *time.Time `bun:"updated,nullzero,notnull,default:current_timestamp" json:"updated"`
 }
