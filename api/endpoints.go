@@ -1075,11 +1075,11 @@ func (api *APIServer) handleGetGameByID(w http.ResponseWriter, r *http.Request, 
 		return api.HandleError(fmt.Errorf("error parsing id: game id is invalid"))
 	}
 
-	game, err := api.storage.GetGameByID(gameID)
+	game, err := api.storage.GetPlayerGame(gameID, p.ID)
 	if err != nil {
 		return api.HandleError(err)
 	} else if game == nil {
-		return api.HandleErrorString(fmt.Sprintf("no game with id %d", gameID)).WithCode(http.StatusNotFound)
+		return api.HandleErrorString(fmt.Sprintf("no game with id %d found", gameID)).WithCode(http.StatusNotFound)
 	}
 
 	gamePage := respData.GamePage{

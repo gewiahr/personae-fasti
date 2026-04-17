@@ -971,6 +971,20 @@ func (s *Storage) GetGameByID(gameID int) (*Game, error) {
 	return &game, nil
 }
 
+func (s *Storage) GetPlayerGame(gameID, playerID int) (*Game, error) {
+	game := Game{
+		ID: gameID,
+	}
+
+	if err := s.db.NewSelect().Model(&game).Join("JOIN players_games AS pg ON pg.game_id = game.id").Where("game.id = ?", gameID).Where("pg.player_id = ?", playerID).Relation("Sessions").Relation("Settings").Relation("Players").Relation("Invites").Scan(context.Background()); err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return &game, nil
+}
+
 func (s *Storage) CreateGame(player *Player, newGameRequest *reqData.GameCreate) (*Game, error) {
 	if newGameRequest.Title == "" {
 		return nil, fmt.Errorf("game title cannot be empty")
