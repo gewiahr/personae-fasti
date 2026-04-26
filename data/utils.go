@@ -43,7 +43,7 @@ func (s *Storage) GeneratePlayerJWTToken(player *Player, jwtSecret string, expTi
 	return token.SignedString(JWTBytes)
 }
 
-func (s *Storage) InsertMentionsForRecord(record *Record) error {
+func (s *Storage) InsertMentionsForRecord(tx bun.Tx, record *Record) error {
 	re, err := regexp.Compile(`@(?P<type>\w+):(?P<id>\d+)` + "`(?P<name>[^`]+)`")
 	if err != nil {
 		return err
@@ -59,11 +59,11 @@ func (s *Storage) InsertMentionsForRecord(record *Record) error {
 		// Insert to a correct type
 		switch match[1] {
 		case "char":
-			_, err = s.db.NewInsert().Model(&RecordChar{RecordID: record.ID, CharID: id}).Exec(context.Background())
+			_, err = tx.NewInsert().Model(&RecordChar{RecordID: record.ID, CharID: id}).Exec(context.Background())
 		case "npc":
-			_, err = s.db.NewInsert().Model(&RecordNPC{RecordID: record.ID, NPCID: id}).Exec(context.Background())
+			_, err = tx.NewInsert().Model(&RecordNPC{RecordID: record.ID, NPCID: id}).Exec(context.Background())
 		case "location":
-			_, err = s.db.NewInsert().Model(&RecordLocation{RecordID: record.ID, LocationID: id}).Exec(context.Background())
+			_, err = tx.NewInsert().Model(&RecordLocation{RecordID: record.ID, LocationID: id}).Exec(context.Background())
 		default:
 			fmt.Printf("error during record mention extracting: mention %s is incorrect in record %d", match[0], record.ID)
 			// ++ add error logger ++ //
@@ -77,16 +77,16 @@ func (s *Storage) InsertMentionsForRecord(record *Record) error {
 	return err
 }
 
-func (s *Storage) DeleteMentionsForRecord(record *Record) error {
-	_, err := s.db.NewDelete().Model(&RecordChar{}).Where("record_id = ?", record.ID).Exec(context.Background())
+func (s *Storage) DeleteMentionsForRecord(tx bun.Tx, record *Record) error {
+	_, err := tx.NewDelete().Model(&RecordChar{}).Where("record_id = ?", record.ID).Exec(context.Background())
 	if err != nil {
 		return err
 	}
-	_, err = s.db.NewDelete().Model(&RecordNPC{}).Where("record_id = ?", record.ID).Exec(context.Background())
+	_, err = tx.NewDelete().Model(&RecordNPC{}).Where("record_id = ?", record.ID).Exec(context.Background())
 	if err != nil {
 		return err
 	}
-	_, err = s.db.NewDelete().Model(&RecordLocation{}).Where("record_id = ?", record.ID).Exec(context.Background())
+	_, err = tx.NewDelete().Model(&RecordLocation{}).Where("record_id = ?", record.ID).Exec(context.Background())
 	if err != nil {
 		return err
 	}

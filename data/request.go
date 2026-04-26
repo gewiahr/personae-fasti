@@ -117,7 +117,7 @@ func (s *Storage) CreateTelegramPlayer(data tgInitData.InitData) (*Player, error
 			Lang:     data.User.LanguageCode,
 			PicURL:   data.User.PhotoURL,
 		}
-		_, err := s.db.NewInsert().Model(telegram).Exec(ctx)
+		_, err := tx.NewInsert().Model(telegram).Exec(ctx)
 		if err != nil {
 			return err
 		}
@@ -126,7 +126,7 @@ func (s *Storage) CreateTelegramPlayer(data tgInitData.InitData) (*Player, error
 			Username:   fmt.Sprintf("tguser_%d", data.AuthDate().Unix()),
 			TelegramID: telegram.ID,
 		}
-		_, err = s.db.NewInsert().Model(player).Exec(ctx)
+		_, err = tx.NewInsert().Model(player).Exec(ctx)
 		if err != nil {
 			return err
 		}
@@ -135,7 +135,7 @@ func (s *Storage) CreateTelegramPlayer(data tgInitData.InitData) (*Player, error
 			PlayerID:    player.ID,
 			UsernameSet: false,
 		}
-		_, err = s.db.NewInsert().Model(playerRegData).Exec(ctx)
+		_, err = tx.NewInsert().Model(playerRegData).Exec(ctx)
 
 		return nil
 	})
@@ -147,7 +147,7 @@ func (s *Storage) CreatePlayer(player *Player) (*Player, error) {
 	ctx := context.Background()
 
 	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
-		_, err := s.db.NewInsert().Model(player).Returning("*").Exec(ctx)
+		_, err := tx.NewInsert().Model(player).Returning("*").Exec(ctx)
 		if err != nil {
 			return err
 		}
@@ -156,7 +156,7 @@ func (s *Storage) CreatePlayer(player *Player) (*Player, error) {
 			PlayerID:    player.ID,
 			UsernameSet: true,
 		}
-		_, err = s.db.NewInsert().Model(playerRegData).Exec(ctx)
+		_, err = tx.NewInsert().Model(playerRegData).Exec(ctx)
 
 		return nil
 	})
@@ -375,7 +375,7 @@ func (s *Storage) InsertNewRecord(recordInsert *reqData.RecordInsert, p *Player)
 
 	err := s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
 		// Insert Record
-		result, err := s.db.NewInsert().Model(&record).Exec(context.Background())
+		result, err := tx.NewInsert().Model(&record).Exec(context.Background())
 		if err != nil {
 			return err
 		}
@@ -383,7 +383,7 @@ func (s *Storage) InsertNewRecord(recordInsert *reqData.RecordInsert, p *Player)
 			return fmt.Errorf("empty insert")
 		}
 		// Insert Mentions
-		if err := s.InsertMentionsForRecord(&record); err != nil {
+		if err := s.InsertMentionsForRecord(tx, &record); err != nil {
 			return err
 		}
 
@@ -420,7 +420,7 @@ func (s *Storage) UpdateRecord(recordUpdate *reqData.RecordUpdate, p *Player) er
 
 	err = s.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
 		// Update Record
-		result, err := s.db.NewUpdate().Model(&record).Column("text", "updated", "hidden_by", "quest_id").WherePK().Exec(context.Background())
+		result, err := tx.NewUpdate().Model(&record).Column("text", "updated", "hidden_by", "quest_id").WherePK().Exec(context.Background())
 		if err != nil {
 			return err
 		}
@@ -429,12 +429,12 @@ func (s *Storage) UpdateRecord(recordUpdate *reqData.RecordUpdate, p *Player) er
 		}
 
 		// Delete Old Mentions
-		if err := s.DeleteMentionsForRecord(&record); err != nil {
+		if err := s.DeleteMentionsForRecord(tx, &record); err != nil {
 			return err
 		}
 
 		// Insert Mentions
-		if err := s.InsertMentionsForRecord(&record); err != nil {
+		if err := s.InsertMentionsForRecord(tx, &record); err != nil {
 			return err
 		}
 
@@ -1072,16 +1072,15 @@ func (s *Storage) CreateGame(player *Player, newGameRequest *reqData.GameCreate)
 		GMID: player.ID,
 	}
 
-	// ** Run in Transaction ** //
 	if err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
-		_, err := s.db.NewInsert().Model(&newGame).ExcludeColumn("id").Returning("*").Exec(ctx, &newGame)
+		_, err := tx.NewInsert().Model(&newGame).ExcludeColumn("id").Returning("*").Exec(ctx, &newGame)
 		if err != nil {
 			return err
 		}
 		newGameSettings := GameSettings{
 			GameID: newGame.ID,
 		}
-		_, err = s.db.NewInsert().Model(&newGameSettings).Returning("*").Exec(ctx, &newGameSettings)
+		_, err = tx.NewInsert().Model(&newGameSettings).Returning("*").Exec(ctx, &newGameSettings)
 		if err != nil {
 			return err
 		}
@@ -1089,7 +1088,7 @@ func (s *Storage) CreateGame(player *Player, newGameRequest *reqData.GameCreate)
 			PlayerID: player.ID,
 			GameID:   newGame.ID,
 		}
-		_, err = s.db.NewInsert().Model(&newPlayerGame).Returning("*").Exec(ctx, &newPlayerGame)
+		_, err = tx.NewInsert().Model(&newPlayerGame).Returning("*").Exec(ctx, &newPlayerGame)
 		if err != nil {
 			return err
 		}
@@ -1103,7 +1102,6 @@ func (s *Storage) CreateGame(player *Player, newGameRequest *reqData.GameCreate)
 	}); err != nil {
 		return nil, err
 	}
-	// ** Run in Transaction ** //
 
 	s.db.NewSelect().Model(&newGame).Relation("Sessions").Relation("Settings").Relation("Players").Relation("Invites").WherePK().Exec(ctx, &newGame)
 
@@ -1154,7 +1152,7 @@ func (s *Storage) AddPlayerToGame(playerID, gameID int) error {
 			PlayerID: playerID,
 			GameID:   gameID,
 		}
-		if _, err := s.db.NewInsert().Model(&newPlayerGame).Returning("*").Exec(ctx, &newPlayerGame); err != nil {
+		if _, err := tx.NewInsert().Model(&newPlayerGame).Returning("*").Exec(ctx, &newPlayerGame); err != nil {
 			return err
 		}
 
@@ -1162,7 +1160,7 @@ func (s *Storage) AddPlayerToGame(playerID, gameID int) error {
 			PlayerID: playerID,
 			GameID:   gameID,
 		}
-		if _, err := s.db.NewDelete().Model(&gameInvite).WherePK().Exec(context.Background()); err != nil {
+		if _, err := tx.NewDelete().Model(&gameInvite).WherePK().Exec(context.Background()); err != nil {
 			return err
 		}
 
