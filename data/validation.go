@@ -46,9 +46,9 @@ func (s *Storage) ValidateGameTitle(title string) (bool, string) {
 		}
 	}
 
-	if valid := s.isValidString(title, true, true, []rune{'.', ',', '-', '_', '!'}); !valid {
-		return false, "Название может содержать только латинские буквы, цифры, точку, запятую, дефис, нижнее подчёркивание или восклицательный знак"
-	}
+	// if valid := s.isValidString(title, true, true, []rune{'.', ',', '-', '_', '!'}); !valid {
+	// 	return false, "Название может содержать только латинские буквы, цифры, точку, запятую, дефис, нижнее подчёркивание или восклицательный знак"
+	// }
 
 	return true, "Название валидно"
 }
