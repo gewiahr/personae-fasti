@@ -70,7 +70,10 @@ func (api *APIServer) SetHandlers(router *http.ServeMux) {
 	router.HandleFunc("PATCH /game/session", api.HTTPWrapper(api.PlayerWrapper(api.handleEditGameSession)))
 	router.HandleFunc("DELETE /game/session/remove", api.HTTPWrapper(api.PlayerWrapper(api.handleRemoveLastGameSession)))
 
+	//router.HandleFunc("DELETE /game/player/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleRemovePlayerFromGame)))
+
 	router.HandleFunc("POST /game/invite/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleInvitePlayer)))
+	router.HandleFunc("DELETE /game/invite/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleRemovePlayerInvite)))
 
 	router.HandleFunc("PUT /game/settings", api.HTTPWrapper(api.PlayerWrapper(api.handlePutGameSettings)))
 
@@ -1197,6 +1200,33 @@ func (api *APIServer) handleRemoveLastGameSession(w http.ResponseWriter, r *http
 	return api.Respond(r, w, http.StatusOK, nil)
 }
 
+// // DELETE /game/player/{username}
+// func (api *APIServer) handleRemovePlayerFromGame(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+// 	if p.CurrentGame.GMID != p.ID {
+// 		return api.HandleErrorString("only GM may remove players").WithCode(http.StatusForbidden)
+// 	}
+
+// 	usernameToRemove := r.PathValue("username")
+// 	if usernameToRemove == "" {
+// 		return api.HandleErrorString("error parsing username: username is invalid").WithCode(http.StatusBadRequest)
+// 	}
+
+// 	playerToRemove, err := api.storage.GetPlayerByUsername(usernameToRemove)
+// 	if err != nil {
+// 		return api.HandleError(err)
+// 	}
+// 	if playerToRemove == nil {
+// 		return api.HandleErrorString("no player with such username").WithCode(http.StatusNotFound)
+// 	}
+
+// 	err = api.storage.RemovePlayerFromGame(p.CurrentGame, playerToRemove)
+// 	if err != nil {
+// 		return api.HandleError(err)
+// 	}
+
+// 	return api.Respond(r, w, http.StatusCreated, nil)
+// }
+
 // POST /game/invite/{username}
 func (api *APIServer) handleInvitePlayer(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
 	if p.CurrentGame.GMID != p.ID {
@@ -1222,6 +1252,32 @@ func (api *APIServer) handleInvitePlayer(w http.ResponseWriter, r *http.Request,
 	}
 
 	return api.Respond(r, w, http.StatusCreated, nil)
+}
+
+// DELETE /game/invite/{username}
+func (api *APIServer) handleRemovePlayerInvite(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
+	if p.CurrentGame.GMID != p.ID {
+		return api.HandleErrorString("only GM may remove player invites").WithCode(http.StatusForbidden)
+	}
+
+	playerInvitedUsername := r.PathValue("username")
+	if playerInvitedUsername == "" {
+		return api.HandleErrorString("error parsing username: username is invalid").WithCode(http.StatusBadRequest)
+	}
+
+	playerInviteRemoval, err := api.storage.GetPlayerByUsername(playerInvitedUsername)
+	if err != nil {
+		return api.HandleError(err)
+	}
+	if playerInviteRemoval == nil {
+		return api.HandleErrorString("no player with such username").WithCode(http.StatusNotFound)
+	}
+
+	if err = api.storage.DeleteInvite(&data.GameInvite{PlayerID: playerInviteRemoval.ID, GameID: p.CurrentGameID}); err != nil {
+		return api.HandleError(err)
+	}
+
+	return api.Respond(r, w, http.StatusOK, nil)
 }
 
 // PUT /game/settings
