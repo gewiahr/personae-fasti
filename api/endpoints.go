@@ -1193,7 +1193,9 @@ func (api *APIServer) handleRemoveLastGameSession(w http.ResponseWriter, r *http
 	}
 
 	err := api.storage.RemoveLastGameSession(p.CurrentGame)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		return api.HandleErrorString("no sessions to remove").WithCode(http.StatusNotAcceptable)
+	} else if err != nil {
 		return api.HandleError(err)
 	}
 
