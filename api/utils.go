@@ -1,80 +1,53 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
-	"strconv"
+	"strings"
 
-	"golang.org/x/crypto/bcrypt"
+	e "personae-fasti/internal/pkg/errorutils"
 )
 
-func ReadBody(r *http.Request) []byte {
-	bodyBytes, _ := io.ReadAll(r.Body)
-	r.Body.Close()
-	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-	return bodyBytes
-}
+func readBody[Body any](w http.ResponseWriter, r *http.Request) (Body, *e.ApiError) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
-func ReadJsonBody(r *http.Request, v any) error {
-	bodyBytes := ReadBody(r)
-	return json.Unmarshal(bodyBytes, v)
-}
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		var zero Body
+		var err = e.NewApiError(http.StatusRequestEntityTooLarge, "request body too large")
+		return zero, &err
+	}
+	defer r.Body.Close()
 
-func getPathValueInt(r *http.Request, param string) int {
-	wrongValue := -1
-
-	value := r.PathValue(param)
-	if len(value) != 0 {
-		valueInt, err := strconv.Atoi(value)
-		if err == nil {
-			return valueInt
+	var body Body
+	if len(bodyBytes) > 0 {
+		if err := json.Unmarshal(bodyBytes, &body); err != nil {
+			var zero Body
+			var err = e.NewApiError(http.StatusBadRequest, "invalid JSON")
+			return zero, &err
 		}
 	}
-
-	return wrongValue
+	return body, nil
 }
 
-func (api *APIServer) generateHash(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
+// func ReadBody(r *http.Request) []byte {
+// 	bodyBytes, _ := io.ReadAll(r.Body)
+// 	r.Body.Close()
+// 	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+// 	return bodyBytes
+// }
+
+// func ReadJsonBody(r *http.Request, v any) error {
+// 	bodyBytes := ReadBody(r)
+// 	return json.Unmarshal(bodyBytes, v)
+// }
+
+func extractBearer(r *http.Request) string {
+	auth := r.Header.Get("Authorization")
+	parts := strings.SplitN(auth, " ", 2)
+	if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+		return parts[1]
 	}
-	return string(hash), nil
-}
-
-func (api *APIServer) validateHash(password string, hash string) (bool, error) {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func (api *APIServer) checkTGUserChatMembership(userID int64) (bool, error) {
-	url := fmt.Sprintf(
-		"https://api.telegram.org/bot%s/getChatMember?chat_id=%s&user_id=%d",
-		api.auth.BotToken, "@dierolled", userID,
-	)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-
-	var data map[string]any
-	json.NewDecoder(resp.Body).Decode(&data)
-
-	if !data["ok"].(bool) {
-		return false, fmt.Errorf("API error: %s", data["description"])
-	}
-
-	result := data["result"].(map[string]any)
-	status := result["status"].(string)
-
-	return status == "creator" || status == "administrator" ||
-		status == "member" || status == "restricted", nil
+	return parts[len(parts)-1]
 }

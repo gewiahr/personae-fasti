@@ -1,4 +1,4 @@
-APP = personae-fasti
+APP = storyshard-app
 DOCKER_VOLUME=personae
 DOCKER_NETWORK=personae
 DOCKER_HOST=172.41.2.1
@@ -10,10 +10,10 @@ DOCKER_FILE_SERVER_HOST=172.72.2.1
 
 
 build: clean
-	@go build -o bin/$(APP)
+	@go build ./cmd/$(APP)
 
 run: build
-	@./bin/$(APP)
+	@./$(APP)
 
 docker:
 	@docker image build -t $(APP):v$(cv) .

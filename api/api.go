@@ -1,93 +1,34 @@
 package api
 
 import (
-	"encoding/json"
-	"errors"
-	"log"
 	"net/http"
 	"time"
 
-	"personae-fasti/data"
-	"personae-fasti/opt"
+	"personae-fasti/configs"
+	"personae-fasti/internal/pkg/httputils"
+	"personae-fasti/internal/service"
 
 	"github.com/rs/cors"
 )
 
-type APIFunc func(http.ResponseWriter, *http.Request) *APIError
-type APIFuncAuth func(http.ResponseWriter, *http.Request, *data.Player) *APIError
-
 type APIServer struct {
-	server     *http.Server
-	storage    *data.Storage
-	fileServer *opt.FileServer
-	auth       *opt.AuthConfig
+	Server *http.Server
+	router *http.ServeMux
+	auth   *service.AuthService
+	// storage    *data.Storage
+	// fileServer *configs.FileServer
+	// auth       *configs.AuthConfig
 }
 
-type APIError struct {
-	Error   error  `json:"-"`
-	Code    int    `json:"-"`
-	Message string `json:"error"`
-}
+type HandlerFunc[Body any] func(httputils.RequestData[Body]) httputils.Responder
 
-func (api *APIServer) HandleError(e error) *APIError {
-	return &APIError{
-		Error: e,
-		Code:  http.StatusInternalServerError,
-	}
-}
+//type AuthHandlerFunc[Body any] func(PlayerAuth, RequestData[Body]) Response
 
-func (api *APIServer) HandleErrorString(estr string) *APIError {
-	return api.HandleError(errors.New(estr))
-}
+// type PlayerAuth struct {
+// 	userID int64
+// }
 
-func (a *APIError) WithCode(c int) *APIError {
-	a.Code = c
-	return a
-}
-
-func (a *APIError) WithMessage(m string) *APIError {
-	a.Message = m
-	return a
-}
-
-func (api *APIServer) Respond(r *http.Request, w http.ResponseWriter, status int, v any) *APIError {
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-
-	respErr := ""
-
-	if APIErr, ok := v.(*APIError); ok {
-		if APIErr.Message == "" {
-			APIErr.Message = APIErr.Error.Error()
-		}
-		respErr = APIErr.Message
-	}
-
-	err := json.NewEncoder(w).Encode(v)
-	if err != nil {
-		return api.HandleError(err)
-	}
-
-	jsonData, _ := json.Marshal(v)
-
-	log := &data.Log{
-		Time:     time.Now(),
-		User:     0, //r.Context().Value("user").(string),
-		URI:      r.RequestURI,
-		Method:   r.Method,
-		Request:  string(ReadBody(r)),
-		Response: string(jsonData),
-		Error:    respErr,
-		HTTPCode: status,
-	}
-
-	api.storage.Log(log, r.Context())
-
-	return nil
-}
-
-func InitServer(c *opt.Conf, s *data.Storage) *APIServer {
+func ConfigServer(c *configs.Main, s *service.AuthService, l *service.LogService) *APIServer {
 
 	router := http.NewServeMux()
 
@@ -99,21 +40,14 @@ func InitServer(c *opt.Conf, s *data.Storage) *APIServer {
 	})
 
 	api := &APIServer{
-		server: &http.Server{
-			Addr:    c.App.Port,
-			Handler: crs.Handler(router),
+		Server: &http.Server{
+			Addr:         c.App.Port,
+			Handler:      crs.Handler(router),
+			ReadTimeout:  time.Duration(c.App.ReadTimeout) * time.Second,
+			WriteTimeout: time.Duration(c.App.WriteTimeout) * time.Second,
 		},
-		storage:    s,
-		fileServer: &c.FileServer,
-		auth:       &c.Auth,
-	}
-
-	api.SetHandlers(router)
-
-	log.Println("API server running on ", api.server.Addr)
-
-	if err := api.server.ListenAndServe(); err != nil {
-		panic(err)
+		router: router,
+		auth:   s,
 	}
 
 	return api

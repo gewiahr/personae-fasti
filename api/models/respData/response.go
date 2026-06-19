@@ -1,263 +1,40 @@
 package respData
 
-import (
-	"personae-fasti/data"
-	"time"
-)
-
 // type LoginInfo struct {
 // 	AccessKey   string       `json:"accesskey"`
 // 	Player      PlayerInfo   `json:"player"`
 // 	CurrentGame GameFullInfo `json:"currentGame"`
 // }
 
-type LoginInfo struct {
-	Authorization string          `json:"authorization"`
-	Player        LoginPlayerInfo `json:"player"`
-	CurrentGame   *GameFullInfo   `json:"currentGame"`
-}
+// type PlayerSettings struct {
+// 	CurrentGame   GameFullInfo `json:"currentGame"`
+// 	PlayerGames   []GameInfo   `json:"playerGames"`
+// 	PlayerInvites []GameInfo   `json:"playerInvites"`
+// }
 
-type LoginPlayerInfo struct {
-	ID       int                      `json:"id"`
-	Username string                   `json:"username"`
-	Settings *LoginPlayerInfoSettings `json:"settings"`
-}
+// func FormPlayerSettings(playerGames, playerInvites []domain.Game, currentGame *domain.Game) *PlayerSettings {
+// 	var playerGameInfo []GameInfo
+// 	for _, game := range playerGames {
+// 		playerGameInfo = append(playerGameInfo, *GameToGameInfo(&game))
+// 	}
 
-type LoginPlayerInfoSettings struct {
-	CouldChangeUsername bool `json:"couldChangeUsername"`
-}
+// 	var playerInvitesInfo []GameInfo
+// 	for _, invite := range playerInvites {
+// 		playerInvitesInfo = append(playerInvitesInfo, *GameToGameInfo(&invite))
+// 	}
 
-type PlayerSettings struct {
-	CurrentGame   GameFullInfo `json:"currentGame"`
-	PlayerGames   []GameInfo   `json:"playerGames"`
-	PlayerInvites []GameInfo   `json:"playerInvites"`
-}
+// 	return &PlayerSettings{
+// 		CurrentGame:   *GameToGameFullInfo(currentGame),
+// 		PlayerGames:   playerGameInfo,
+// 		PlayerInvites: playerInvitesInfo,
+// 	}
+// }
 
-func FormPlayerSettings(playerGames, playerInvites []data.Game, currentGame *data.Game) *PlayerSettings {
-	var playerGameInfo []GameInfo
-	for _, game := range playerGames {
-		playerGameInfo = append(playerGameInfo, *GameToGameInfo(&game))
-	}
+// type PlayerInfo struct {
+// 	ID       int    `json:"id"`
+// 	Username string `json:"username"`
+// }
 
-	var playerInvitesInfo []GameInfo
-	for _, invite := range playerInvites {
-		playerInvitesInfo = append(playerInvitesInfo, *GameToGameInfo(&invite))
-	}
-
-	return &PlayerSettings{
-		CurrentGame:   *GameToGameFullInfo(currentGame),
-		PlayerGames:   playerGameInfo,
-		PlayerInvites: playerInvitesInfo,
-	}
-}
-
-type PlayerInfo struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
-}
-
-type GameInfo struct {
-	ID    int    `json:"id"`
-	Title string `json:"title"`
-	GMID  int    `json:"gmID"`
-}
-
-type GameFullInfo struct {
-	ID    int    `json:"id"`
-	Title string `json:"title"`
-	GMID  int    `json:"gmID"`
-
-	Settings *GameSettings `json:"settings"`
-	Sessions []SessionInfo `json:"sessions"`
-}
-
-type GamePage struct {
-	Game    GameFullInfo `json:"game"`
-	Players []PlayerInfo `json:"players"`
-	Invites []PlayerInfo `json:"invites"`
-}
-
-type GameRecords struct {
-	Records     []data.Record  `json:"records"`
-	Sessions    []data.Session `json:"sessions"`
-	Players     []PlayerInfo   `json:"players"`
-	CurrentGame GameInfo       `json:"currentGame"`
-}
-
-type GameSettings struct {
-	AllowAllEditRecords bool `json:"allowAllEditRecords"`
-}
-
-type SessionInfo struct {
-	Number  int        `json:"number"`
-	Name    string     `json:"name"`
-	EndTime *time.Time `json:"endTime"`
-}
-
-func FormGameRecords(p *data.Player, rs []data.Record, ps []data.Player, ss []data.Session) *GameRecords {
-	gameRecords := GameRecords{
-		Records:  rs,
-		Sessions: ss,
-		Players:  PlayersToPlayersInfoArray(ps),
-		CurrentGame: GameInfo{
-			ID:    p.CurrentGame.ID,
-			Title: p.CurrentGame.Name,
-			GMID:  p.CurrentGame.GMID,
-		},
-	}
-
-	return &gameRecords
-}
-
-type CharInfo struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Title string `json:"title"`
-
-	PlayerID int `json:"playerID"`
-	GameID   int `json:"gameID"`
-	HiddenBy int `json:"hiddenBy"`
-}
-
-type GameChars struct {
-	Chars       []CharInfo   `json:"chars"`
-	Players     []PlayerInfo `json:"players"`
-	CurrentGame GameInfo     `json:"currentGame"`
-}
-
-type CharPage struct {
-	Char    CharFullInfo  `json:"char"`
-	Records []data.Record `json:"records"`
-}
-
-type CharFullInfo struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-
-	PlayerID int `json:"playerID"`
-	GameID   int `json:"gameID"`
-	HiddenBy int `json:"hiddenBy"`
-}
-
-type NPCInfo struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Title string `json:"title"`
-
-	GameID   int `json:"gameID"`
-	HiddenBy int `json:"hiddenBy"`
-}
-
-type GameNPCs struct {
-	NPCs        []NPCInfo `json:"npcs"`
-	CurrentGame GameInfo  `json:"currentGame"`
-}
-
-type NPCPage struct {
-	NPC     NPCFullInfo   `json:"npc"`
-	Records []data.Record `json:"records"`
-}
-
-type NPCFullInfo struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-
-	GameID   int `json:"gameID"`
-	HiddenBy int `json:"hiddenBy"`
-}
-
-type LocationInfo struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Title string `json:"title"`
-
-	GameID   int `json:"gameID"`
-	HiddenBy int `json:"hiddenBy"`
-}
-
-type GameLocations struct {
-	Locations   []LocationInfo `json:"locations"`
-	CurrentGame GameInfo       `json:"currentGame"`
-}
-
-type LocationPage struct {
-	Location LocationFullInfo `json:"location"`
-	Records  []data.Record    `json:"records"`
-	Parent   *LocationInfo    `json:"parent"`
-	Includes []LocationInfo   `json:"includes"`
-}
-
-type LocationFullInfo struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-
-	ParentID int `json:"pid"`
-
-	GameID   int `json:"gameID"`
-	HiddenBy int `json:"hiddenBy"`
-}
-
-type QuestInfo struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-
-	GameID     int  `json:"gameID"`
-	HiddenBy   int  `json:"hiddenBy"`
-	Successful bool `json:"successful"`
-	Finished   bool `json:"finished"`
-}
-
-type GameQuests struct {
-	Quests []QuestInfo `json:"quests"`
-	//CurrentGame GameInfo    `json:"currentGame"`
-}
-
-type QuestPage struct {
-	Quest   QuestFullInfo       `json:"quest"`
-	Tasks   []QuestTaskFullInfo `json:"tasks"`
-	Records []data.Record       `json:"records"`
-}
-
-type QuestFullInfo struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-
-	ParentID int `json:"parentID"`
-	ChildID  int `json:"childID"`
-	HeadID   int `json:"headID"`
-
-	GameID     int  `json:"gameID"`
-	HiddenBy   int  `json:"hiddenBy"`
-	Successful bool `json:"successful"`
-	Finished   bool `json:"finished"`
-}
-
-type QuestTaskFullInfo struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-
-	QuestID int `json:"questID"`
-
-	Type     int  `json:"type"`
-	Capacity int  `json:"capacity"`
-	Current  int  `json:"current"`
-	Finished bool `json:"finished"`
-
-	GameID   int `json:"gameID"`
-	HiddenBy int `json:"hiddenBy"`
-}
-
-type SuggestionData struct {
-	Suggestions []data.Suggestion `json:"entities"`
-}
+// type SuggestionData struct {
+// 	Suggestions []dto.Suggestion `json:"entities"`
+// }
