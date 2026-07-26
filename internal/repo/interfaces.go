@@ -44,6 +44,11 @@ type PlayerRepository interface {
 	IsUsernameFree(ctx context.Context, username string) (bool, error)
 	InsertToken(ctx context.Context, token *domain.Token) (*domain.Token, error)
 	SetPlayerPassword(ctx context.Context, playerID int, passwordHash string) (*domain.Player, error)
+	ChangeCurrentGame(ctx context.Context, playerID, gameID int) (*domain.Player, error)
+
+	GetInvite(ctx context.Context, playerID int, inviteCode string) (*domain.GameInvite, error)
+	DeleteInvite(ctx context.Context, invite *domain.GameInvite) error
+	AddPlayerToGame(ctx context.Context, playerID, gameID int) error
 }
 
 type RecordRepository interface {

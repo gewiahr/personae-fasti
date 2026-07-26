@@ -23,42 +23,50 @@ import (
 func (api *APIServer) SetHandlers(
 	authHandler *handler.AuthHandler,
 	gameHandler *handler.GameHandler,
+	playerHandler *handler.PlayerHandler,
 	recordHandler *handler.RecordHandler,
 	entitiesHandler *handler.EntitiesHandler,
 	questHandler *handler.QuestHandler,
 	appHandler *handler.AppHandler,
 ) {
+	/* LOGIN */
 	api.router.HandleFunc("GET /login", AuthAdapt(api.auth, authHandler.LoginByToken))
 	api.router.HandleFunc("GET /login/{username}", Adapt(authHandler.LoginByUsername))
 	// 	router.HandleFunc("POST /login/tg", api.HTTPWrapper(api.handleLoginTG))
 	api.router.HandleFunc("POST /login", Adapt(authHandler.Login))
 	api.router.HandleFunc("POST /signup", Adapt(authHandler.SignUp))
 
+	/* RECORDS */
 	api.router.HandleFunc("GET /records", AuthAdapt(api.auth, recordHandler.GetPlayerCurrentGameRecords))
 	api.router.HandleFunc("POST /record", AuthAdapt(api.auth, recordHandler.PostPlayerCurrentGameRecord))
 	api.router.HandleFunc("PUT /record", AuthAdapt(api.auth, recordHandler.EditPlayerCurrentGameRecord))
 	api.router.HandleFunc("DELETE /record/{id}", AuthAdapt(api.auth, recordHandler.DeletePlayerCurrentGameRecord))
 
+	/* CHARS */
 	api.router.HandleFunc("GET /chars", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameChars))
 	api.router.HandleFunc("GET /char/{id}", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameCharByID))
 	api.router.HandleFunc("POST /char", AuthAdapt(api.auth, entitiesHandler.PostPlayerCurrentGameChar))
 	api.router.HandleFunc("PUT /char", AuthAdapt(api.auth, entitiesHandler.EditPlayerCurrentGameChar))
 	//api.router.HandleFunc("DELETE /char/{id}", AuthAdapt(api.auth, recordHandler.DeletePlayerCurrentGameChar))
 
+	/* NPCS */
 	api.router.HandleFunc("GET /npcs", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameNPCs))
 	api.router.HandleFunc("GET /npc/{id}", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameNPCByID))
 	api.router.HandleFunc("POST /npc", AuthAdapt(api.auth, entitiesHandler.PostPlayerCurrentGameNPC))
 	api.router.HandleFunc("PUT /npc", AuthAdapt(api.auth, entitiesHandler.EditPlayerCurrentGameNPC))
 	//api.router.HandleFunc("DELETE /npc/{id}", AuthAdapt(api.auth, recordHandler.DeletePlayerCurrentGameNPC))
 
+	/* LOCATIONS */
 	api.router.HandleFunc("GET /locations", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameLocations))
 	api.router.HandleFunc("GET /location/{id}", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameLocationByID))
 	api.router.HandleFunc("POST /location", AuthAdapt(api.auth, entitiesHandler.PostPlayerCurrentGameLocation))
 	api.router.HandleFunc("PUT /location", AuthAdapt(api.auth, entitiesHandler.EditPlayerCurrentGameLocation))
 	//api.router.HandleFunc("DELETE /location/{id}", AuthAdapt(api.auth, recordHandler.DeletePlayerCurrentGameLocation))
 
+	/* SUGGESTIONS */
 	api.router.HandleFunc("GET /suggestions", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameSuggestions))
 
+	/* QUESTS */
 	api.router.HandleFunc("GET /quests", AuthAdapt(api.auth, questHandler.GetPlayerCurrentGameQuests))
 	api.router.HandleFunc("GET /quest/{id}", AuthAdapt(api.auth, questHandler.GetPlayerCurrentGameQuestByID))
 	api.router.HandleFunc("POST /quest", AuthAdapt(api.auth, questHandler.PostPlayerCurrentGameQuest))
@@ -70,19 +78,23 @@ func (api *APIServer) SetHandlers(
 
 	api.router.HandleFunc("PATCH /quest/tasks", AuthAdapt(api.auth, questHandler.UpdatePlayerCurrentGameQuestTasks))
 
-	api.router.HandleFunc("GET /player/currentGame", AuthAdapt(api.auth, gameHandler.GetPlayerCurrentGame))
-	api.router.HandleFunc("GET /player/settings", AuthAdapt(api.auth, gameHandler.GetPlayerSettings))
+	/* PLAYER */
+	api.router.HandleFunc("GET /player/currentGame", AuthAdapt(api.auth, playerHandler.GetPlayerCurrentGame))
+	api.router.HandleFunc("PUT /player/currentGame/{id}", AuthAdapt(api.auth, playerHandler.ChangePlayerCurrentGame))
 
+	api.router.HandleFunc("POST /player/invite/accept/{gameID}", AuthAdapt(api.auth, playerHandler.AcceptGameInvite))
+	api.router.HandleFunc("POST /player/invite/refuse/{gameID}", AuthAdapt(api.auth, playerHandler.RefuseGameInvite))
+
+	// 	router.HandleFunc("GET /player/username/checkAvailability/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleCheckUsernameAvailability)))
+	// 	router.HandleFunc("PATCH /player/username", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerUsername)))
+
+	api.router.HandleFunc("GET /player/settings", AuthAdapt(api.auth, playerHandler.GetPlayerSettings))
+
+	/* APPLICATION */
 	api.router.HandleFunc("POST /feedback", AuthAdapt(api.auth, appHandler.LoginByToken))
 }
 
 // func (api *APIServer) SetHandlers(router *http.ServeMux) {
-
-// 	router.HandleFunc("PUT /player/game", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerGame)))
-// 	router.HandleFunc("POST /player/invite/accept/{gameID}", api.HTTPWrapper(api.PlayerWrapper(api.handlePlayerInviteAccept)))
-// 	router.HandleFunc("POST /player/invite/refuse/{gameID}", api.HTTPWrapper(api.PlayerWrapper(api.handlePlayerInviteRefuse)))
-// 	router.HandleFunc("GET /player/username/checkAvailability/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleCheckUsernameAvailability)))
-// 	router.HandleFunc("PATCH /player/username", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerUsername)))
 
 // 	router.HandleFunc("GET /game/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetGameByID)))
 // 	router.HandleFunc("POST /game", api.HTTPWrapper(api.PlayerWrapper(api.handleStartNewGame)))
@@ -193,113 +205,6 @@ func (api *APIServer) SetHandlers(
 // 	// }
 
 // 	return api.Respond(r, w, http.StatusOK, loginInfo)
-// }
-
-// // PUT /player/game
-// func (api *APIServer) handleChangePlayerGame(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	var currentGameChange reqData.GameChange
-// 	err := ReadJsonBody(r, &currentGameChange)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-// 	if currentGameChange.GameID <= 0 {
-// 		return api.HandleErrorString("game id cannot be 0 or negative")
-// 	}
-
-// 	currentGame, err := api.storage.ChangeCurrentGame(p, currentGameChange.GameID)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	currentGameInfo := respData.GameToGameFullInfo(currentGame)
-// 	return api.Respond(r, w, http.StatusOK, currentGameInfo)
-// }
-
-// // POST /player/invite/accept/{gameID}
-// func (api *APIServer) handlePlayerInviteAccept(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	gameID := getPathValueInt(r, "gameID")
-// 	if gameID == 0 {
-// 		return api.HandleErrorString("gameID cannot be 0")
-// 	}
-
-// 	invite, err := api.storage.GetInvite(p.ID, gameID)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-// 	if invite == nil {
-// 		return api.HandleErrorString("invite does not exist").WithCode(http.StatusNotFound)
-// 	}
-
-// 	if err := api.storage.AddPlayerToGame(p.ID, gameID); err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusOK, nil)
-// }
-
-// // POST /player/invite/refuse/{gameID}
-// func (api *APIServer) handlePlayerInviteRefuse(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	gameID := getPathValueInt(r, "gameID")
-// 	if gameID == 0 {
-// 		return api.HandleErrorString("gameID cannot be 0")
-// 	}
-
-// 	invite, err := api.storage.GetInvite(p.ID, gameID)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-// 	if invite == nil {
-// 		return api.HandleErrorString("invite does not exist").WithCode(http.StatusNotFound)
-// 	}
-
-// 	if err := api.storage.DeleteInvite(invite); err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusOK, nil)
-// }
-
-// // GET /player/username/checkAvailability/{username}
-// func (api *APIServer) handleCheckUsernameAvailability(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	username := r.PathValue("username")
-// 	if username == "" {
-// 		return api.HandleErrorString("username cannot be empty")
-// 	}
-
-// 	available, err := api.storage.CheckUsernameAvailability(p, username)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusOK, struct {
-// 		Available     bool   `json:"available"`
-// 		CheckUsername string `json:"checkUsername"`
-// 	}{
-// 		Available:     available,
-// 		CheckUsername: username,
-// 	})
-// }
-
-// // PATCH /player/username
-// func (api *APIServer) handleChangePlayerUsername(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	var usernameChange reqData.UsernameChange
-// 	err := ReadJsonBody(r, &usernameChange)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	p, err = api.storage.ChangeUsername(p, usernameChange.NewUsername)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusOK, respData.LoginPlayerInfo{
-// 		ID:       p.ID,
-// 		Username: p.Username,
-// 		Settings: &respData.LoginPlayerInfoSettings{
-// 			CouldChangeUsername: false,
-// 		},
-// 	})
 // }
 
 // // GET /game/{id}

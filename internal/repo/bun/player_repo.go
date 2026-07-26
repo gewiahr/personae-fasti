@@ -2,6 +2,7 @@ package bunrepo
 
 import (
 	"context"
+	"database/sql"
 	"personae-fasti/internal/domain"
 	e "personae-fasti/internal/pkg/errorutils"
 	"personae-fasti/internal/repo"
@@ -127,3 +128,100 @@ func (r *PlayerRepo) GetPlayerWithGames(ctx context.Context, playerID int) (*dom
 	}
 	return player, nil
 }
+
+func (r *PlayerRepo) ChangeCurrentGame(ctx context.Context, playerID, gameID int) (*domain.Player, error) {
+	player := &domain.Player{ID: playerID}
+	_, err := r.db.NewUpdate().
+		Model(player).
+		WherePK().
+		Set("current_game_id = ?", gameID).
+		Returning("*").
+		Exec(ctx, player)
+	if err != nil {
+		return nil, err
+	}
+	return player, nil
+}
+
+//GetInviteByExt
+
+func (r *PlayerRepo) GetInvite(ctx context.Context, playerID int, inviteCode string) (*domain.GameInvite, error) {
+	invite := &domain.GameInvite{
+		PlayerID: playerID,
+	}
+	err := r.db.NewSelect().
+		Model(invite).
+		Where("player_id = ? AND code = ?", playerID, inviteCode).
+		Scan(context.Background(), invite)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return invite, nil
+}
+
+func (r *PlayerRepo) AddPlayerToGame(ctx context.Context, playerID, gameID int) error {
+	if err := r.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		newPlayerGame := domain.PlayerGame{
+			PlayerID: playerID,
+			GameID:   gameID,
+		}
+		if _, err := tx.NewInsert().Model(&newPlayerGame).Returning("*").Exec(ctx, &newPlayerGame); err != nil {
+			return err
+		}
+
+		gameInvite := domain.GameInvite{
+			PlayerID: playerID,
+			GameID:   gameID,
+		}
+		if _, err := tx.NewDelete().Model(&gameInvite).WherePK().Exec(context.Background()); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *PlayerRepo) DeleteInvite(ctx context.Context, invite *domain.GameInvite) error {
+	if _, err := r.db.NewDelete().Model(invite).WherePK().Exec(context.Background()); err == sql.ErrNoRows {
+		return err
+	} else if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// func (s *Storage) InvitePlayer(game *Game, player *Player) error {
+// 	playerGame := &PlayerGame{
+// 		PlayerID: player.ID,
+// 		GameID:   game.ID,
+// 	}
+// 	if count, err := s.db.NewSelect().Model(playerGame).WherePK().Count(context.Background()); err != nil && err != sql.ErrNoRows {
+// 		return err
+// 	} else if count > 0 {
+// 		return fmt.Errorf("player is a participant already")
+// 	}
+
+// 	invite := &GameInvite{
+// 		PlayerID: player.ID,
+// 		GameID:   game.ID,
+// 	}
+// 	if count, err := s.db.NewSelect().Model(invite).WherePK().Count(context.Background()); err != nil && err != sql.ErrNoRows {
+// 		return err
+// 	} else if count > 0 {
+// 		return fmt.Errorf("player is invited already")
+// 	}
+
+// 	if _, err := s.db.NewInsert().Model(invite).Exec(context.Background(), invite); err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }

@@ -47,6 +47,11 @@ func (s *BunStorage) LogRepo() repo.LogRepository           { return NewLogRepo(
 func (s *BunStorage) AppRepo() repo.AppRepository           { return NewAppRepo(s.db) }
 
 func (s *BunStorage) Migrate(ctx context.Context) error {
+	err := addNanoID(s.db)
+	if err != nil {
+		panic(fmt.Errorf("failed to create nanoid function: %w", err))
+	}
+
 	models := []any{
 		(*domain.PlayerGame)(nil),
 		(*domain.GameInvite)(nil),
@@ -88,7 +93,7 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 		}
 	}
 
-	_, err := s.db.NewCreateIndex().
+	_, err = s.db.NewCreateIndex().
 		IfNotExists().
 		Model((*domain.Token)(nil)).
 		Index("token_idx").
@@ -102,6 +107,39 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 
 func (s *BunStorage) Close() error {
 	return s.db.Close()
+}
+
+func addNanoID(db *bun.DB) error {
+	const nanoidFunction = `
+        CREATE OR REPLACE FUNCTION nanoid(
+            size INT DEFAULT 12,
+            alphabet TEXT DEFAULT '346789ACDEFGHJKMNPQRTWXY'
+        )
+        RETURNS TEXT AS $$
+        DECLARE
+            result TEXT;
+        BEGIN
+            SELECT string_agg(
+                substr(alphabet, (abs(hashtext(gen_random_uuid()::text)) % length(alphabet))::int + 1, 1), 
+                ''
+            )
+            FROM generate_series(1, size)
+            INTO result;
+            
+            RETURN result;
+        END;
+        $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+    `
+
+	if _, err := db.ExecContext(context.Background(), `CREATE EXTENSION IF NOT EXISTS pgcrypto`); err != nil {
+		return err
+	}
+
+	if _, err := db.ExecContext(context.Background(), nanoidFunction); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // func (s *BunStorage) InitTables() {

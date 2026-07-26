@@ -32,6 +32,7 @@ func main() {
 	logService := service.NewLogService(logRepo)
 	authService := service.NewAuthService(config.Auth, logService, playerRepo)
 	gameService := service.NewGameService(playerRepo, gameRepo, recordRepo)
+	playerService := service.NewPlayerService(playerRepo, gameRepo)
 	recordService := service.NewRecordService(playerRepo, gameRepo, recordRepo)
 	entitiesService := service.NewEntitiesService(entitiesRepo, recordRepo)
 	questService := service.NewQuestService(questRepo, recordRepo)
@@ -39,6 +40,7 @@ func main() {
 
 	authHandler := handler.NewAuthHandler(authService)
 	gameHandler := handler.NewGameHandler(gameService)
+	playerHandler := handler.NewPlayerHandler(playerService)
 	recordHandler := handler.NewRecordHandler(recordService)
 	entitiesHandler := handler.NewEntitiesHandler(entitiesService)
 	questHandler := handler.NewQuestHandler(questService)
@@ -50,7 +52,7 @@ func main() {
 		logService,
 	)
 
-	privateApi.SetHandlers(authHandler, gameHandler, recordHandler, entitiesHandler, questHandler, appHandler)
+	privateApi.SetHandlers(authHandler, gameHandler, playerHandler, recordHandler, entitiesHandler, questHandler, appHandler)
 
 	log.Println("API server running on ", privateApi.Server.Addr)
 	if err := privateApi.Server.ListenAndServe(); err != nil {

@@ -180,17 +180,6 @@ package data
 // 	// Status   PlayerGameStatus `bun:"status,default:1"`
 // }
 
-// type GameInvite struct {
-// 	bun.BaseModel `bun:"game_invites"`
-
-// 	PlayerID int     `bun:"player_id,pk"`
-// 	Player   *Player `bun:"rel:belongs-to,join:player_id=id"`
-// 	GameID   int     `bun:"game_id,pk"`
-// 	Game     *Game   `bun:"rel:belongs-to,join:game_id=id"`
-
-// 	Created *time.Time `bun:"created,default:current_timestamp"`
-// }
-
 // type NPC struct {
 // 	bun.BaseModel `bun:"table:npc"`
 

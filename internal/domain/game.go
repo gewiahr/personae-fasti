@@ -71,6 +71,8 @@ type GameInvite struct {
 	GameID   int     `bun:"game_id,pk"`
 	Game     *Game   `bun:"rel:belongs-to,join:game_id=id"`
 
+	Code string `bun:"code,unique,notnull,type:varchar(16),default:nanoid(16)"`
+
 	Created *time.Time `bun:"created,default:current_timestamp"`
 }
 
