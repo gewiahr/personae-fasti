@@ -31,3 +31,12 @@ func (s *GameService) GetPlayerCurrentGame(ctx context.Context, player *domain.P
 	}
 	return game, nil
 }
+
+func (s *GameService) GetPlayerSettings(ctx context.Context, player *domain.Player) (*domain.Player, error) {
+	p, err := s.playerRepo.GetPlayerWithGames(ctx, player.ID)
+	if err != nil {
+		return nil, e.NewInternalError("Ошибка получения данных игрока", err)
+	}
+
+	return p, nil
+}

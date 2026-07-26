@@ -15,6 +15,7 @@ type Storage interface {
 	RecordRepo() RecordRepository
 	EntitiesRepo() EntitiesRepository
 	LogRepo() LogRepository
+	AppRepo() AppRepository
 
 	Migrate(ctx context.Context) error
 	Close() error
@@ -38,6 +39,7 @@ type PlayerRepository interface {
 	GetByID(ctx context.Context, id int) (*domain.Player, error)
 	GetByToken(ctx context.Context, tokenHash string) (*domain.Player, error)
 	GetByUsername(ctx context.Context, username string) (*domain.Player, error)
+	GetPlayerWithGames(ctx context.Context, playerID int) (*domain.Player, error)
 	CreatePlayer(ctx context.Context, player *domain.Player) (*domain.Player, error)
 	IsUsernameFree(ctx context.Context, username string) (bool, error)
 	InsertToken(ctx context.Context, token *domain.Token) (*domain.Token, error)
@@ -100,4 +102,9 @@ type QuestRepository interface {
 
 type LogRepository interface {
 	Insert(ctx context.Context, log *domain.ApiLog) error
+}
+
+type AppRepository interface {
+	InsertFeedback(ctx context.Context, feedback *domain.ServiceFeedback) (*domain.ServiceFeedback, error)
+	// Insert(ctx context.Context, log *domain.ApiLog) error
 }

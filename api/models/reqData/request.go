@@ -42,8 +42,3 @@ package reqData
 // 	GameID              int  `json:"gameID"`
 // 	AllowAllEditRecords bool `json:"allowAllEditRecords"`
 // }
-
-// type ServiceFeedback struct {
-// 	Type string `json:"feedbackType"`
-// 	Text string `json:"feedbackText"`
-// }

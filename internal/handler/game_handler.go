@@ -25,5 +25,24 @@ func (h *GameHandler) GetPlayerCurrentGame(req httputils.RequestData[dto.NoBody]
 	}
 
 	currentGameFull := mapper.GameToGameFull(currentGame)
-	return httputils.Response{Status: http.StatusOK, Body: currentGameFull} //api.Respond(r, w, http.StatusOK, currentGameInfo)
+	return httputils.Response{Status: http.StatusOK, Body: currentGameFull}
+}
+
+// GetPlayerSettings handles GET /player/settings (protected).
+func (h *GameHandler) GetPlayerSettings(req httputils.RequestData[dto.NoBody]) httputils.Responder {
+	player, err := h.svc.GetPlayerSettings(req.Context, req.Player)
+	if err != nil {
+		return e.ErrToApiError(err)
+	}
+
+	var currentGame *dto.GameFull
+	if player.CurrentGame != nil {
+		currentGame = mapper.GameToGameFull(player.CurrentGame)
+	}
+
+	return httputils.Response{Status: http.StatusOK, Body: dto.PlayerSettingsResponse{
+		CurrentGame:   currentGame,
+		PlayerGames:   mapper.GameToGameBriefArray(player.Games),
+		PlayerInvites: mapper.GameToGameBriefArray(player.Invites),
+	}}
 }

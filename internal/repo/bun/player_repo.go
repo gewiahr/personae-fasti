@@ -111,3 +111,19 @@ func (s *PlayerRepo) SetPlayerPassword(ctx context.Context, playerID int, passwo
 	}
 	return player, nil
 }
+
+func (r *PlayerRepo) GetPlayerWithGames(ctx context.Context, playerID int) (*domain.Player, error) {
+	player := &domain.Player{ID: playerID}
+	err := r.db.NewSelect().
+		Model(player).
+		WherePK().
+		Relation("Games.GM").
+		Relation("Invites.GM").
+		Relation("CurrentGame.GM").
+		Relation("CurrentGame.Settings").
+		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return player, nil
+}

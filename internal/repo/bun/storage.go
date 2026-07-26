@@ -44,6 +44,7 @@ func (s *BunStorage) RecordRepo() repo.RecordRepository     { return NewRecordRe
 func (s *BunStorage) EntitiesRepo() repo.EntitiesRepository { return NewEntitiesRepo(s.db) }
 func (s *BunStorage) QuestRepo() repo.QuestRepository       { return NewQuestRepo(s.db) }
 func (s *BunStorage) LogRepo() repo.LogRepository           { return NewLogRepo(s.db) }
+func (s *BunStorage) AppRepo() repo.AppRepository           { return NewAppRepo(s.db) }
 
 func (s *BunStorage) Migrate(ctx context.Context) error {
 	models := []any{

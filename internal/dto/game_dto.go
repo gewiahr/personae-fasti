@@ -40,3 +40,9 @@ type SessionBrief struct {
 // 	Players     []PlayerInfo     `json:"players"`
 // 	CurrentGame GameInfo         `json:"currentGame"`
 // }
+
+type PlayerSettingsResponse struct {
+	CurrentGame   *GameFull    `json:"currentGame"`
+	PlayerGames   []GameBrief  `json:"playerGames"`
+	PlayerInvites []GameBrief  `json:"playerInvites"`
+}

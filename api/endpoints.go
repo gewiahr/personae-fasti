@@ -26,6 +26,7 @@ func (api *APIServer) SetHandlers(
 	recordHandler *handler.RecordHandler,
 	entitiesHandler *handler.EntitiesHandler,
 	questHandler *handler.QuestHandler,
+	appHandler *handler.AppHandler,
 ) {
 	api.router.HandleFunc("GET /login", AuthAdapt(api.auth, authHandler.LoginByToken))
 	api.router.HandleFunc("GET /login/{username}", Adapt(authHandler.LoginByUsername))
@@ -70,15 +71,13 @@ func (api *APIServer) SetHandlers(
 	api.router.HandleFunc("PATCH /quest/tasks", AuthAdapt(api.auth, questHandler.UpdatePlayerCurrentGameQuestTasks))
 
 	api.router.HandleFunc("GET /player/currentGame", AuthAdapt(api.auth, gameHandler.GetPlayerCurrentGame))
+	api.router.HandleFunc("GET /player/settings", AuthAdapt(api.auth, gameHandler.GetPlayerSettings))
+
+	api.router.HandleFunc("POST /feedback", AuthAdapt(api.auth, appHandler.LoginByToken))
 }
 
 // func (api *APIServer) SetHandlers(router *http.ServeMux) {
 
-// 	router.HandleFunc("GET /login", api.HTTPWrapper(api.handleTokenValidate))
-// 	router.HandleFunc("POST /login", api.HTTPWrapper(api.handleLogin))
-// 	//router.HandleFunc("POST /login/byUsername", api.HTTPWrapper(api.handleLoginUsername))
-
-// 	router.HandleFunc("GET /player/settings", api.HTTPWrapper(api.PlayerWrapper(api.handleGetPlayerSettings)))
 // 	router.HandleFunc("PUT /player/game", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerGame)))
 // 	router.HandleFunc("POST /player/invite/accept/{gameID}", api.HTTPWrapper(api.PlayerWrapper(api.handlePlayerInviteAccept)))
 // 	router.HandleFunc("POST /player/invite/refuse/{gameID}", api.HTTPWrapper(api.PlayerWrapper(api.handlePlayerInviteRefuse)))
@@ -102,41 +101,10 @@ func (api *APIServer) SetHandlers(
 
 // 	router.HandleFunc("GET /image/{type}/{id}", api.HTTPWrapper(api.handleGetImage))
 // 	router.HandleFunc("POST /image/{type}/{id}", api.HTTPWrapper(api.handlePostImage))
-
-// 	router.HandleFunc("POST /feedback", api.HTTPWrapper(api.PlayerWrapper(api.handlePostFeedback)))
 // }
 
 // // func (api *APIServer) handleHome(w http.ResponseWriter, r *http.Request) *APIError {
 // // 	return api.Respond(r, w, http.StatusOK, nil)
-// // }
-
-// // GET /login/{accesskey}
-// // DEPRICATED
-// // func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIError {
-
-// // 	return api.HandleErrorString("accesskey not supported anymore").WithCode(http.StatusUnauthorized)
-
-// // 	// accesskey := r.PathValue("accesskey")
-
-// // 	// player, err := api.storage.GetPlayerByAccessKey(accesskey)
-// // 	// if err != nil {
-// // 	// 	if err == sql.ErrNoRows {
-// // 	// 		return api.HandleError(fmt.Errorf("login failed: no user info for the passkey %s", strings.ToLower(accesskey))).WithCode(http.StatusUnauthorized)
-// // 	// 	} else {
-// // 	// 		return api.HandleError(err)
-// // 	// 	}
-// // 	// }
-
-// // 	// loginInfo := respData.LoginInfo{
-// // 	// 	AccessKey: player.AccessKey,
-// // 	// 	Player: respData.PlayerInfo{
-// // 	// 		ID:       player.ID,
-// // 	// 		Username: player.Username,
-// // 	// 	},
-// // 	// 	CurrentGame: *respData.GameToGameFullInfo(player.CurrentGame),
-// // 	// }
-
-// // 	// return api.Respond(r, w, http.StatusOK, loginInfo)
 // // }
 
 // // POST /login/TG
@@ -225,156 +193,6 @@ func (api *APIServer) SetHandlers(
 // 	// }
 
 // 	return api.Respond(r, w, http.StatusOK, loginInfo)
-// }
-
-// // GET /login/{username}
-// func (api *APIServer) handleLoginUsername(w http.ResponseWriter, r *http.Request) *APIError {
-// 	username := r.PathValue("username")
-// 	if valid, message := api.storage.ValidatePlayerUsername(username); !valid {
-// 		return api.HandleErrorString(message).WithCode(http.StatusBadRequest)
-// 	}
-
-// 	available, err := api.storage.CheckUsernameAvailability(&data.Player{}, username)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusOK, struct {
-// 		Available     bool   `json:"available"`
-// 		CheckUsername string `json:"checkUsername"`
-// 	}{
-// 		Available:     available,
-// 		CheckUsername: username,
-// 	})
-// }
-
-// // GET /login
-// func (api *APIServer) handleTokenValidate(w http.ResponseWriter, r *http.Request) *APIError {
-// 	token := r.Header.Get("Authorization")
-// 	if token == "" {
-// 		return api.HandleErrorString("authorization is invalid").WithCode(http.StatusUnauthorized)
-// 	}
-
-// 	var player *data.Player
-// 	var err error
-
-// 	tokenArray := strings.Split(token, " ")
-// 	if len(tokenArray) == 1 {
-// 		player, err = api.storage.GetPlayerByTGToken(tokenArray[0])
-// 	} else if len(tokenArray) == 2 {
-// 		player, err = api.storage.GetPlayerByTGToken(tokenArray[1])
-// 	} else {
-// 		return api.HandleErrorString("token is invalid").WithCode(http.StatusUnauthorized)
-// 	}
-
-// 	if err == sql.ErrNoRows {
-// 		return api.HandleErrorString("token is invalid").WithCode(http.StatusUnauthorized)
-// 	}
-
-// 	loginInfo := respData.LoginInfo{
-// 		Authorization: fmt.Sprintf("%s", token),
-// 		Player: respData.LoginPlayerInfo{
-// 			ID:       player.ID,
-// 			Username: player.Username,
-// 			Settings: nil,
-// 		},
-// 		CurrentGame: nil,
-// 	}
-
-// 	if player.RegData.UsernameSet {
-// 		loginInfo.Player.Settings = &respData.LoginPlayerInfoSettings{
-// 			CouldChangeUsername: false,
-// 		}
-// 	}
-
-// 	if player.CurrentGame != nil {
-// 		loginInfo.CurrentGame = respData.GameToGameFullInfo(player.CurrentGame)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusOK, loginInfo)
-// }
-
-// // POST /login
-// func (api *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) *APIError {
-// 	var loginReq reqData.LoginUsernameRequest
-// 	err := ReadJsonBody(r, &loginReq)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-// 	if loginReq.LoginSource != "Web" {
-// 		return api.HandleErrorString("wrong login source").WithCode(http.StatusPreconditionFailed)
-// 	}
-
-// 	player, err := api.storage.GetPlayerByUsername(loginReq.Username)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-// 	if player == nil {
-// 		return api.HandleErrorString("no user with such username").WithCode(http.StatusBadRequest)
-// 	}
-
-// 	// ** TEMP for restoring password ** //
-// 	if player.PasswordHash == "" {
-// 		if valid, message := api.storage.ValidatePlayerPassword(loginReq.LoginData); !valid {
-// 			return api.HandleErrorString(message).WithCode(http.StatusBadRequest)
-// 		}
-// 		newPWHash, err := api.generateHash(loginReq.LoginData)
-// 		if err != nil {
-// 			return api.HandleError(err)
-// 		}
-// 		player, err = api.storage.ChangePlayerPassword(player, newPWHash)
-// 		if err != nil {
-// 			return api.HandleError(err)
-// 		}
-// 	} else {
-// 		valid, err := api.validateHash(loginReq.LoginData, player.PasswordHash)
-// 		if err != nil || !valid {
-// 			return api.HandleErrorString("Неверный пароль").WithCode(http.StatusUnauthorized)
-// 		}
-// 	}
-
-// 	token, err := api.storage.CreateAuthToken(player, api.auth.JWTSecret, time.Duration(api.auth.JWTTokenLifetimeHours)*time.Hour)
-// 	if err != nil {
-// 		return api.HandleError(err).WithMessage("error creating token")
-// 	}
-
-// 	loginInfo := respData.LoginInfo{
-// 		Authorization: fmt.Sprintf("Web %s", token),
-// 		Player: respData.LoginPlayerInfo{
-// 			ID:       player.ID,
-// 			Username: player.Username,
-// 			Settings: nil,
-// 		},
-// 		CurrentGame: nil,
-// 	}
-
-// 	if player.RegData.UsernameSet {
-// 		loginInfo.Player.Settings = &respData.LoginPlayerInfoSettings{
-// 			CouldChangeUsername: false,
-// 		}
-// 	}
-
-// 	if player.CurrentGame != nil {
-// 		loginInfo.CurrentGame = respData.GameToGameFullInfo(player.CurrentGame)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusOK, &loginInfo)
-// }
-
-// // GET /player/settings
-// func (api *APIServer) handleGetPlayerSettings(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	player, err := api.storage.GetPlayerGamesAndInvites(p)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	game, err := api.storage.GetGameByID(p.CurrentGame.ID)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	playerSettings := respData.FormPlayerSettings(player.Games, player.Invites, game)
-// 	return api.Respond(r, w, http.StatusOK, playerSettings)
 // }
 
 // // PUT /player/game
@@ -798,18 +616,4 @@ func (api *APIServer) SetHandlers(
 // 		resBody, _ := io.ReadAll(res.Body)
 // 		return api.HandleErrorString(fmt.Sprintf("file server error: %s", string(resBody)))
 // 	}
-// }
-
-// // POST /feedback
-// func (api *APIServer) handlePostFeedback(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	var serviceFeedback reqData.ServiceFeedback
-// 	if err := ReadJsonBody(r, &serviceFeedback); err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	if err := api.storage.AddServiceFeedback(p, &serviceFeedback); err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusCreated, nil)
 // }

@@ -13,6 +13,15 @@ func GameToGameBrief(game *domain.Game) *dto.GameBrief {
 	}
 }
 
+func GameToGameBriefArray(games []domain.Game) []dto.GameBrief {
+	gameInfoArray := []dto.GameBrief{}
+	for _, game := range games {
+		gameInfoArray = append(gameInfoArray, *GameToGameBrief(&game))
+	}
+
+	return gameInfoArray
+}
+
 func GameToGameFull(game *domain.Game) *dto.GameFull {
 	return &dto.GameFull{
 		ExtID:   game.ExtID,

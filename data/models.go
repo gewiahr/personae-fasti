@@ -358,20 +358,3 @@ package data
 
 // 	Finished *time.Time `bun:"finished,default:null"`
 // }
-
-// type ServiceFeedback struct {
-// 	bun.BaseModel `bun:"table:service_feedback"`
-
-// 	ID       int    `bun:"id,pk,autoincrement"`
-// 	Type     string `bun:"type,notnull,default:''"`
-// 	Text     string `bun:"text,notnull" json:"text"`
-// 	Response string `bun:"response" json:"response"`
-
-// 	PlayerID int     `bun:"player_id" json:"playerID"`
-// 	Player   *Player `bun:"rel:belongs-to,join:player_id=id"`
-// 	GameID   int     `bun:"game_id,notnull"`
-// 	Game     *Game   `bun:"rel:belongs-to,join:game_id=id"`
-
-// 	Created *time.Time `bun:"created,nullzero,notnull,default:current_timestamp" json:"created"`
-// 	Updated *time.Time `bun:"updated,nullzero,notnull,default:current_timestamp" json:"updated"`
-// }
