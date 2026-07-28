@@ -16,20 +16,6 @@ package reqData
 // 	StartTime time.Time `json:"startTime"`
 // }
 
-// type GameCreate struct {
-// 	Title string `json:"title"`
-// }
-
-// type GameUpdate struct {
-// 	ID    int    `json:"id"`
-// 	Title string `json:"title"`
-// 	GMID  int    `json:"gmID"`
-// }
-
-// type GameChange struct {
-// 	GameID int `json:"gameID"`
-// }
-
 // type UsernameCheckAvailability struct {
 // 	CheckUsername string `json:"checkUsername"`
 // }

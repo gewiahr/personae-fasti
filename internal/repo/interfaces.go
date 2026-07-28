@@ -31,6 +31,10 @@ type GameRepository interface {
 	// Used for loading current games
 	GetCurrentGame(ctx context.Context, playerCurrentGameID int) (*domain.Game, error)
 
+	GetByExt(ctx context.Context, gameExt string) (*domain.Game, error)
+	Create(ctx context.Context, game *domain.Game) (*domain.Game, error)
+	UpdateByExt(ctx context.Context, game *domain.Game) (*domain.Game, error)
+
 	// Create(ctx context.Context, game *domain.Game) error
 	// GetByID(ctx context.Context, id int) (*domain.Game, error)
 }

@@ -78,6 +78,11 @@ func (api *APIServer) SetHandlers(
 
 	api.router.HandleFunc("PATCH /quest/tasks", AuthAdapt(api.auth, questHandler.UpdatePlayerCurrentGameQuestTasks))
 
+	/* GAME */
+	api.router.HandleFunc("GET /game/{ext}", AuthAdapt(api.auth, gameHandler.GetPlayerGameByExt))
+	api.router.HandleFunc("POST /game", AuthAdapt(api.auth, gameHandler.CreateNewGame))
+	api.router.HandleFunc("PUT /game", AuthAdapt(api.auth, gameHandler.EditGame))
+
 	/* PLAYER */
 	api.router.HandleFunc("GET /player/currentGame", AuthAdapt(api.auth, playerHandler.GetPlayerCurrentGame))
 	api.router.HandleFunc("PUT /player/currentGame/{id}", AuthAdapt(api.auth, playerHandler.ChangePlayerCurrentGame))
@@ -95,10 +100,6 @@ func (api *APIServer) SetHandlers(
 }
 
 // func (api *APIServer) SetHandlers(router *http.ServeMux) {
-
-// 	router.HandleFunc("GET /game/{id}", api.HTTPWrapper(api.PlayerWrapper(api.handleGetGameByID)))
-// 	router.HandleFunc("POST /game", api.HTTPWrapper(api.PlayerWrapper(api.handleStartNewGame)))
-// 	router.HandleFunc("PUT /game", api.HTTPWrapper(api.PlayerWrapper(api.handleUpdateGame)))
 
 // 	router.HandleFunc("POST /game/session/new", api.HTTPWrapper(api.PlayerWrapper(api.handleStartNewGameSession)))
 // 	router.HandleFunc("PATCH /game/session", api.HTTPWrapper(api.PlayerWrapper(api.handleEditGameSession)))
@@ -205,80 +206,6 @@ func (api *APIServer) SetHandlers(
 // 	// }
 
 // 	return api.Respond(r, w, http.StatusOK, loginInfo)
-// }
-
-// // GET /game/{id}
-// func (api *APIServer) handleGetGameByID(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	gameID := getPathValueInt(r, "id")
-// 	if gameID < 0 {
-// 		return api.HandleError(fmt.Errorf("error parsing id: game id is invalid"))
-// 	}
-
-// 	game, err := api.storage.GetPlayerGame(gameID, p.ID)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	} else if game == nil {
-// 		return api.HandleErrorString(fmt.Sprintf("no game with id %d found", gameID)).WithCode(http.StatusNotFound)
-// 	}
-
-// 	gamePage := respData.GamePage{
-// 		Game:    *respData.GameToGameFullInfo(game),
-// 		Players: respData.PlayersToPlayersInfoArray(game.Players),
-// 		Invites: respData.PlayersToPlayersInfoArray(game.Invites),
-// 	}
-
-// 	return api.Respond(r, w, http.StatusOK, gamePage)
-// }
-
-// // POST /game
-// func (api *APIServer) handleStartNewGame(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	var newGame reqData.GameCreate
-// 	err := ReadJsonBody(r, &newGame)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	if valid, message := api.storage.ValidateGameTitle(newGame.Title); !valid {
-// 		return api.HandleErrorString(message).WithCode(http.StatusBadRequest)
-// 	}
-
-// 	g, err := api.storage.CreateGame(p, &newGame)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	var currentGame = p.CurrentGame
-// 	if currentGame == nil {
-// 		currentGame, err = api.storage.ChangeCurrentGame(p, g.ID)
-// 		if err != nil {
-// 			return api.HandleError(err)
-// 		}
-// 	}
-
-// 	currentGameInfo := respData.GameToGameFullInfo(currentGame)
-// 	return api.Respond(r, w, http.StatusCreated, currentGameInfo)
-// 	//return api.HandleErrorString("not implemented").WithCode(http.StatusNotImplemented)
-// }
-
-// // PUT /game
-// func (api *APIServer) handleUpdateGame(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	var updateGame reqData.GameUpdate
-// 	err := ReadJsonBody(r, &updateGame)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	game, err := api.storage.UpdateGame(p, &updateGame)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-// 	if game == nil {
-// 		return api.HandleErrorString("game not found")
-// 	}
-
-// 	currentGameInfo := respData.GameToGameFullInfo(game)
-// 	return api.Respond(r, w, http.StatusCreated, currentGameInfo)
-// 	//return api.HandleErrorString("not implemented").WithCode(http.StatusNotImplemented)
 // }
 
 // // POST /game/session/new

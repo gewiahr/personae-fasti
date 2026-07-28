@@ -14,7 +14,6 @@ import (
 //var Api *api.APIServer
 
 func main() {
-
 	config := configs.InitConfig()
 
 	storage, err := bunrepo.NewBunStorage(config.DB)
@@ -58,5 +57,4 @@ func main() {
 	if err := privateApi.Server.ListenAndServe(); err != nil {
 		panic(err)
 	}
-
 }

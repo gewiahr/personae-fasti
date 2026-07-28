@@ -33,6 +33,7 @@ func GameToGameFull(game *domain.Game) *dto.GameFull {
 		},
 		Sessions: SessionToSessionBriefArray(game.Sessions),
 		Players:  PlayerToPlayersBriefArray(game.Players), // TODO: add observers and left
+		Invites:  PlayerToPlayersBriefArray(game.Invites), // TODO: add observers and left
 	}
 }
 

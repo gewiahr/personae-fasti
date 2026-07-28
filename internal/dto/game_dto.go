@@ -16,6 +16,7 @@ type GameFull struct {
 	Settings *GameSettings  `json:"settings"`
 	Sessions []SessionBrief `json:"sessions"`
 	Players  []PlayerBrief  `json:"players"`
+	Invites  []PlayerBrief  `json:"invites"`
 }
 
 type GameSettings struct {
@@ -28,11 +29,21 @@ type SessionBrief struct {
 	EndTime *time.Time `json:"endTime"`
 }
 
-// type GamePage struct {
-// 	Game    GameFullInfo `json:"game"`
-// 	Players []PlayerInfo `json:"players"`
-// 	Invites []PlayerInfo `json:"invites"`
-// }
+type GameCreate struct {
+	Title string `json:"title"`
+}
+
+type GameUpdate struct {
+	Ext   string `json:"ext"`
+	Title string `json:"title"`
+	GMExt string `json:"gmExt"`
+}
+
+type GamePage struct {
+	Game GameFull `json:"game"`
+	// Players []PlayerInfo `json:"players"`
+	// Invites []PlayerInfo `json:"invites"`
+}
 
 // type GameRecords struct {
 // 	Records     []domain.Record  `json:"records"`
@@ -42,7 +53,7 @@ type SessionBrief struct {
 // }
 
 type PlayerSettingsResponse struct {
-	CurrentGame   *GameFull    `json:"currentGame"`
-	PlayerGames   []GameBrief  `json:"playerGames"`
-	PlayerInvites []GameBrief  `json:"playerInvites"`
+	CurrentGame   *GameFull   `json:"currentGame"`
+	PlayerGames   []GameBrief `json:"playerGames"`
+	PlayerInvites []GameBrief `json:"playerInvites"`
 }

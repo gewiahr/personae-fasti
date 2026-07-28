@@ -36,10 +36,39 @@ func (r *GameRepo) GetCurrentGame(ctx context.Context, playerCurrentGameID int) 
 	return game, err
 }
 
-// func (r *GameRepo) Create(ctx context.Context, game *domain.Game) error {
-// 	_, err := r.db.NewInsert().Model(game).Exec(ctx)
-// 	return err
-// }
+func (r *GameRepo) GetByExt(ctx context.Context, gameExt string) (*domain.Game, error) {
+	game := new(domain.Game)
+	err := r.db.NewSelect().
+		Model(game).
+		Where("game.ext = ?", gameExt).
+		Relation("GM").
+		Relation("Players").
+		Relation("Sessions").
+		Relation("Settings").
+		Scan(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, repo.ErrNotFound
+	}
+	return game, err
+}
+
+func (r *GameRepo) Create(ctx context.Context, game *domain.Game) (*domain.Game, error) {
+	_, err := r.db.NewInsert().
+		Model(game).
+		Returning("*").
+		Exec(ctx)
+	return game, err
+}
+
+func (r *GameRepo) UpdateByExt(ctx context.Context, game *domain.Game) (*domain.Game, error) {
+	_, err := r.db.NewUpdate().
+		Model(game).
+		Where("ext = ?", game.ExtID).
+		Set("name = ?", game.Name).
+		Returning("*").
+		Exec(ctx)
+	return game, err
+}
 
 // func (r *GameRepo) GetByID(ctx context.Context, id int) (*domain.Game, error) {
 // 	game := new(domain.Game)

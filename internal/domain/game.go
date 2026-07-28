@@ -3,6 +3,8 @@ package domain
 import (
 	"time"
 
+	v "personae-fasti/internal/pkg/validation"
+
 	"github.com/uptrace/bun"
 )
 
@@ -88,4 +90,20 @@ type Session struct {
 	Name   string `bun:",notnull,default:''"`
 
 	EndTime *time.Time `bun:"end_time,nullzero"`
+}
+
+func (g *Game) ValidateGameTitle() (bool, string) {
+	if valid, count := v.IsValidLength(g.Name, 3, 100); !valid {
+		if count > 0 {
+			return false, "Название не может быть больше 100 символов"
+		} else if count < 0 {
+			return false, "Название не может быть меньше 3 символов"
+		}
+	}
+
+	// if valid := v.IsValidString(g.Name, true, true, []rune{'.', ',', '-', '_', '!'}); !valid {
+	// 	return false, "Название может содержать только латинские буквы, цифры, точку, запятую, дефис, нижнее подчёркивание или восклицательный знак"
+	// }
+
+	return true, ""
 }
