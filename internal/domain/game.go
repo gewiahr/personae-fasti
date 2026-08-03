@@ -107,3 +107,19 @@ func (g *Game) ValidateGameTitle() (bool, string) {
 
 	return true, ""
 }
+
+func (s *Session) ValidateSessionTitle() (bool, string) {
+	if valid, count := v.IsValidLength(s.Name, 3, 100); !valid {
+		if count > 0 {
+			return false, "Название не может быть больше 100 символов"
+		} else if count < 0 {
+			return false, "Название не может быть меньше 3 символов"
+		}
+	}
+
+	// if valid := v.IsValidString(g.Name, true, true, []rune{'.', ',', '-', '_', '!'}); !valid {
+	// 	return false, "Название может содержать только латинские буквы, цифры, точку, запятую, дефис, нижнее подчёркивание или восклицательный знак"
+	// }
+
+	return true, ""
+}

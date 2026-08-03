@@ -10,12 +10,6 @@ package reqData
 // 	LoginData   string `json:"loginData"`
 // }
 
-// type SessionUpdate struct {
-// 	Number    int       `json:"number"`
-// 	Name      string    `json:"name"`
-// 	StartTime time.Time `json:"startTime"`
-// }
-
 // type UsernameCheckAvailability struct {
 // 	CheckUsername string `json:"checkUsername"`
 // }

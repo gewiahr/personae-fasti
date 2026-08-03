@@ -83,6 +83,10 @@ func (api *APIServer) SetHandlers(
 	api.router.HandleFunc("POST /game", AuthAdapt(api.auth, gameHandler.CreateNewGame))
 	api.router.HandleFunc("PUT /game", AuthAdapt(api.auth, gameHandler.EditGame))
 
+	api.router.HandleFunc("POST /game/session/new", AuthAdapt(api.auth, gameHandler.StartNewGameSession))
+	api.router.HandleFunc("PATCH /game/session", AuthAdapt(api.auth, gameHandler.EditGameSession))
+	api.router.HandleFunc("DELETE /game/session/remove", AuthAdapt(api.auth, gameHandler.RemoveLastGameSession))
+
 	/* PLAYER */
 	api.router.HandleFunc("GET /player/currentGame", AuthAdapt(api.auth, playerHandler.GetPlayerCurrentGame))
 	api.router.HandleFunc("PUT /player/currentGame/{id}", AuthAdapt(api.auth, playerHandler.ChangePlayerCurrentGame))
@@ -100,10 +104,6 @@ func (api *APIServer) SetHandlers(
 }
 
 // func (api *APIServer) SetHandlers(router *http.ServeMux) {
-
-// 	router.HandleFunc("POST /game/session/new", api.HTTPWrapper(api.PlayerWrapper(api.handleStartNewGameSession)))
-// 	router.HandleFunc("PATCH /game/session", api.HTTPWrapper(api.PlayerWrapper(api.handleEditGameSession)))
-// 	router.HandleFunc("DELETE /game/session/remove", api.HTTPWrapper(api.PlayerWrapper(api.handleRemoveLastGameSession)))
 
 // 	//router.HandleFunc("DELETE /game/player/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleRemovePlayerFromGame)))
 
@@ -206,56 +206,6 @@ func (api *APIServer) SetHandlers(
 // 	// }
 
 // 	return api.Respond(r, w, http.StatusOK, loginInfo)
-// }
-
-// // POST /game/session/new
-// func (api *APIServer) handleStartNewGameSession(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	if p.CurrentGame.GMID != p.ID {
-// 		return api.HandleErrorString("only GM may start new session").WithCode(http.StatusForbidden)
-// 	}
-
-// 	newSession, err := api.storage.StartNewGameSession(p.CurrentGame)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusCreated, respData.SessionToSessionInfo(newSession))
-// }
-
-// // PATCH /game/session
-// func (api *APIServer) handleEditGameSession(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	var updateSession reqData.SessionUpdate
-// 	err := ReadJsonBody(r, &updateSession)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	if p.CurrentGame.GMID != p.ID {
-// 		return api.HandleErrorString("only GM may edit sessions").WithCode(http.StatusForbidden)
-// 	}
-
-// 	updatedSession, err := api.storage.EditGameSession(p.CurrentGame, updateSession)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusOK, respData.SessionToSessionInfo(updatedSession))
-// }
-
-// // DELETE /game/session/remove
-// func (api *APIServer) handleRemoveLastGameSession(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	if p.CurrentGame.GMID != p.ID {
-// 		return api.HandleErrorString("only GM may remove sessions").WithCode(http.StatusForbidden)
-// 	}
-
-// 	err := api.storage.RemoveLastGameSession(p.CurrentGame)
-// 	if err == sql.ErrNoRows {
-// 		return api.HandleErrorString("no sessions to remove").WithCode(http.StatusNotAcceptable)
-// 	} else if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusOK, nil)
 // }
 
 // // // DELETE /game/player/{username}

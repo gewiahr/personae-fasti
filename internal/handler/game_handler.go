@@ -54,3 +54,35 @@ func (h *GameHandler) EditGame(req httputils.RequestData[dto.GameUpdate]) httput
 	currentGameFull := mapper.GameToGameFull(game)
 	return httputils.Response{Status: http.StatusCreated, Body: currentGameFull}
 }
+
+// StartNewGameSession handles POST /game/session/new (protected).
+func (h *GameHandler) StartNewGameSession(req httputils.RequestData[dto.NoBody]) httputils.Responder {
+	session, err := h.svc.StartNewGameSession(req.Context, req.Player)
+	if err != nil {
+		return e.ErrToApiError(err)
+	}
+
+	currentGameSessionBrief := mapper.SessionToSessionBrief(session)
+	return httputils.Response{Status: http.StatusCreated, Body: currentGameSessionBrief}
+}
+
+// EditGameSession handles PATCH /game/session (protected).
+func (h *GameHandler) EditGameSession(req httputils.RequestData[dto.SessionUpdate]) httputils.Responder {
+	session, err := h.svc.EditGameSession(req.Context, req.Player, &req.Body)
+	if err != nil {
+		return e.ErrToApiError(err)
+	}
+
+	currentGameSessionBrief := mapper.SessionToSessionBrief(session)
+	return httputils.Response{Status: http.StatusCreated, Body: currentGameSessionBrief}
+}
+
+// RemoveLastGameSession handles DELETE /game/session/remove (protected).
+func (h *GameHandler) RemoveLastGameSession(req httputils.RequestData[dto.NoBody]) httputils.Responder {
+	err := h.svc.RemoveLastGameSession(req.Context, req.Player)
+	if err != nil {
+		return e.ErrToApiError(err)
+	}
+
+	return httputils.Response{Status: http.StatusCreated, Body: nil}
+}

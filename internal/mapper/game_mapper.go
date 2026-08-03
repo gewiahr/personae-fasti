@@ -37,8 +37,8 @@ func GameToGameFull(game *domain.Game) *dto.GameFull {
 	}
 }
 
-func SessionToSessionBrief(session domain.Session) dto.SessionBrief {
-	return dto.SessionBrief{
+func SessionToSessionBrief(session *domain.Session) *dto.SessionBrief {
+	return &dto.SessionBrief{
 		Number:  session.Number,
 		Name:    session.Name,
 		EndTime: session.EndTime,
@@ -48,7 +48,7 @@ func SessionToSessionBrief(session domain.Session) dto.SessionBrief {
 func SessionToSessionBriefArray(sessions []domain.Session) []dto.SessionBrief {
 	sessionInfoArray := []dto.SessionBrief{}
 	for _, session := range sessions {
-		sessionInfoArray = append(sessionInfoArray, SessionToSessionBrief(session))
+		sessionInfoArray = append(sessionInfoArray, *SessionToSessionBrief(&session))
 	}
 
 	return sessionInfoArray

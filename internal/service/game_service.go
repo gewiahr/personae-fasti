@@ -95,3 +95,50 @@ func (s *GameService) EditGame(ctx context.Context, player *domain.Player, gameE
 
 	return game, nil
 }
+
+func (s *GameService) StartNewGameSession(ctx context.Context, player *domain.Player) (*domain.Session, error) {
+	if player.CurrentGame.GMID != player.ID {
+		return nil, e.NewForbiddenError("only GM may start new session")
+	}
+
+	newSession, err := s.gameRepo.CreateNewSession(ctx, player.CurrentGame)
+	if err != nil {
+		return nil, e.NewInternalError("fail to create new session", err)
+	}
+
+	return newSession, nil
+}
+
+func (s *GameService) EditGameSession(ctx context.Context, player *domain.Player, sessionUpdate *dto.SessionUpdate) (*domain.Session, error) {
+	if player.CurrentGame.GMID != player.ID {
+		return nil, e.NewForbiddenError("only GM may edit session")
+	}
+
+	session := &domain.Session{
+		Name: sessionUpdate.Name,
+	}
+
+	if valid, message := session.ValidateSessionTitle(); !valid {
+		return nil, e.NewValidationError(message)
+	}
+
+	game, err := s.gameRepo.EditSession(ctx, player.CurrentGame, sessionUpdate)
+	if err != nil {
+		return nil, e.NewInternalError("Невозможно создать новую игру", err)
+	}
+
+	return game, nil
+}
+
+func (s *GameService) RemoveLastGameSession(ctx context.Context, player *domain.Player) error {
+	if player.CurrentGame.GMID != player.ID {
+		return e.NewForbiddenError("only GM may delete session")
+	}
+
+	err := s.gameRepo.RemoveLastSession(ctx, player.CurrentGame)
+	if err != nil {
+		return e.NewInternalError("Невозможно удалить сессию", err)
+	}
+
+	return nil
+}

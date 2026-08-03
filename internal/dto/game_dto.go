@@ -29,6 +29,12 @@ type SessionBrief struct {
 	EndTime *time.Time `json:"endTime"`
 }
 
+type SessionUpdate struct {
+	Number    int       `json:"number"`
+	Name      string    `json:"name"`
+	StartTime time.Time `json:"startTime"`
+}
+
 type GameCreate struct {
 	Title string `json:"title"`
 }
