@@ -31,18 +31,6 @@ func readBody[Body any](w http.ResponseWriter, r *http.Request) (Body, *e.ApiErr
 	return body, nil
 }
 
-// func ReadBody(r *http.Request) []byte {
-// 	bodyBytes, _ := io.ReadAll(r.Body)
-// 	r.Body.Close()
-// 	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-// 	return bodyBytes
-// }
-
-// func ReadJsonBody(r *http.Request, v any) error {
-// 	bodyBytes := ReadBody(r)
-// 	return json.Unmarshal(bodyBytes, v)
-// }
-
 func extractBearer(r *http.Request) string {
 	auth := r.Header.Get("Authorization")
 	parts := strings.SplitN(auth, " ", 2)

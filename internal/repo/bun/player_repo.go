@@ -23,8 +23,13 @@ func (r *PlayerRepo) GetByID(ctx context.Context, id int) (*domain.Player, error
 	err := r.db.NewSelect().
 		Model(player).
 		WherePK().
+		Relation("RegData").
+		Relation("CurrentGame").
+		Relation("CurrentGame.Settings").
 		Scan(ctx)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 	return player, nil
@@ -41,7 +46,9 @@ func (r *PlayerRepo) GetByToken(ctx context.Context, tokenHash string) (*domain.
 		Relation("Player.CurrentGame").
 		Relation("Player.CurrentGame.Settings"). // TODO: make proper current game load
 		Scan(ctx)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		return nil, e.NewNotFoundError("")
+	} else if err != nil {
 		return nil, err
 	}
 	if token == nil {
@@ -59,7 +66,9 @@ func (r *PlayerRepo) GetByUsername(ctx context.Context, username string) (*domai
 		Relation("CurrentGame").
 		Relation("CurrentGame.Settings").
 		Scan(ctx)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 	return player, nil
@@ -187,41 +196,3 @@ func (r *PlayerRepo) AddPlayerToGame(ctx context.Context, playerID, gameID int) 
 
 	return nil
 }
-
-func (r *PlayerRepo) DeleteInvite(ctx context.Context, invite *domain.GameInvite) error {
-	if _, err := r.db.NewDelete().Model(invite).WherePK().Exec(context.Background()); err == sql.ErrNoRows {
-		return err
-	} else if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// func (s *Storage) InvitePlayer(game *Game, player *Player) error {
-// 	playerGame := &PlayerGame{
-// 		PlayerID: player.ID,
-// 		GameID:   game.ID,
-// 	}
-// 	if count, err := s.db.NewSelect().Model(playerGame).WherePK().Count(context.Background()); err != nil && err != sql.ErrNoRows {
-// 		return err
-// 	} else if count > 0 {
-// 		return fmt.Errorf("player is a participant already")
-// 	}
-
-// 	invite := &GameInvite{
-// 		PlayerID: player.ID,
-// 		GameID:   game.ID,
-// 	}
-// 	if count, err := s.db.NewSelect().Model(invite).WherePK().Count(context.Background()); err != nil && err != sql.ErrNoRows {
-// 		return err
-// 	} else if count > 0 {
-// 		return fmt.Errorf("player is invited already")
-// 	}
-
-// 	if _, err := s.db.NewInsert().Model(invite).Exec(context.Background(), invite); err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }

@@ -142,3 +142,77 @@ func (s *GameService) RemoveLastGameSession(ctx context.Context, player *domain.
 
 	return nil
 }
+
+func (s *GameService) InvitePlayer(ctx context.Context, player *domain.Player, invited string) error {
+	if player.CurrentGame.GMID != player.ID {
+		return e.NewForbiddenError("only GM may invite players")
+	}
+
+	playerInvited, err := s.playerRepo.GetByUsername(ctx, invited)
+	if err != nil {
+		return e.NewInternalError("error getting players", err)
+	}
+	if playerInvited == nil {
+		return e.NewNotFoundError("Нет игрока с таким именем")
+	}
+
+	game, err := s.gameRepo.GetCurrentGame(ctx, player.CurrentGameID)
+	if err != nil {
+		return e.NewInternalError("error getting current game", err)
+	}
+
+	for _, inv := range game.Invites {
+		if inv.ID == playerInvited.ID {
+			return e.NewValidationError("Игрок уже приглашён")
+		}
+	}
+
+	for _, pl := range game.Players {
+		if pl.ID == playerInvited.ID {
+			return e.NewValidationError("Игрок уже участвует в игре")
+		}
+	}
+
+	err = s.gameRepo.InvitePlayer(ctx, &domain.GameInvite{GameID: player.CurrentGame.ID, PlayerID: playerInvited.ID})
+	if err != nil {
+		return e.NewInternalError("error inviting player", err)
+	}
+
+	return nil
+}
+
+func (s *GameService) RemoveInvite(ctx context.Context, player *domain.Player, invited string) error {
+	if player.CurrentGame.GMID != player.ID {
+		return e.NewForbiddenError("only GM may delete invites")
+	}
+
+	playerInvited, err := s.playerRepo.GetByUsername(ctx, invited)
+	if err != nil {
+		return e.NewInternalError("error getting players", err)
+	}
+	if playerInvited == nil {
+		return e.NewNotFoundError("no player with such username")
+	}
+
+	err = s.gameRepo.DeleteInvite(ctx, &domain.GameInvite{GameID: player.CurrentGame.ID, PlayerID: playerInvited.ID})
+	if err != nil {
+		return e.NewInternalError("error removing invite", err)
+	}
+
+	return nil
+}
+
+func (s *GameService) UpdateGameSettings(ctx context.Context, settingsUpdate *dto.GameSettingsUpdate) (*domain.Game, error) {
+	currentGame, err := s.gameRepo.GetByExt(ctx, settingsUpdate.GameExt)
+	if err != nil {
+		return nil, e.NewInternalError("error getting game settings", err)
+	}
+
+	gameSettings, err := s.gameRepo.UpdateGameSettings(ctx, currentGame.ID, settingsUpdate)
+	if err != nil {
+		return nil, e.NewInternalError("error updating settings", err)
+	}
+
+	currentGame.Settings = gameSettings
+	return currentGame, nil
+}

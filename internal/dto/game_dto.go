@@ -63,3 +63,8 @@ type PlayerSettingsResponse struct {
 	PlayerGames   []GameBrief `json:"playerGames"`
 	PlayerInvites []GameBrief `json:"playerInvites"`
 }
+
+type GameSettingsUpdate struct {
+	GameExt             string `json:"gameExt"`
+	AllowAllEditRecords bool   `json:"allowAllEditRecords"`
+}

@@ -17,8 +17,3 @@ package reqData
 // type UsernameChange struct {
 // 	NewUsername string `json:"newUsername"`
 // }
-
-// type GameSettingsUpdate struct {
-// 	GameID              int  `json:"gameID"`
-// 	AllowAllEditRecords bool `json:"allowAllEditRecords"`
-// }

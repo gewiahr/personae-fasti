@@ -4,21 +4,6 @@ import (
 	"personae-fasti/internal/handler"
 )
 
-// import (
-// 	"database/sql"
-// 	"fmt"
-// 	"io"
-// 	"net/http"
-// 	"net/mail"
-// 	"personae-fasti/api/models/reqData"
-// 	"personae-fasti/api/models/respData"
-// 	"personae-fasti/data"
-// 	"strings"
-// 	"time"
-
-// 	tgInitData "github.com/telegram-mini-apps/init-data-golang"
-// )
-
 // TODO: Sort and move endpoints to appropriate handlers
 func (api *APIServer) SetHandlers(
 	authHandler *handler.AuthHandler,
@@ -87,6 +72,11 @@ func (api *APIServer) SetHandlers(
 	api.router.HandleFunc("PATCH /game/session", AuthAdapt(api.auth, gameHandler.EditGameSession))
 	api.router.HandleFunc("DELETE /game/session/remove", AuthAdapt(api.auth, gameHandler.RemoveLastGameSession))
 
+	api.router.HandleFunc("POST /game/invite/{username}", AuthAdapt(api.auth, gameHandler.InvitePlayer))
+	api.router.HandleFunc("DELETE /game/invite/{username}", AuthAdapt(api.auth, gameHandler.RemovePlayerInvite))
+
+	api.router.HandleFunc("PUT /game/settings", AuthAdapt(api.auth, gameHandler.PutGameSettings))
+
 	/* PLAYER */
 	api.router.HandleFunc("GET /player/currentGame", AuthAdapt(api.auth, playerHandler.GetPlayerCurrentGame))
 	api.router.HandleFunc("PUT /player/currentGame/{id}", AuthAdapt(api.auth, playerHandler.ChangePlayerCurrentGame))
@@ -106,11 +96,6 @@ func (api *APIServer) SetHandlers(
 // func (api *APIServer) SetHandlers(router *http.ServeMux) {
 
 // 	//router.HandleFunc("DELETE /game/player/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleRemovePlayerFromGame)))
-
-// 	router.HandleFunc("POST /game/invite/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleInvitePlayer)))
-// 	router.HandleFunc("DELETE /game/invite/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleRemovePlayerInvite)))
-
-// 	router.HandleFunc("PUT /game/settings", api.HTTPWrapper(api.PlayerWrapper(api.handlePutGameSettings)))
 
 // 	router.HandleFunc("GET /image/{type}/{id}", api.HTTPWrapper(api.handleGetImage))
 // 	router.HandleFunc("POST /image/{type}/{id}", api.HTTPWrapper(api.handlePostImage))
@@ -234,76 +219,6 @@ func (api *APIServer) SetHandlers(
 
 // // 	return api.Respond(r, w, http.StatusCreated, nil)
 // // }
-
-// // POST /game/invite/{username}
-// func (api *APIServer) handleInvitePlayer(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	if p.CurrentGame.GMID != p.ID {
-// 		return api.HandleErrorString("only GM may invite players").WithCode(http.StatusForbidden)
-// 	}
-
-// 	playerInvitedUsername := r.PathValue("username")
-// 	if playerInvitedUsername == "" {
-// 		return api.HandleErrorString("error parsing username: username is invalid").WithCode(http.StatusBadRequest)
-// 	}
-
-// 	playerInvited, err := api.storage.GetPlayerByUsername(playerInvitedUsername)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-// 	if playerInvited == nil {
-// 		return api.HandleErrorString("no player with such username").WithCode(http.StatusNotFound)
-// 	}
-
-// 	err = api.storage.InvitePlayer(p.CurrentGame, playerInvited)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusCreated, nil)
-// }
-
-// // DELETE /game/invite/{username}
-// func (api *APIServer) handleRemovePlayerInvite(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	if p.CurrentGame.GMID != p.ID {
-// 		return api.HandleErrorString("only GM may remove player invites").WithCode(http.StatusForbidden)
-// 	}
-
-// 	playerInvitedUsername := r.PathValue("username")
-// 	if playerInvitedUsername == "" {
-// 		return api.HandleErrorString("error parsing username: username is invalid").WithCode(http.StatusBadRequest)
-// 	}
-
-// 	playerInviteRemoval, err := api.storage.GetPlayerByUsername(playerInvitedUsername)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-// 	if playerInviteRemoval == nil {
-// 		return api.HandleErrorString("no player with such username").WithCode(http.StatusNotFound)
-// 	}
-
-// 	if err = api.storage.DeleteInvite(&data.GameInvite{PlayerID: playerInviteRemoval.ID, GameID: p.CurrentGameID}); err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	return api.Respond(r, w, http.StatusOK, nil)
-// }
-
-// // PUT /game/settings
-// func (api *APIServer) handlePutGameSettings(w http.ResponseWriter, r *http.Request, p *data.Player) *APIError {
-// 	var gameSettingsUpdate reqData.GameSettingsUpdate
-// 	err := ReadJsonBody(r, &gameSettingsUpdate)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	currentGame, err := api.storage.UpdateGameSettings(&gameSettingsUpdate)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-
-// 	currentGameInfo := respData.GameToGameFullInfo(currentGame)
-// 	return api.Respond(r, w, http.StatusOK, currentGameInfo)
-// }
 
 // // GET /image/{type}/{id}
 // func (api *APIServer) handleGetImage(w http.ResponseWriter, r *http.Request) *APIError {

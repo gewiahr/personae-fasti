@@ -606,26 +606,6 @@ package data
 // 	return player, nil
 // }
 
-// func (s *Storage) UpdateGameSettings(gameSettingsUpdate *reqData.GameSettingsUpdate) (*Game, error) {
-// 	gameSettings := GameSettings{
-// 		GameID:              gameSettingsUpdate.GameID,
-// 		AllowAllEditRecords: gameSettingsUpdate.AllowAllEditRecords,
-// 	}
-
-// 	_, err := s.db.NewUpdate().Model(&gameSettings).Column("allow_all_edit_records").WherePK().Returning("*").Exec(context.Background(), &gameSettings)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	var currentGame Game
-// 	err = s.db.NewSelect().Model(&currentGame).Where("game_id = ?", gameSettings.GameID).Relation("Settings").Scan(context.Background(), &currentGame)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return &currentGame, nil
-// }
-
 // func (s *Storage) AddServiceFeedback(p *Player, serviceFeedback *reqData.ServiceFeedback) error {
 // 	feedback := ServiceFeedback{
 // 		PlayerID: p.ID,

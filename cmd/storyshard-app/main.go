@@ -9,10 +9,6 @@ import (
 	"personae-fasti/internal/service"
 )
 
-// var Config *configs.Main
-// var Storage *data.Storage
-//var Api *api.APIServer
-
 func main() {
 	config := configs.InitConfig()
 

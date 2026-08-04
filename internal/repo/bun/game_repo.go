@@ -32,6 +32,7 @@ func (r *GameRepo) GetCurrentGame(ctx context.Context, playerCurrentGameID int) 
 		Relation("Players").
 		Relation("Sessions").
 		Relation("Settings").
+		Relation("Invites").
 		Scan(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, repo.ErrNotFound
@@ -48,6 +49,7 @@ func (r *GameRepo) GetByExt(ctx context.Context, gameExt string) (*domain.Game, 
 		Relation("Players").
 		Relation("Sessions").
 		Relation("Settings").
+		Relation("Invites").
 		Scan(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, repo.ErrNotFound
@@ -236,3 +238,55 @@ func (r *GameRepo) RemoveLastSession(ctx context.Context, game *domain.Game) err
 
 	return nil
 }
+
+func (r *GameRepo) InvitePlayer(ctx context.Context, invite *domain.GameInvite) error {
+	if _, err := r.db.NewInsert().Model(invite).Exec(context.Background(), invite); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *GameRepo) DeleteInvite(ctx context.Context, invite *domain.GameInvite) error {
+	if _, err := r.db.NewDelete().Model(invite).WherePK().Exec(context.Background()); err == sql.ErrNoRows {
+		return err
+	} else if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *GameRepo) UpdateGameSettings(ctx context.Context, gameID int, settingsUpdate *dto.GameSettingsUpdate) (*domain.GameSettings, error) {
+	gameSettings := &domain.GameSettings{
+		GameID:              gameID,
+		AllowAllEditRecords: settingsUpdate.AllowAllEditRecords,
+	}
+
+	_, err := r.db.NewUpdate().Model(&gameSettings).Column("allow_all_edit_records").WherePK().Returning("*").Exec(context.Background(), &gameSettings)
+	if err != nil {
+		return nil, err
+	}
+
+	return gameSettings, nil
+}
+
+// func (s *Storage) UpdateGameSettings(gameSettingsUpdate *reqData.GameSettingsUpdate) (*Game, error) {
+// 	gameSettings := GameSettings{
+// 		GameID:              gameSettingsUpdate.GameID,
+// 		AllowAllEditRecords: gameSettingsUpdate.AllowAllEditRecords,
+// 	}
+
+// 	_, err := s.db.NewUpdate().Model(&gameSettings).Column("allow_all_edit_records").WherePK().Returning("*").Exec(context.Background(), &gameSettings)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	var currentGame Game
+// 	err = s.db.NewSelect().Model(&currentGame).Where("game_id = ?", gameSettings.GameID).Relation("Settings").Scan(context.Background(), &currentGame)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return &currentGame, nil
+// }

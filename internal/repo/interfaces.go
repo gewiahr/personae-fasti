@@ -35,9 +35,17 @@ type GameRepository interface {
 	Create(ctx context.Context, game *domain.Game) (*domain.Game, error)
 	UpdateByExt(ctx context.Context, game *domain.Game) (*domain.Game, error)
 
+	GetCurrentGameSession(ctx context.Context, gameID int) (*domain.Session, error)
+	GetGameSessionByNumber(ctx context.Context, gameID int, sessionNumber int) (*domain.Session, error)
+
 	CreateNewSession(ctx context.Context, game *domain.Game) (*domain.Session, error)
 	EditSession(ctx context.Context, game *domain.Game, sessionUpdate *dto.SessionUpdate) (*domain.Session, error)
 	RemoveLastSession(ctx context.Context, game *domain.Game) error
+
+	InvitePlayer(ctx context.Context, invite *domain.GameInvite) error
+	DeleteInvite(ctx context.Context, invite *domain.GameInvite) error
+
+	UpdateGameSettings(ctx context.Context, gameID int, settingsUpdate *dto.GameSettingsUpdate) (*domain.GameSettings, error)
 
 	// Create(ctx context.Context, game *domain.Game) error
 	// GetByID(ctx context.Context, id int) (*domain.Game, error)
@@ -55,7 +63,7 @@ type PlayerRepository interface {
 	ChangeCurrentGame(ctx context.Context, playerID, gameID int) (*domain.Player, error)
 
 	GetInvite(ctx context.Context, playerID int, inviteCode string) (*domain.GameInvite, error)
-	DeleteInvite(ctx context.Context, invite *domain.GameInvite) error
+	//DeleteInvite(ctx context.Context, invite *domain.GameInvite) error
 	AddPlayerToGame(ctx context.Context, playerID, gameID int) error
 }
 

@@ -101,7 +101,7 @@ func (s *PlayerService) RefuseGameInvite(ctx context.Context, player *domain.Pla
 		return e.NewNotFoundError("invite does not exist")
 	}
 
-	if err := s.playerRepo.DeleteInvite(ctx, invite); err != nil {
+	if err := s.gameRepo.DeleteInvite(ctx, invite); err != nil {
 		return e.NewInternalError("unable to delete invite", err)
 	}
 
