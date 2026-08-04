@@ -109,7 +109,7 @@ func (g *Game) ValidateGameTitle() (bool, string) {
 }
 
 func (s *Session) ValidateSessionTitle() (bool, string) {
-	if valid, count := v.IsValidLength(s.Name, 3, 100); !valid {
+	if valid, count := v.IsValidLength(s.Name, 0, 100); !valid {
 		if count > 0 {
 			return false, "Название не может быть больше 100 символов"
 		} else if count < 0 {
