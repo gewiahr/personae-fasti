@@ -53,3 +53,21 @@ func SessionToSessionBriefArray(sessions []domain.Session) []dto.SessionBrief {
 
 	return sessionInfoArray
 }
+
+func InviteToGameInvite(invite *domain.GameInvite) *dto.GameInvite {
+	return &dto.GameInvite{
+		PlayerExt:  invite.Player.ExtID,
+		GameExt:    invite.Game.ExtID,
+		GameTitle:  invite.Game.Name,
+		InviteCode: invite.Code,
+	}
+}
+
+func InviteToGameInviteArray(invites []domain.GameInvite) []dto.GameInvite {
+	gameInviteArray := []dto.GameInvite{}
+	for _, invite := range invites {
+		gameInviteArray = append(gameInviteArray, *InviteToGameInvite(&invite))
+	}
+
+	return gameInviteArray
+}

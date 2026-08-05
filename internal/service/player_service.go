@@ -31,7 +31,7 @@ func (s *PlayerService) GetPlayerCurrentGame(ctx context.Context, player *domain
 	return game, nil
 }
 
-func (s *PlayerService) ChangePlayerCurrentGame(ctx context.Context, player *domain.Player, gameID int) (*domain.Game, error) {
+func (s *PlayerService) ChangePlayerCurrentGame(ctx context.Context, player *domain.Player, gameExt string) (*domain.Game, error) {
 	p, err := s.playerRepo.GetPlayerWithGames(ctx, player.ID)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка получения данных игрока", err)
@@ -39,8 +39,8 @@ func (s *PlayerService) ChangePlayerCurrentGame(ctx context.Context, player *dom
 
 	var game *domain.Game
 	for _, playerGame := range p.Games {
-		if playerGame.ID == gameID {
-			player, err = s.playerRepo.ChangeCurrentGame(ctx, player.ID, gameID)
+		if playerGame.ExtID == gameExt {
+			player, err = s.playerRepo.ChangeCurrentGame(ctx, player.ID, playerGame.ID)
 			if err != nil {
 				return nil, e.NewInternalError("Ошибка изменения текущей игры", err)
 			}
@@ -55,7 +55,7 @@ func (s *PlayerService) ChangePlayerCurrentGame(ctx context.Context, player *dom
 	}
 
 	if game == nil {
-		return nil, e.NewForbiddenError(fmt.Sprintf("Игрок не состоит в игре %d", gameID))
+		return nil, e.NewForbiddenError(fmt.Sprintf("Игрок не состоит в игре %d", gameExt))
 	}
 
 	// TODO: transaction
@@ -74,6 +74,15 @@ func (s *PlayerService) GetPlayerSettings(ctx context.Context, player *domain.Pl
 	}
 
 	return p, nil
+}
+
+func (s *PlayerService) GetPlayerInvites(ctx context.Context, player *domain.Player) ([]domain.GameInvite, error) {
+	invites, err := s.gameRepo.GetPlayerInvites(ctx, player.ID)
+	if err != nil {
+		return nil, e.NewInternalError("Ошибка получения данных игрока", err)
+	}
+
+	return invites, nil
 }
 
 func (s *PlayerService) AcceptGameInvite(ctx context.Context, player *domain.Player, inviteCode string) error {

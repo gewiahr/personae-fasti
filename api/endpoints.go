@@ -79,10 +79,10 @@ func (api *APIServer) SetHandlers(
 
 	/* PLAYER */
 	api.router.HandleFunc("GET /player/currentGame", AuthAdapt(api.auth, playerHandler.GetPlayerCurrentGame))
-	api.router.HandleFunc("PUT /player/currentGame/{id}", AuthAdapt(api.auth, playerHandler.ChangePlayerCurrentGame))
+	api.router.HandleFunc("PUT /player/currentGame/{gameExt}", AuthAdapt(api.auth, playerHandler.ChangePlayerCurrentGame))
 
-	api.router.HandleFunc("POST /player/invite/accept/{gameID}", AuthAdapt(api.auth, playerHandler.AcceptGameInvite))
-	api.router.HandleFunc("POST /player/invite/refuse/{gameID}", AuthAdapt(api.auth, playerHandler.RefuseGameInvite))
+	api.router.HandleFunc("POST /player/invite/accept/{inviteCode}", AuthAdapt(api.auth, playerHandler.AcceptGameInvite))
+	api.router.HandleFunc("POST /player/invite/refuse/{inviteCode}", AuthAdapt(api.auth, playerHandler.RefuseGameInvite))
 
 	// 	router.HandleFunc("GET /player/username/checkAvailability/{username}", api.HTTPWrapper(api.PlayerWrapper(api.handleCheckUsernameAvailability)))
 	// 	router.HandleFunc("PATCH /player/username", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerUsername)))

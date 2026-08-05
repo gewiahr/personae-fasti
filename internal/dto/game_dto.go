@@ -35,6 +35,13 @@ type SessionUpdate struct {
 	StartTime time.Time `json:"startTime"`
 }
 
+type GameInvite struct {
+	PlayerExt  string `json:"playerExt"`
+	GameExt    string `json:"gameExt"`
+	GameTitle  string `json:"gameTitle"`
+	InviteCode string `json:"inviteCode"`
+}
+
 type GameCreate struct {
 	Title string `json:"title"`
 }
@@ -59,9 +66,9 @@ type GamePage struct {
 // }
 
 type PlayerSettingsResponse struct {
-	CurrentGame   *GameFull   `json:"currentGame"`
-	PlayerGames   []GameBrief `json:"playerGames"`
-	PlayerInvites []GameBrief `json:"playerInvites"`
+	CurrentGame   *GameFull    `json:"currentGame"`
+	PlayerGames   []GameBrief  `json:"playerGames"`
+	PlayerInvites []GameInvite `json:"playerInvites"`
 }
 
 type GameSettingsUpdate struct {

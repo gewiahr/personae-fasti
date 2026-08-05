@@ -239,6 +239,44 @@ func (r *GameRepo) RemoveLastSession(ctx context.Context, game *domain.Game) err
 	return nil
 }
 
+func (r *GameRepo) GetPlayerInvites(ctx context.Context, playerID int) ([]domain.GameInvite, error) {
+	var invites []domain.GameInvite
+
+	_, err := r.db.NewSelect().
+		Model(&invites).
+		Where("player_id = ?", playerID).
+		Relation("Player").
+		Relation("Game").
+		Exec(context.Background(), &invites)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return invites, nil
+}
+
+func (r *GameRepo) GetGameInvites(ctx context.Context, gameID int) ([]domain.GameInvite, error) {
+	var invites []domain.GameInvite
+
+	_, err := r.db.NewSelect().
+		Model(&invites).
+		Where("game_id = ?", gameID).
+		Relation("Player").
+		Relation("Game").
+		Exec(context.Background(), &invites)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return invites, nil
+}
+
 func (r *GameRepo) InvitePlayer(ctx context.Context, invite *domain.GameInvite) error {
 	if _, err := r.db.NewInsert().Model(invite).Exec(context.Background(), invite); err != nil {
 		return err
@@ -270,23 +308,3 @@ func (r *GameRepo) UpdateGameSettings(ctx context.Context, gameID int, settingsU
 
 	return gameSettings, nil
 }
-
-// func (s *Storage) UpdateGameSettings(gameSettingsUpdate *reqData.GameSettingsUpdate) (*Game, error) {
-// 	gameSettings := GameSettings{
-// 		GameID:              gameSettingsUpdate.GameID,
-// 		AllowAllEditRecords: gameSettingsUpdate.AllowAllEditRecords,
-// 	}
-
-// 	_, err := s.db.NewUpdate().Model(&gameSettings).Column("allow_all_edit_records").WherePK().Returning("*").Exec(context.Background(), &gameSettings)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	var currentGame Game
-// 	err = s.db.NewSelect().Model(&currentGame).Where("game_id = ?", gameSettings.GameID).Relation("Settings").Scan(context.Background(), &currentGame)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return &currentGame, nil
-// }

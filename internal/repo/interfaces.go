@@ -42,6 +42,9 @@ type GameRepository interface {
 	EditSession(ctx context.Context, game *domain.Game, sessionUpdate *dto.SessionUpdate) (*domain.Session, error)
 	RemoveLastSession(ctx context.Context, game *domain.Game) error
 
+	GetPlayerInvites(ctx context.Context, playerID int) ([]domain.GameInvite, error)
+	GetGameInvites(ctx context.Context, gameID int) ([]domain.GameInvite, error)
+
 	InvitePlayer(ctx context.Context, invite *domain.GameInvite) error
 	DeleteInvite(ctx context.Context, invite *domain.GameInvite) error
 

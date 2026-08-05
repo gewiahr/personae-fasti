@@ -28,18 +28,18 @@ func (h *PlayerHandler) GetPlayerCurrentGame(req httputils.RequestData[dto.NoBod
 	return httputils.Response{Status: http.StatusOK, Body: currentGameFull}
 }
 
-// ChangePlayerCurrentGame handles PUT /player/currentGame/{id} (protected).
+// ChangePlayerCurrentGame handles PUT /player/currentGame/{gameExt} (protected).
 func (h *PlayerHandler) ChangePlayerCurrentGame(req httputils.RequestData[dto.NoBody]) httputils.Responder {
-	gameID := httputils.GetPathValueInt(req.Request, "id")
-	if gameID <= 0 {
-		return e.NewApiError(http.StatusBadRequest, "error parsing id: game id is invalid")
+	gameExt := req.Request.PathValue("gameExt")
+	if gameExt == "" {
+		return e.NewApiError(http.StatusBadRequest, "gameID cannot be empty")
 	}
 
-	if gameID == req.Player.CurrentGameID {
+	if gameExt == req.Player.CurrentGame.ExtID {
 		return e.NewApiError(http.StatusBadRequest, "error changing current game: this game is already current")
 	}
 
-	currentGame, err := h.svc.ChangePlayerCurrentGame(req.Context, req.Player, gameID)
+	currentGame, err := h.svc.ChangePlayerCurrentGame(req.Context, req.Player, gameExt)
 	if err != nil {
 		return e.ErrToApiError(err)
 	}
@@ -60,21 +60,31 @@ func (h *PlayerHandler) GetPlayerSettings(req httputils.RequestData[dto.NoBody])
 		currentGame = mapper.GameToGameFull(player.CurrentGame)
 	}
 
+	var invites []dto.GameInvite
+	if len(player.Invites) > 0 {
+		playerInvites, err := h.svc.GetPlayerInvites(req.Context, player)
+		if err != nil {
+			return e.ErrToApiError(err)
+		}
+
+		invites = mapper.InviteToGameInviteArray(playerInvites)
+	}
+
 	return httputils.Response{Status: http.StatusOK, Body: dto.PlayerSettingsResponse{
 		CurrentGame:   currentGame,
 		PlayerGames:   mapper.GameToGameBriefArray(player.Games),
-		PlayerInvites: mapper.GameToGameBriefArray(player.Invites),
+		PlayerInvites: invites,
 	}}
 }
 
-// GameInviteAccept handles POST /player/invite/accept/{gameExt} (protected).
+// GameInviteAccept handles POST /player/invite/accept/{inviteCode} (protected).
 func (h *PlayerHandler) AcceptGameInvite(req httputils.RequestData[dto.NoBody]) httputils.Responder {
-	gameExt := req.Query.Get("gameExt")
-	if gameExt == "" {
-		return e.NewApiError(http.StatusBadRequest, "gameID cannot be 0 or lower")
+	inviteCode := req.Request.PathValue("inviteCode")
+	if inviteCode == "" {
+		return e.NewApiError(http.StatusBadRequest, "incorrect invite code")
 	}
 
-	err := h.svc.AcceptGameInvite(req.Context, req.Player, gameExt)
+	err := h.svc.AcceptGameInvite(req.Context, req.Player, inviteCode)
 	if err != nil {
 		return e.ErrToApiError(err)
 	}
@@ -82,14 +92,14 @@ func (h *PlayerHandler) AcceptGameInvite(req httputils.RequestData[dto.NoBody]) 
 	return httputils.Response{Status: http.StatusOK, Body: nil}
 }
 
-// GameInviteRefuse handles POST /player/invite/refuse/{gameExt} (protected).
+// GameInviteRefuse handles POST /player/invite/refuse/{inviteCode} (protected).
 func (h *PlayerHandler) RefuseGameInvite(req httputils.RequestData[dto.NoBody]) httputils.Responder {
-	gameExt := req.Query.Get("gameExt")
-	if gameExt == "" {
-		return e.NewApiError(http.StatusBadRequest, "gameID cannot be 0 or lower")
+	inviteCode := req.Request.PathValue("inviteCode")
+	if inviteCode == "" {
+		return e.NewApiError(http.StatusBadRequest, "incorrect invite code")
 	}
 
-	err := h.svc.RefuseGameInvite(req.Context, req.Player, gameExt)
+	err := h.svc.RefuseGameInvite(req.Context, req.Player, inviteCode)
 	if err != nil {
 		return e.ErrToApiError(err)
 	}
