@@ -33,7 +33,10 @@ func NewBunStorage(c *configs.DBConfig) (*BunStorage, error) {
 	storage := &BunStorage{
 		db: db,
 	}
-	storage.Migrate(ctx)
+	if err := storage.Migrate(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("database migration failed: %w", err)
+	}
 
 	return storage, nil
 }
@@ -49,7 +52,7 @@ func (s *BunStorage) AppRepo() repo.AppRepository           { return NewAppRepo(
 func (s *BunStorage) Migrate(ctx context.Context) error {
 	err := addNanoID(s.db)
 	if err != nil {
-		panic(fmt.Errorf("failed to create nanoid function: %w", err))
+		return fmt.Errorf("failed to create nanoid function: %w", err)
 	}
 
 	models := []any{
@@ -93,6 +96,10 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 		}
 	}
 
+	if err := s.applyPublicExtMigration(ctx); err != nil {
+		return err
+	}
+
 	_, err = s.db.NewCreateIndex().
 		IfNotExists().
 		Model((*domain.Token)(nil)).
@@ -128,7 +135,7 @@ func addNanoID(db *bun.DB) error {
             
             RETURN result;
         END;
-        $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+        $$ LANGUAGE plpgsql VOLATILE PARALLEL SAFE;
     `
 
 	if _, err := db.ExecContext(context.Background(), `CREATE EXTENSION IF NOT EXISTS pgcrypto`); err != nil {
@@ -141,6 +148,101 @@ func addNanoID(db *bun.DB) error {
 
 	return nil
 }
+
+const publicExtMigration = "20260824_public_entity_exts"
+
+func (s *BunStorage) applyPublicExtMigration(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migration (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create schema migration table: %w", err)
+	}
+
+	var applied bool
+	if err := s.db.NewSelect().
+		ColumnExpr("EXISTS (SELECT 1 FROM schema_migration WHERE name = ?)", publicExtMigration).
+		Scan(ctx, &applied); err != nil {
+		return fmt.Errorf("failed to check public ext migration: %w", err)
+	}
+	if applied {
+		return nil
+	}
+
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		statements := []string{
+			`ALTER TABLE "char" ADD COLUMN IF NOT EXISTS ext VARCHAR(16)`,
+			`ALTER TABLE npc ADD COLUMN IF NOT EXISTS ext VARCHAR(16)`,
+			`ALTER TABLE location ADD COLUMN IF NOT EXISTS ext VARCHAR(16)`,
+			`ALTER TABLE quest ADD COLUMN IF NOT EXISTS ext VARCHAR(16)`,
+			`UPDATE "char" SET ext = nanoid(12) WHERE ext IS NULL OR ext = ''`,
+			`UPDATE npc SET ext = nanoid(12) WHERE ext IS NULL OR ext = ''`,
+			`UPDATE location SET ext = nanoid(12) WHERE ext IS NULL OR ext = ''`,
+			`UPDATE quest SET ext = nanoid(12) WHERE ext IS NULL OR ext = ''`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS char_ext_idx ON "char" (ext)`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS npc_ext_idx ON npc (ext)`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS location_ext_idx ON location (ext)`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS quest_ext_idx ON quest (ext)`,
+			`ALTER TABLE "char" ALTER COLUMN ext SET DEFAULT nanoid(12), ALTER COLUMN ext SET NOT NULL`,
+			`ALTER TABLE npc ALTER COLUMN ext SET DEFAULT nanoid(12), ALTER COLUMN ext SET NOT NULL`,
+			`ALTER TABLE location ALTER COLUMN ext SET DEFAULT nanoid(12), ALTER COLUMN ext SET NOT NULL`,
+			`ALTER TABLE quest ALTER COLUMN ext SET DEFAULT nanoid(12), ALTER COLUMN ext SET NOT NULL`,
+			migrateMentionSIDsSQL,
+		}
+
+		for _, statement := range statements {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("public ext migration failed: %w", err)
+			}
+		}
+
+		if _, err := tx.ExecContext(
+			ctx,
+			"INSERT INTO schema_migration (name) VALUES (?)",
+			publicExtMigration,
+		); err != nil {
+			return fmt.Errorf("failed to record public ext migration: %w", err)
+		}
+
+		return nil
+	})
+}
+
+const migrateMentionSIDsSQL = `
+DO $$
+DECLARE
+	mention RECORD;
+BEGIN
+	FOR mention IN SELECT id, ext FROM "char" LOOP
+		UPDATE "record" SET text = replace(text, '@char:' || mention.id::text || chr(96), '@char:' || mention.ext || chr(96));
+		UPDATE "char" SET description = replace(description, '@char:' || mention.id::text || chr(96), '@char:' || mention.ext || chr(96));
+		UPDATE npc SET description = replace(description, '@char:' || mention.id::text || chr(96), '@char:' || mention.ext || chr(96));
+		UPDATE location SET description = replace(description, '@char:' || mention.id::text || chr(96), '@char:' || mention.ext || chr(96));
+		UPDATE quest SET description = replace(description, '@char:' || mention.id::text || chr(96), '@char:' || mention.ext || chr(96));
+		UPDATE quest_task SET description = replace(description, '@char:' || mention.id::text || chr(96), '@char:' || mention.ext || chr(96));
+	END LOOP;
+
+	FOR mention IN SELECT id, ext FROM npc LOOP
+		UPDATE "record" SET text = replace(text, '@npc:' || mention.id::text || chr(96), '@npc:' || mention.ext || chr(96));
+		UPDATE "char" SET description = replace(description, '@npc:' || mention.id::text || chr(96), '@npc:' || mention.ext || chr(96));
+		UPDATE npc SET description = replace(description, '@npc:' || mention.id::text || chr(96), '@npc:' || mention.ext || chr(96));
+		UPDATE location SET description = replace(description, '@npc:' || mention.id::text || chr(96), '@npc:' || mention.ext || chr(96));
+		UPDATE quest SET description = replace(description, '@npc:' || mention.id::text || chr(96), '@npc:' || mention.ext || chr(96));
+		UPDATE quest_task SET description = replace(description, '@npc:' || mention.id::text || chr(96), '@npc:' || mention.ext || chr(96));
+	END LOOP;
+
+	FOR mention IN SELECT id, ext FROM location LOOP
+		UPDATE "record" SET text = replace(text, '@location:' || mention.id::text || chr(96), '@location:' || mention.ext || chr(96));
+		UPDATE "char" SET description = replace(description, '@location:' || mention.id::text || chr(96), '@location:' || mention.ext || chr(96));
+		UPDATE npc SET description = replace(description, '@location:' || mention.id::text || chr(96), '@location:' || mention.ext || chr(96));
+		UPDATE location SET description = replace(description, '@location:' || mention.id::text || chr(96), '@location:' || mention.ext || chr(96));
+		UPDATE quest SET description = replace(description, '@location:' || mention.id::text || chr(96), '@location:' || mention.ext || chr(96));
+		UPDATE quest_task SET description = replace(description, '@location:' || mention.id::text || chr(96), '@location:' || mention.ext || chr(96));
+	END LOOP;
+END $$;
+`
 
 // func (s *BunStorage) InitTables() {
 // 	ctx := context.Background()

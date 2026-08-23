@@ -28,7 +28,7 @@ func main() {
 	authService := service.NewAuthService(config.Auth, logService, playerRepo)
 	gameService := service.NewGameService(playerRepo, gameRepo, recordRepo)
 	playerService := service.NewPlayerService(playerRepo, gameRepo)
-	recordService := service.NewRecordService(playerRepo, gameRepo, recordRepo)
+	recordService := service.NewRecordService(playerRepo, gameRepo, recordRepo, questRepo)
 	entitiesService := service.NewEntitiesService(entitiesRepo, recordRepo)
 	questService := service.NewQuestService(questRepo, recordRepo)
 	appService := service.NewAppService(appRepo)

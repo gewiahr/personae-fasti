@@ -16,7 +16,7 @@ func CharToCharBriefArray(chars []domain.Char, gameExt, playerExt string) []dto.
 
 func CharToCharBrief(char domain.Char, gameExt, playerExt string) dto.CharBrief {
 	return dto.CharBrief{
-		ID:          char.ID,
+		ExtID:       char.ExtID,
 		Name:        char.Name,
 		Title:       char.Title,
 		PlayerExtID: playerExt,
@@ -27,7 +27,7 @@ func CharToCharBrief(char domain.Char, gameExt, playerExt string) dto.CharBrief 
 
 func CharToCharFullInfo(char *domain.Char, gameExt, playerExt string) *dto.CharFull {
 	return &dto.CharFull{
-		ID:          char.ID,
+		ExtID:       char.ExtID,
 		Name:        char.Name,
 		Title:       char.Title,
 		Description: char.Description,
@@ -48,7 +48,7 @@ func NPCToNPCBriefArray(npcs []domain.NPC, gameExt string) []dto.NPCBrief {
 
 func NPCToNPCBrief(npc domain.NPC, gameExt string) dto.NPCBrief {
 	return dto.NPCBrief{
-		ID:        npc.ID,
+		ExtID:     npc.ExtID,
 		Name:      npc.Name,
 		Title:     npc.Title,
 		GameExtID: gameExt,
@@ -58,7 +58,7 @@ func NPCToNPCBrief(npc domain.NPC, gameExt string) dto.NPCBrief {
 
 func NPCToNPCFullInfo(npc *domain.NPC, gameExt string) *dto.NPCFull {
 	return &dto.NPCFull{
-		ID:          npc.ID,
+		ExtID:       npc.ExtID,
 		Name:        npc.Name,
 		Title:       npc.Title,
 		Description: npc.Description,
@@ -78,10 +78,9 @@ func LocationToLocationBriefArray(locations []domain.Location, gameExt string) [
 
 func LocationToLocationBrief(location domain.Location, gameExt string) *dto.LocationBrief {
 	return &dto.LocationBrief{
-		ID:        location.ID,
+		ExtID:     location.ExtID,
 		Name:      location.Name,
 		Title:     location.Title,
-		ParentID:  location.ParentID,
 		GameExtID: gameExt,
 		Hidden:    location.HiddenBy != 0,
 	}
@@ -89,12 +88,19 @@ func LocationToLocationBrief(location domain.Location, gameExt string) *dto.Loca
 
 func LocationToLocationFullInfo(location *domain.Location, gameExt string) *dto.LocationFull {
 	return &dto.LocationFull{
-		ID:          location.ID,
-		ParentID:    location.ParentID,
+		ExtID:       location.ExtID,
+		ParentExtID: locationParentExt(location),
 		Name:        location.Name,
 		Title:       location.Title,
 		Description: location.Description,
 		GameExtID:   gameExt,
 		Hidden:      location.HiddenBy != 0,
 	}
+}
+
+func locationParentExt(location *domain.Location) string {
+	if location.Parent == nil {
+		return ""
+	}
+	return location.Parent.ExtID
 }

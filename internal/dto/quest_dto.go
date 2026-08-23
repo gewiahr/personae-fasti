@@ -3,7 +3,7 @@ package dto
 /* Quest */
 
 type QuestBrief struct {
-	ID    int    `json:"id"`
+	ExtID string `json:"ext"`
 	Name  string `json:"name"`
 	Title string `json:"title"`
 
@@ -14,14 +14,10 @@ type QuestBrief struct {
 }
 
 type QuestFull struct {
-	ID          int    `json:"id"`
+	ExtID       string `json:"ext"`
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-
-	ParentID int `json:"parentID"`
-	ChildID  int `json:"childID"`
-	HeadID   int `json:"headID"`
 
 	GameExtID  string `json:"gameExt"`
 	Hidden     bool   `json:"hidden"`
@@ -47,8 +43,6 @@ type QuestTaskFull struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 
-	QuestID int `json:"questID"`
-
 	Type     int  `json:"type"`
 	Capacity int  `json:"capacity"`
 	Current  int  `json:"current"`
@@ -59,8 +53,8 @@ type QuestTaskFull struct {
 }
 
 type QuestTasksPatch struct {
-	QuestID int         `json:"questID"`
-	Tasks   []TaskPatch `json:"tasks"`
+	QuestExtID string      `json:"questExt"`
+	Tasks      []TaskPatch `json:"tasks"`
 }
 
 type TaskPatch struct {
@@ -79,10 +73,6 @@ type QuestCreate struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-
-	ParentID int `json:"parentID"`
-	ChildID  int `json:"childID"`
-	HeadID   int `json:"headID"`
 
 	Successful bool `json:"successful"`
 
@@ -106,14 +96,11 @@ type QuestUpdateData struct {
 }
 
 type QuestUpdate struct {
-	ID          int    `json:"id"`
+	ExtID       string `json:"ext"`
+	ID          int    `json:"-"`
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-
-	ParentID int `json:"parentID"`
-	ChildID  int `json:"childID"`
-	HeadID   int `json:"headID"`
 
 	Successful bool `json:"successful"`
 

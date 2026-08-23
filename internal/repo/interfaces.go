@@ -93,6 +93,9 @@ type EntitiesRepository interface {
 	GetCurrentGameCharByID(ctx context.Context, gameID, charID int) (*domain.Char, error)
 	GetCurrentGameNPCByID(ctx context.Context, gameID, npcID int) (*domain.NPC, error)
 	GetCurrentGameLocationByID(ctx context.Context, gameID, locationID int) (*domain.Location, error)
+	GetCurrentGameCharByExt(ctx context.Context, gameID int, charExt string) (*domain.Char, error)
+	GetCurrentGameNPCByExt(ctx context.Context, gameID int, npcExt string) (*domain.NPC, error)
+	GetCurrentGameLocationByExt(ctx context.Context, gameID int, locationExt string) (*domain.Location, error)
 	GetCurrentGameLocationChildrenByID(ctx context.Context, gameID, locationID int) ([]domain.Location, error)
 
 	CreateChar(ctx context.Context, char *domain.Char) (*domain.Char, error)
@@ -109,6 +112,7 @@ type EntitiesRepository interface {
 type QuestRepository interface {
 	GetCurrentGameQuestList(ctx context.Context, gameID, playerID int) ([]domain.Quest, error)
 	GetPlayerCurrentGameQuestByID(ctx context.Context, gameID, questID int) (*domain.Quest, error)
+	GetPlayerCurrentGameQuestByExt(ctx context.Context, gameID int, questExt string) (*domain.Quest, error)
 	CreatePlayerCurrentGameQuest(ctx context.Context, questCreateData *dto.QuestCreateData, playerID, gameID int) (*domain.Quest, error)
 	EditPlayerCurrentGameQuest(ctx context.Context, questUpdateData *dto.QuestUpdateData, playerID, gameID int) (*domain.Quest, error)
 	//DeleteQuest(ctx context.Context, questID int) error

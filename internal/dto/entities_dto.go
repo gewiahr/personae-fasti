@@ -3,7 +3,7 @@ package dto
 /* Char */
 
 type CharBrief struct {
-	ID    int    `json:"id"`
+	ExtID string `json:"ext"`
 	Name  string `json:"name"`
 	Title string `json:"title"`
 
@@ -13,7 +13,7 @@ type CharBrief struct {
 }
 
 type CharFull struct {
-	ID          int    `json:"id"`
+	ExtID       string `json:"ext"`
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
@@ -42,7 +42,7 @@ type CharCreate struct {
 }
 
 type CharUpdate struct {
-	ID          int    `json:"id"`
+	ExtID       string `json:"ext"`
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
@@ -52,7 +52,7 @@ type CharUpdate struct {
 /* NPC */
 
 type NPCBrief struct {
-	ID    int    `json:"id"`
+	ExtID string `json:"ext"`
 	Name  string `json:"name"`
 	Title string `json:"title"`
 
@@ -61,7 +61,7 @@ type NPCBrief struct {
 }
 
 type NPCFull struct {
-	ID          int    `json:"id"`
+	ExtID       string `json:"ext"`
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
@@ -88,7 +88,7 @@ type NPCCreate struct {
 }
 
 type NPCUpdate struct {
-	ID          int    `json:"id"`
+	ExtID       string `json:"ext"`
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
@@ -98,23 +98,21 @@ type NPCUpdate struct {
 /* Location */
 
 type LocationBrief struct {
-	ID    int    `json:"id"`
+	ExtID string `json:"ext"`
 	Name  string `json:"name"`
 	Title string `json:"title"`
-
-	ParentID int `json:"pid"`
 
 	GameExtID string `json:"gameExt"`
 	Hidden    bool   `json:"hidden"`
 }
 
 type LocationFull struct {
-	ID          int    `json:"id"`
+	ExtID       string `json:"ext"`
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 
-	ParentID int `json:"pid"`
+	ParentExtID string `json:"parentExt"`
 
 	GameExtID string `json:"gameExt"`
 	Hidden    bool   `json:"hidden"`
@@ -136,23 +134,24 @@ type LocationCreate struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	ParentID    int    `json:"pid"`
+	ParentExtID string `json:"parentExt"`
 	Hidden      bool   `json:"hidden"`
 }
 
 type LocationUpdate struct {
-	ID          int    `json:"id"`
+	ExtID       string `json:"ext"`
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	ParentID    int    `json:"pid"`
+	ParentExtID string `json:"parentExt"`
+	ParentID    int    `json:"-"`
 	Hidden      bool   `json:"hidden"`
 }
 
 /* Suggestion */
 
 type Suggestion struct {
-	ID       int    `json:"id"`
+	ExtID    string `bun:"ext" json:"ext"`
 	StringID string `bun:"sid" json:"sid"`
 	Type     string `json:"type"`
 	//TypeName string `json:"typeName"`

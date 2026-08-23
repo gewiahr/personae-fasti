@@ -9,7 +9,6 @@ import (
 	"personae-fasti/internal/repo"
 	gewiutils "personae-fasti/pkg/gewi-utils"
 	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -25,9 +24,10 @@ func NewRecordRepo(db *bun.DB) *RecordRepo { return &RecordRepo{db: db} }
 
 func (r *RecordRepo) GetCurrentGameRecordList(ctx context.Context, gameID, playerID int) ([]domain.Record, error) {
 	records := []domain.Record{}
-	err := r.db.NewSelect().Model(&records).Where("player_id = ? AND game_id = ? AND deleted IS NULL", playerID, gameID).
+	err := r.db.NewSelect().Model(&records).Where("\"record\".player_id = ? AND \"record\".game_id = ? AND \"record\".deleted IS NULL", playerID, gameID).
+		Relation("Quest").
 		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
-			return q.Where("hidden_by = 0").WhereOr("hidden_by = ?", playerID)
+			return q.Where("\"record\".hidden_by = 0").WhereOr("\"record\".hidden_by = ?", playerID)
 		}).
 		Scan(context.Background(), &records)
 	if err == sql.ErrNoRows {
@@ -136,9 +136,9 @@ func (r *RecordRepo) SoftDeleteRecord(ctx context.Context, playerID int, recordI
 }
 
 func (r *RecordRepo) FilterAllowedRecords(ctx context.Context, records []domain.Record, playerID int) ([]domain.Record, error) {
-	err := r.db.NewSelect().Model(&records).WherePK().Where("deleted IS NULL").
+	err := r.db.NewSelect().Model(&records).WherePK().Where("\"record\".deleted IS NULL").Relation("Quest").
 		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
-			return q.Where("hidden_by = 0").WhereOr("hidden_by = ?", playerID)
+			return q.Where("\"record\".hidden_by = 0").WhereOr("\"record\".hidden_by = ?", playerID)
 		}).
 		Scan(context.Background(), &records)
 	if err == sql.ErrNoRows {
@@ -151,27 +151,40 @@ func (r *RecordRepo) FilterAllowedRecords(ctx context.Context, records []domain.
 }
 
 func (r *RecordRepo) InsertMentionsForRecord(ctx context.Context, tx bun.Tx, record *domain.Record) error {
-	re, err := regexp.Compile(`@(?P<type>\w+):(?P<id>\d+)` + "`(?P<name>[^`]+)`")
+	re, err := regexp.Compile(`@(?P<type>\w+):(?P<ext>[\w-]+)` + "`(?P<name>[^`]+)`")
 	if err != nil {
 		return err
 	}
 
 	matches := re.FindAllStringSubmatch(record.Text, -1)
 	for _, match := range matches {
-		id, err := strconv.Atoi(match[2])
-		if err != nil {
-			continue
-		}
+		var id int
 		switch match[1] {
 		case "char":
+			err = tx.NewSelect().TableExpr(`"char"`).Column("id").Where("ext = ? AND game_id = ?", match[2], record.GameID).Scan(ctx, &id)
+			if err != nil {
+				break
+			}
 			_, err = tx.NewInsert().Model(&domain.RecordChar{RecordID: record.ID, CharID: id}).On("CONFLICT DO NOTHING").Exec(ctx)
 		case "npc":
+			err = tx.NewSelect().Table("npc").Column("id").Where("ext = ? AND game_id = ?", match[2], record.GameID).Scan(ctx, &id)
+			if err != nil {
+				break
+			}
 			_, err = tx.NewInsert().Model(&domain.RecordNPC{RecordID: record.ID, NPCID: id}).On("CONFLICT DO NOTHING").Exec(ctx)
 		case "location":
+			err = tx.NewSelect().Table("location").Column("id").Where("ext = ? AND game_id = ?", match[2], record.GameID).Scan(ctx, &id)
+			if err != nil {
+				break
+			}
 			_, err = tx.NewInsert().Model(&domain.RecordLocation{RecordID: record.ID, LocationID: id}).On("CONFLICT DO NOTHING").Exec(ctx)
 		default:
 			fmt.Printf("error during record mention extracting: mention %s is incorrect in record %d", match[0], record.ID)
 			// ++ add error logger ++ //
+		}
+		if err == sql.ErrNoRows {
+			err = nil
+			continue
 		}
 		if err != nil {
 			return err

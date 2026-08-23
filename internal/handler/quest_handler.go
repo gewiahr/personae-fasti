@@ -31,19 +31,14 @@ func (h *QuestHandler) GetPlayerCurrentGameQuests(req httputils.RequestData[dto.
 	}}
 }
 
-// GetPlayerCurrentGameQuestByID handles GET /quest/{id} (protected).
-func (h *QuestHandler) GetPlayerCurrentGameQuestByID(req httputils.RequestData[dto.NoBody]) httputils.Responder {
-	questID := httputils.GetPathValueInt(req.Request, "id")
-	if questID <= 0 {
-		return e.NewApiError(http.StatusBadRequest, "error parsing id: quest id is invalid")
-	}
-
-	quest, err := h.svc.GetPlayerCurrentGameQuestByID(req.Context, req.Player, questID)
+// GetPlayerCurrentGameQuestByExt handles GET /quest/{ext} (protected).
+func (h *QuestHandler) GetPlayerCurrentGameQuestByExt(req httputils.RequestData[dto.NoBody]) httputils.Responder {
+	quest, err := h.svc.GetPlayerCurrentGameQuestByExt(req.Context, req.Player, req.Request.PathValue("ext"))
 	if err != nil {
 		return e.ErrToApiError(err)
 	}
 
-	questFull := mapper.QuestToQuestFullInfo(quest, req.Player.ExtID)
+	questFull := mapper.QuestToQuestFullInfo(quest, req.Player.CurrentGame.ExtID)
 
 	return httputils.Response{Status: http.StatusOK, Body: dto.QuestPage{
 		Quest:   *questFull,
@@ -69,12 +64,7 @@ func (h *QuestHandler) PostPlayerCurrentGameQuest(req httputils.RequestData[dto.
 
 // EditPlayerCurrentGameQuest handles PUT /quest (protected).
 func (h *QuestHandler) EditPlayerCurrentGameQuest(req httputils.RequestData[dto.QuestUpdateData]) httputils.Responder {
-	quest, err := h.svc.GetPlayerCurrentGameQuestByID(req.Context, req.Player, req.Body.Quest.ID)
-	if err != nil {
-		return e.ErrToApiError(err)
-	}
-
-	quest, err = h.svc.EditPlayerCurrentGameQuest(req.Context, req.Player, &req.Body)
+	quest, err := h.svc.EditPlayerCurrentGameQuest(req.Context, req.Player, &req.Body)
 	if err != nil {
 		return e.ErrToApiError(err)
 	}
@@ -104,17 +94,12 @@ func (h *QuestHandler) EditPlayerCurrentGameQuest(req httputils.RequestData[dto.
 
 // CompletePlayerCurrentGameQuest handles PATCH /quest/{id}/complete (protected).
 func (h *QuestHandler) CompletePlayerCurrentGameQuest(req httputils.RequestData[dto.NoBody]) httputils.Responder {
-	questID := httputils.GetPathValueInt(req.Request, "id")
-	if questID <= 0 {
-		return e.NewApiError(http.StatusBadRequest, "error parsing id: quest id is invalid")
-	}
-
-	quest, err := h.svc.FinishPlayerCurrentGameQuest(req.Context, req.Player, questID, true)
+	quest, err := h.svc.FinishPlayerCurrentGameQuest(req.Context, req.Player, req.Request.PathValue("ext"), true)
 	if err != nil {
 		return e.ErrToApiError(err)
 	}
 
-	questFull := mapper.QuestToQuestFullInfo(quest, req.Player.ExtID)
+	questFull := mapper.QuestToQuestFullInfo(quest, req.Player.CurrentGame.ExtID)
 
 	return httputils.Response{Status: http.StatusOK, Body: dto.QuestPage{
 		Quest:   *questFull,
@@ -125,17 +110,12 @@ func (h *QuestHandler) CompletePlayerCurrentGameQuest(req httputils.RequestData[
 
 // FailPlayerCurrentGameQuest handles PATCH /quest/{id}/fail (protected).
 func (h *QuestHandler) FailPlayerCurrentGameQuest(req httputils.RequestData[dto.NoBody]) httputils.Responder {
-	questID := httputils.GetPathValueInt(req.Request, "id")
-	if questID <= 0 {
-		return e.NewApiError(http.StatusBadRequest, "error parsing id: quest id is invalid")
-	}
-
-	quest, err := h.svc.FinishPlayerCurrentGameQuest(req.Context, req.Player, questID, false)
+	quest, err := h.svc.FinishPlayerCurrentGameQuest(req.Context, req.Player, req.Request.PathValue("ext"), false)
 	if err != nil {
 		return e.ErrToApiError(err)
 	}
 
-	questFull := mapper.QuestToQuestFullInfo(quest, req.Player.ExtID)
+	questFull := mapper.QuestToQuestFullInfo(quest, req.Player.CurrentGame.ExtID)
 
 	return httputils.Response{Status: http.StatusOK, Body: dto.QuestPage{
 		Quest:   *questFull,
@@ -146,17 +126,12 @@ func (h *QuestHandler) FailPlayerCurrentGameQuest(req httputils.RequestData[dto.
 
 // ResetPlayerCurrentGameQuest handles PATCH /quest/{id}/reset (protected).
 func (h *QuestHandler) ResetPlayerCurrentGameQuest(req httputils.RequestData[dto.NoBody]) httputils.Responder {
-	questID := httputils.GetPathValueInt(req.Request, "id")
-	if questID <= 0 {
-		return e.NewApiError(http.StatusBadRequest, "error parsing id: quest id is invalid")
-	}
-
-	quest, err := h.svc.ResetPlayerCurrentGameQuest(req.Context, req.Player, questID)
+	quest, err := h.svc.ResetPlayerCurrentGameQuest(req.Context, req.Player, req.Request.PathValue("ext"))
 	if err != nil {
 		return e.ErrToApiError(err)
 	}
 
-	questFull := mapper.QuestToQuestFullInfo(quest, req.Player.ExtID)
+	questFull := mapper.QuestToQuestFullInfo(quest, req.Player.CurrentGame.ExtID)
 
 	return httputils.Response{Status: http.StatusOK, Body: dto.QuestPage{
 		Quest:   *questFull,
@@ -167,11 +142,11 @@ func (h *QuestHandler) ResetPlayerCurrentGameQuest(req httputils.RequestData[dto
 
 // UpdatePlayerCurrentGameQuestTasks handles PATCH /quest/tasks (protected).
 func (h *QuestHandler) UpdatePlayerCurrentGameQuestTasks(req httputils.RequestData[dto.QuestTasksPatch]) httputils.Responder {
-	if req.Body.QuestID <= 0 {
-		return e.NewApiError(http.StatusBadRequest, "error parsing id: quest id is invalid")
+	if req.Body.QuestExtID == "" {
+		return e.NewApiError(http.StatusBadRequest, "quest ext is required")
 	}
 
-	quest, err := h.svc.GetPlayerCurrentGameQuestByID(req.Context, req.Player, req.Body.QuestID)
+	quest, err := h.svc.GetPlayerCurrentGameQuestByExt(req.Context, req.Player, req.Body.QuestExtID)
 	if err != nil {
 		return e.ErrToApiError(err)
 	}

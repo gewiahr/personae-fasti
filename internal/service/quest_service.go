@@ -67,6 +67,30 @@ func (s *QuestService) GetPlayerCurrentGameQuestByID(ctx context.Context, player
 	return quest, nil
 }
 
+func (s *QuestService) GetPlayerCurrentGameQuestByExt(ctx context.Context, player *domain.Player, questExt string) (*domain.Quest, error) {
+	quest, err := s.repo.GetPlayerCurrentGameQuestByExt(ctx, player.CurrentGameID, questExt)
+	if err != nil {
+		return nil, e.NewInternalError("Ошибка получения данных квеста", err)
+	} else if quest == nil {
+		return nil, e.NewNotFoundError(fmt.Sprintf("no quest with ext %s", questExt))
+	} else if err := ensureHiddenContentEditable(quest.HiddenBy, player.ID); err != nil {
+		return nil, err
+	}
+	if len(quest.Tasks) > 0 {
+		quest.Tasks, err = s.repo.FilterAllowedTasks(ctx, quest.Tasks, player.ID)
+		if err != nil {
+			return nil, e.NewInternalError("Ошибка получения задач квеста", err)
+		}
+	}
+	if len(quest.Records) > 0 {
+		quest.Records, err = s.recordRepo.FilterAllowedRecords(ctx, quest.Records, player.ID)
+		if err != nil {
+			return nil, e.NewInternalError("Ошибка получения записей квеста", err)
+		}
+	}
+	return quest, nil
+}
+
 func (s *QuestService) PostPlayerCurrentGameQuest(ctx context.Context, player *domain.Player, questCreateData *dto.QuestCreateData) (*domain.Quest, error) {
 	quest, err := s.repo.CreatePlayerCurrentGameQuest(ctx, questCreateData, player.ID, player.CurrentGameID)
 	if err != nil {
@@ -79,19 +103,20 @@ func (s *QuestService) PostPlayerCurrentGameQuest(ctx context.Context, player *d
 }
 
 func (s *QuestService) EditPlayerCurrentGameQuest(ctx context.Context, player *domain.Player, questUpdateData *dto.QuestUpdateData) (*domain.Quest, error) {
-	existing, err := s.GetPlayerCurrentGameQuestByID(ctx, player, questUpdateData.Quest.ID)
+	existing, err := s.GetPlayerCurrentGameQuestByExt(ctx, player, questUpdateData.Quest.ExtID)
 	if err != nil {
 		return nil, err
 	}
 	if err := validateQuestTaskEdits(questUpdateData.Tasks, existing.Tasks); err != nil {
 		return nil, err
 	}
+	questUpdateData.Quest.ID = existing.ID
 
 	quest, err := s.repo.EditPlayerCurrentGameQuest(ctx, questUpdateData, player.ID, player.CurrentGameID)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка получения данных квеста", err)
 	} else if quest == nil {
-		return nil, e.NewNotFoundError(fmt.Sprintf("no quest with id %d", questUpdateData.Quest.ID))
+		return nil, e.NewNotFoundError(fmt.Sprintf("no quest with ext %s", questUpdateData.Quest.ExtID))
 	}
 
 	if len(quest.Records) > 0 {
@@ -104,12 +129,12 @@ func (s *QuestService) EditPlayerCurrentGameQuest(ctx context.Context, player *d
 	return quest, nil
 }
 
-func (s *QuestService) FinishPlayerCurrentGameQuest(ctx context.Context, player *domain.Player, questID int, successful bool) (*domain.Quest, error) {
-	if _, err := s.GetPlayerCurrentGameQuestByID(ctx, player, questID); err != nil {
+func (s *QuestService) FinishPlayerCurrentGameQuest(ctx context.Context, player *domain.Player, questExt string, successful bool) (*domain.Quest, error) {
+	existing, err := s.GetPlayerCurrentGameQuestByExt(ctx, player, questExt)
+	if err != nil {
 		return nil, err
 	}
-
-	quest, err := s.repo.FinishPlayerCurrentGameQuest(ctx, questID, player.CurrentGameID, player.ID, successful)
+	quest, err := s.repo.FinishPlayerCurrentGameQuest(ctx, existing.ID, player.CurrentGameID, player.ID, successful)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка получения данных квеста", err)
 	}
@@ -117,12 +142,12 @@ func (s *QuestService) FinishPlayerCurrentGameQuest(ctx context.Context, player 
 	return quest, nil
 }
 
-func (s *QuestService) ResetPlayerCurrentGameQuest(ctx context.Context, player *domain.Player, questID int) (*domain.Quest, error) {
-	if _, err := s.GetPlayerCurrentGameQuestByID(ctx, player, questID); err != nil {
+func (s *QuestService) ResetPlayerCurrentGameQuest(ctx context.Context, player *domain.Player, questExt string) (*domain.Quest, error) {
+	existing, err := s.GetPlayerCurrentGameQuestByExt(ctx, player, questExt)
+	if err != nil {
 		return nil, err
 	}
-
-	quest, err := s.repo.ResetPlayerCurrentGameQuest(ctx, questID, player.CurrentGameID, player.ID)
+	quest, err := s.repo.ResetPlayerCurrentGameQuest(ctx, existing.ID, player.CurrentGameID, player.ID)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка получения данных квеста", err)
 	}

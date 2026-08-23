@@ -34,19 +34,15 @@ func (h *EntitiesHandler) GetPlayerCurrentGameChars(req httputils.RequestData[dt
 	}}
 }
 
-// GetPlayerCurrentGameCharByID handles GET /char/{id} (protected)
-func (h *EntitiesHandler) GetPlayerCurrentGameCharByID(req httputils.RequestData[dto.NoBody]) httputils.Responder {
-	charID := httputils.GetPathValueInt(req.Request, "id")
-	if charID <= 0 {
-		return e.NewApiError(http.StatusBadRequest, "error parsing id: char id is invalid")
-	}
-
-	char, err := h.svc.GetPlayerCurrentGameCharByID(req.Context, req.Player, charID)
+// GetPlayerCurrentGameCharByExt handles GET /char/{ext} (protected)
+func (h *EntitiesHandler) GetPlayerCurrentGameCharByExt(req httputils.RequestData[dto.NoBody]) httputils.Responder {
+	charExt := req.Request.PathValue("ext")
+	char, err := h.svc.GetPlayerCurrentGameCharByExt(req.Context, req.Player, charExt)
 	if err != nil {
 		return e.ErrToApiError(err)
 	}
 
-	charFull := mapper.CharToCharFullInfo(char, req.Player.ExtID, req.Player.CurrentGame.ExtID)
+	charFull := mapper.CharToCharFullInfo(char, req.Player.CurrentGame.ExtID, req.Player.ExtID)
 
 	return httputils.Response{Status: http.StatusOK, Body: dto.CharPage{
 		Char:    *charFull,
@@ -61,7 +57,7 @@ func (h *EntitiesHandler) PostPlayerCurrentGameChar(req httputils.RequestData[dt
 		return e.ErrToApiError(err)
 	}
 
-	charFull := mapper.CharToCharFullInfo(char, req.Player.ExtID, req.Player.CurrentGame.ExtID)
+	charFull := mapper.CharToCharFullInfo(char, req.Player.CurrentGame.ExtID, req.Player.ExtID)
 	return httputils.Response{Status: http.StatusCreated, Body: dto.CharPage{
 		Char:    *charFull,
 		Records: mapper.RecordToRecordFullArray(char.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
@@ -92,7 +88,7 @@ func (h *EntitiesHandler) EditPlayerCurrentGameChar(req httputils.RequestData[dt
 		return e.ErrToApiError(err)
 	}
 
-	charFull := mapper.CharToCharFullInfo(char, req.Player.ExtID, req.Player.CurrentGame.ExtID)
+	charFull := mapper.CharToCharFullInfo(char, req.Player.CurrentGame.ExtID, req.Player.ExtID)
 	return httputils.Response{Status: http.StatusOK, Body: dto.CharPage{
 		Char:    *charFull,
 		Records: mapper.RecordToRecordFullArray(char.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
@@ -142,19 +138,15 @@ func (h *EntitiesHandler) GetPlayerCurrentGameNPCs(req httputils.RequestData[dto
 	}}
 }
 
-// GetPlayerCurrentGameNPCByID handles GET /npc/{id} (protected)
-func (h *EntitiesHandler) GetPlayerCurrentGameNPCByID(req httputils.RequestData[dto.NoBody]) httputils.Responder {
-	npcID := httputils.GetPathValueInt(req.Request, "id")
-	if npcID <= 0 {
-		return e.NewApiError(http.StatusBadRequest, "error parsing id: npc id is invalid")
-	}
-
-	npc, err := h.svc.GetPlayerCurrentGameNPCByID(req.Context, req.Player, npcID)
+// GetPlayerCurrentGameNPCByExt handles GET /npc/{ext} (protected)
+func (h *EntitiesHandler) GetPlayerCurrentGameNPCByExt(req httputils.RequestData[dto.NoBody]) httputils.Responder {
+	npcExt := req.Request.PathValue("ext")
+	npc, err := h.svc.GetPlayerCurrentGameNPCByExt(req.Context, req.Player, npcExt)
 	if err != nil {
 		return e.ErrToApiError(err)
 	}
 
-	npcFull := mapper.NPCToNPCFullInfo(npc, req.Player.ExtID)
+	npcFull := mapper.NPCToNPCFullInfo(npc, req.Player.CurrentGame.ExtID)
 
 	return httputils.Response{Status: http.StatusOK, Body: dto.NPCPage{
 		NPC:     *npcFull,
@@ -200,7 +192,7 @@ func (h *EntitiesHandler) PostPlayerCurrentGameNPC(req httputils.RequestData[dto
 		return e.ErrToApiError(err)
 	}
 
-	npcFull := mapper.NPCToNPCFullInfo(npc, req.Player.ExtID)
+	npcFull := mapper.NPCToNPCFullInfo(npc, req.Player.CurrentGame.ExtID)
 	return httputils.Response{Status: http.StatusCreated, Body: dto.NPCPage{
 		NPC:     *npcFull,
 		Records: mapper.RecordToRecordFullArray(npc.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
@@ -231,7 +223,7 @@ func (h *EntitiesHandler) EditPlayerCurrentGameNPC(req httputils.RequestData[dto
 		return e.ErrToApiError(err)
 	}
 
-	npcFull := mapper.NPCToNPCFullInfo(npc, req.Player.ExtID)
+	npcFull := mapper.NPCToNPCFullInfo(npc, req.Player.CurrentGame.ExtID)
 	return httputils.Response{Status: http.StatusOK, Body: dto.NPCPage{
 		NPC:     *npcFull,
 		Records: mapper.RecordToRecordFullArray(npc.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
@@ -281,14 +273,10 @@ func (h *EntitiesHandler) GetPlayerCurrentGameLocations(req httputils.RequestDat
 	}}
 }
 
-// GetPlayerCurrentGameLocationByID handles GET /location/{id} (protected)
-func (h *EntitiesHandler) GetPlayerCurrentGameLocationByID(req httputils.RequestData[dto.NoBody]) httputils.Responder {
-	locationID := httputils.GetPathValueInt(req.Request, "id")
-	if locationID <= 0 {
-		return e.NewApiError(http.StatusBadRequest, "error parsing id: location id is invalid")
-	}
-
-	location, err := h.svc.GetPlayerCurrentGameLocationByID(req.Context, req.Player, locationID)
+// GetPlayerCurrentGameLocationByExt handles GET /location/{ext} (protected)
+func (h *EntitiesHandler) GetPlayerCurrentGameLocationByExt(req httputils.RequestData[dto.NoBody]) httputils.Responder {
+	locationExt := req.Request.PathValue("ext")
+	location, err := h.svc.GetPlayerCurrentGameLocationByExt(req.Context, req.Player, locationExt)
 	if err != nil {
 		return e.ErrToApiError(err)
 	}
@@ -302,7 +290,7 @@ func (h *EntitiesHandler) GetPlayerCurrentGameLocationByID(req httputils.Request
 	// ** Cut hidden locations ** //
 
 	locationPage := dto.LocationPage{
-		Location: *mapper.LocationToLocationFullInfo(location, req.Player.ExtID),
+		Location: *mapper.LocationToLocationFullInfo(location, req.Player.CurrentGame.ExtID),
 		Records:  mapper.RecordToRecordFullArray(location.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
 		Includes: mapper.LocationToLocationBriefArray(locationChildren, req.Player.CurrentGame.ExtID),
 	}
@@ -341,7 +329,7 @@ func (h *EntitiesHandler) PostPlayerCurrentGameLocation(req httputils.RequestDat
 	// ** Cut hidden locations ** //
 
 	locationPage := dto.LocationPage{
-		Location: *mapper.LocationToLocationFullInfo(location, req.Player.ExtID),
+		Location: *mapper.LocationToLocationFullInfo(location, req.Player.CurrentGame.ExtID),
 		Records:  mapper.RecordToRecordFullArray(location.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
 		Includes: mapper.LocationToLocationBriefArray(locationChildren, req.Player.CurrentGame.ExtID),
 	}
@@ -397,7 +385,7 @@ func (h *EntitiesHandler) EditPlayerCurrentGameLocation(req httputils.RequestDat
 	// ** Cut hidden locations ** //
 
 	locationPage := dto.LocationPage{
-		Location: *mapper.LocationToLocationFullInfo(location, req.Player.ExtID),
+		Location: *mapper.LocationToLocationFullInfo(location, req.Player.CurrentGame.ExtID),
 		Records:  mapper.RecordToRecordFullArray(location.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
 		Includes: mapper.LocationToLocationBriefArray(locationChildren, req.Player.CurrentGame.ExtID),
 	}

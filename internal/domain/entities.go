@@ -10,6 +10,7 @@ type Char struct {
 	bun.BaseModel `bun:"table:char"`
 
 	ID    int    `bun:"id,pk,autoincrement"`
+	ExtID string `bun:"ext,unique,notnull,type:varchar(16),default:nanoid(12)"`
 	Name  string `bun:"name,notnull"`
 	Title string `bun:"title"`
 
@@ -31,6 +32,7 @@ type NPC struct {
 	bun.BaseModel `bun:"table:npc"`
 
 	ID    int    `bun:"id,pk,autoincrement"`
+	ExtID string `bun:"ext,unique,notnull,type:varchar(16),default:nanoid(12)"`
 	Name  string `bun:"name,notnull"`
 	Title string `bun:"title"`
 
@@ -52,6 +54,7 @@ type Location struct {
 	bun.BaseModel `bun:"table:location"`
 
 	ID          int    `bun:"id,pk,autoincrement"`
+	ExtID       string `bun:"ext,unique,notnull,type:varchar(16),default:nanoid(12)"`
 	Name        string `bun:"name,notnull"`
 	Title       string `bun:"title"`
 	Description string `bun:"description"`

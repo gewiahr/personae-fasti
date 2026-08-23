@@ -10,7 +10,7 @@ type RecordFull struct {
 	GameExtID   string `json:"gameExt"`
 	Hidden      bool   `json:"hidden"`
 
-	QuestID int `json:"questID"`
+	QuestExtID string `json:"questExt"`
 
 	Created *time.Time `json:"created"`
 	Updated *time.Time `json:"updated"`
@@ -18,14 +18,16 @@ type RecordFull struct {
 }
 
 type RecordInsert struct {
-	Text    string `json:"text"`
-	Hidden  bool   `json:"hidden"`
-	QuestID int    `json:"questID"`
+	Text       string `json:"text"`
+	Hidden     bool   `json:"hidden"`
+	QuestExtID string `json:"questExt"`
+	QuestID    int    `json:"-"`
 }
 
 type RecordUpdate struct {
-	ID      int    `json:"id"`
-	Text    string `json:"text"`
-	Hidden  bool   `json:"hidden"`
-	QuestID int    `json:"questID"`
+	ID         int    `json:"id"`
+	Text       string `json:"text"`
+	Hidden     bool   `json:"hidden"`
+	QuestExtID string `json:"questExt"`
+	QuestID    int    `json:"-"`
 }

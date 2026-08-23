@@ -64,8 +64,9 @@ func (r *EntitiesRepo) GetCurrentGameCharByID(ctx context.Context, gameID, charI
 	char := domain.Char{}
 	err := r.db.NewSelect().
 		Model(&char).
-		Where("id = ? AND game_id = ?", charID, gameID).
+		Where("\"char\".id = ? AND \"char\".game_id = ?", charID, gameID).
 		Relation("Records").
+		Relation("Records.Quest").
 		Scan(ctx)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -126,8 +127,9 @@ func (r *EntitiesRepo) GetCurrentGameNPCByID(ctx context.Context, gameID, npcID 
 	npc := domain.NPC{}
 	err := r.db.NewSelect().
 		Model(&npc).
-		Where("id = ? AND game_id = ?", npcID, gameID).
+		Where("\"npc\".id = ? AND \"npc\".game_id = ?", npcID, gameID).
 		Relation("Records").
+		Relation("Records.Quest").
 		Scan(ctx)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -142,8 +144,9 @@ func (r *EntitiesRepo) GetCurrentGameLocationByID(ctx context.Context, gameID, l
 	location := domain.Location{}
 	err := r.db.NewSelect().
 		Model(&location).
-		Where("id = ? AND game_id = ?", locationID, gameID).
+		Where("\"location\".id = ? AND \"location\".game_id = ?", locationID, gameID).
 		Relation("Records").
+		Relation("Records.Quest").
 		Relation("Parent"). // ** PARENT is not guarded if hidden ** //
 		Scan(ctx)
 	if err == sql.ErrNoRows {
@@ -152,6 +155,55 @@ func (r *EntitiesRepo) GetCurrentGameLocationByID(ctx context.Context, gameID, l
 		return nil, err
 	}
 
+	return &location, nil
+}
+
+func (r *EntitiesRepo) GetCurrentGameCharByExt(ctx context.Context, gameID int, charExt string) (*domain.Char, error) {
+	char := domain.Char{}
+	err := r.db.NewSelect().
+		Model(&char).
+		Where("\"char\".ext = ? AND \"char\".game_id = ?", charExt, gameID).
+		Relation("Records").
+		Relation("Records.Quest").
+		Scan(ctx)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	return &char, nil
+}
+
+func (r *EntitiesRepo) GetCurrentGameNPCByExt(ctx context.Context, gameID int, npcExt string) (*domain.NPC, error) {
+	npc := domain.NPC{}
+	err := r.db.NewSelect().
+		Model(&npc).
+		Where("\"npc\".ext = ? AND \"npc\".game_id = ?", npcExt, gameID).
+		Relation("Records").
+		Relation("Records.Quest").
+		Scan(ctx)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	return &npc, nil
+}
+
+func (r *EntitiesRepo) GetCurrentGameLocationByExt(ctx context.Context, gameID int, locationExt string) (*domain.Location, error) {
+	location := domain.Location{}
+	err := r.db.NewSelect().
+		Model(&location).
+		Where("\"location\".ext = ? AND \"location\".game_id = ?", locationExt, gameID).
+		Relation("Records").
+		Relation("Records.Quest").
+		Relation("Parent").
+		Scan(ctx)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
 	return &location, nil
 }
 
@@ -220,7 +272,7 @@ func (r *EntitiesRepo) EditChar(ctx context.Context, charUpdate *dto.CharUpdate,
 
 	_, err := r.db.NewUpdate().
 		Model(&char).
-		Where("id = ? AND game_id = ?", charUpdate.ID, gameID).
+		Where("ext = ? AND game_id = ?", charUpdate.ExtID, gameID).
 		Where("(hidden_by = 0 OR hidden_by = ?)", playerID).
 		Set("name = ?", charUpdate.Name).
 		Set("title = ?", charUpdate.Title).
@@ -242,7 +294,7 @@ func (r *EntitiesRepo) EditNPC(ctx context.Context, npcUpdate *dto.NPCUpdate, pl
 
 	_, err := r.db.NewUpdate().
 		Model(&npc).
-		Where("id = ? AND game_id = ?", npcUpdate.ID, gameID).
+		Where("ext = ? AND game_id = ?", npcUpdate.ExtID, gameID).
 		Where("(hidden_by = 0 OR hidden_by = ?)", playerID).
 		Set("name = ?", npcUpdate.Name).
 		Set("title = ?", npcUpdate.Title).
@@ -264,7 +316,7 @@ func (r *EntitiesRepo) EditLocation(ctx context.Context, locationUpdate *dto.Loc
 
 	_, err := r.db.NewUpdate().
 		Model(&location).
-		Where("id = ? AND game_id = ?", locationUpdate.ID, gameID).
+		Where("ext = ? AND game_id = ?", locationUpdate.ExtID, gameID).
 		Where("(hidden_by = 0 OR hidden_by = ?)", playerID).
 		Set("name = ?", locationUpdate.Name).
 		Set("title = ?", locationUpdate.Title).
@@ -287,12 +339,12 @@ func (r *EntitiesRepo) GetCurrentGameSuggestionList(ctx context.Context, gameID,
 
 	err := r.db.NewRaw(
 		`SELECT
-			id,
-			CONCAT('char:', id) as sid,
+			ext,
+			CONCAT('char:', ext) as sid,
 			'char' as type,
 			name,
 			CASE
-				WHEN hidden_by != 0 AND hidden_by != ?0 THEN false
+				WHEN hidden_by = 0 OR hidden_by = ?0 THEN false
 				ELSE true
 			END as secret
 		FROM char
@@ -301,8 +353,8 @@ func (r *EntitiesRepo) GetCurrentGameSuggestionList(ctx context.Context, gameID,
 		UNION ALL
 
 		SELECT
-			id,
-			CONCAT('npc:', id) as sid,
+			ext,
+			CONCAT('npc:', ext) as sid,
 			'npc' as type,
 			name,
 			CASE
@@ -315,8 +367,8 @@ func (r *EntitiesRepo) GetCurrentGameSuggestionList(ctx context.Context, gameID,
 		UNION ALL
 
 		SELECT
-			id,
-			CONCAT('location:', id) as sid,
+			ext,
+			CONCAT('location:', ext) as sid,
 			'location' as type,
 			name,
 			CASE

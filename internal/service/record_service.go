@@ -14,13 +14,15 @@ type RecordService struct {
 	recordRepo repo.RecordRepository
 	playerRepo repo.PlayerRepository
 	gameRepo   repo.GameRepository
+	questRepo  repo.QuestRepository
 }
 
-func NewRecordService(playerRepo repo.PlayerRepository, gameRepo repo.GameRepository, recordRepo repo.RecordRepository) *RecordService {
+func NewRecordService(playerRepo repo.PlayerRepository, gameRepo repo.GameRepository, recordRepo repo.RecordRepository, questRepo repo.QuestRepository) *RecordService {
 	return &RecordService{
 		recordRepo: recordRepo,
 		playerRepo: playerRepo,
 		gameRepo:   gameRepo,
+		questRepo:  questRepo,
 	}
 }
 
@@ -35,6 +37,13 @@ func (s *RecordService) GetPlayerCurrentGameRecords(ctx context.Context, player 
 
 // Post record in player current game
 func (s *RecordService) PostPlayerCurrentGameRecord(ctx context.Context, player *domain.Player, recordInsert *dto.RecordInsert) (*domain.Record, error) {
+	quest, err := s.resolveQuest(ctx, player, recordInsert.QuestExtID)
+	if err != nil {
+		return nil, err
+	}
+	if quest != nil {
+		recordInsert.QuestID = quest.ID
+	}
 	record := &domain.Record{
 		Text:     recordInsert.Text,
 		PlayerID: player.ID,
@@ -43,7 +52,8 @@ func (s *RecordService) PostPlayerCurrentGameRecord(ctx context.Context, player 
 		HiddenBy: gu.TernaryInt(recordInsert.Hidden, player.ID, 0),
 	}
 
-	record, err := s.recordRepo.PostRecord(ctx, record)
+	record.Quest = quest
+	record, err = s.recordRepo.PostRecord(ctx, record)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка записи", err)
 	}
@@ -52,11 +62,36 @@ func (s *RecordService) PostPlayerCurrentGameRecord(ctx context.Context, player 
 
 // Post record in player current game
 func (s *RecordService) EditPlayerCurrentGameRecord(ctx context.Context, player *domain.Player, recordUpdate *dto.RecordUpdate) (*domain.Record, error) {
+	quest, err := s.resolveQuest(ctx, player, recordUpdate.QuestExtID)
+	if err != nil {
+		return nil, err
+	}
+	if quest != nil {
+		recordUpdate.QuestID = quest.ID
+	}
 	record, err := s.recordRepo.EditRecord(ctx, recordUpdate, player.ID)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка записи", err)
 	}
+	record.Quest = quest
 	return record, nil
+}
+
+func (s *RecordService) resolveQuest(ctx context.Context, player *domain.Player, questExt string) (*domain.Quest, error) {
+	if questExt == "" {
+		return nil, nil
+	}
+	quest, err := s.questRepo.GetPlayerCurrentGameQuestByExt(ctx, player.CurrentGameID, questExt)
+	if err != nil {
+		return nil, e.NewInternalError("Ошибка получения квеста", err)
+	}
+	if quest == nil {
+		return nil, e.NewValidationError("quest is not in the current game")
+	}
+	if quest.HiddenBy != 0 && quest.HiddenBy != player.ID {
+		return nil, e.NewForbiddenError("quest is hidden by another player")
+	}
+	return quest, nil
 }
 
 // Delete record in player current game

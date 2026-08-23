@@ -29,21 +29,21 @@ func (api *APIServer) SetHandlers(
 
 	/* CHARS */
 	api.router.HandleFunc("GET /chars", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameChars))
-	api.router.HandleFunc("GET /char/{id}", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameCharByID))
+	api.router.HandleFunc("GET /char/{ext}", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameCharByExt))
 	api.router.HandleFunc("POST /char", AuthAdapt(api.auth, entitiesHandler.PostPlayerCurrentGameChar))
 	api.router.HandleFunc("PUT /char", AuthAdapt(api.auth, entitiesHandler.EditPlayerCurrentGameChar))
 	//api.router.HandleFunc("DELETE /char/{id}", AuthAdapt(api.auth, recordHandler.DeletePlayerCurrentGameChar))
 
 	/* NPCS */
 	api.router.HandleFunc("GET /npcs", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameNPCs))
-	api.router.HandleFunc("GET /npc/{id}", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameNPCByID))
+	api.router.HandleFunc("GET /npc/{ext}", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameNPCByExt))
 	api.router.HandleFunc("POST /npc", AuthAdapt(api.auth, entitiesHandler.PostPlayerCurrentGameNPC))
 	api.router.HandleFunc("PUT /npc", AuthAdapt(api.auth, entitiesHandler.EditPlayerCurrentGameNPC))
 	//api.router.HandleFunc("DELETE /npc/{id}", AuthAdapt(api.auth, recordHandler.DeletePlayerCurrentGameNPC))
 
 	/* LOCATIONS */
 	api.router.HandleFunc("GET /locations", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameLocations))
-	api.router.HandleFunc("GET /location/{id}", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameLocationByID))
+	api.router.HandleFunc("GET /location/{ext}", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameLocationByExt))
 	api.router.HandleFunc("POST /location", AuthAdapt(api.auth, entitiesHandler.PostPlayerCurrentGameLocation))
 	api.router.HandleFunc("PUT /location", AuthAdapt(api.auth, entitiesHandler.EditPlayerCurrentGameLocation))
 	//api.router.HandleFunc("DELETE /location/{id}", AuthAdapt(api.auth, recordHandler.DeletePlayerCurrentGameLocation))
@@ -53,13 +53,13 @@ func (api *APIServer) SetHandlers(
 
 	/* QUESTS */
 	api.router.HandleFunc("GET /quests", AuthAdapt(api.auth, questHandler.GetPlayerCurrentGameQuests))
-	api.router.HandleFunc("GET /quest/{id}", AuthAdapt(api.auth, questHandler.GetPlayerCurrentGameQuestByID))
+	api.router.HandleFunc("GET /quest/{ext}", AuthAdapt(api.auth, questHandler.GetPlayerCurrentGameQuestByExt))
 	api.router.HandleFunc("POST /quest", AuthAdapt(api.auth, questHandler.PostPlayerCurrentGameQuest))
 	api.router.HandleFunc("PUT /quest", AuthAdapt(api.auth, questHandler.EditPlayerCurrentGameQuest))
 	// api.router.HandleFunc("DELETE /quest/{id}", AuthAdapt(api.auth, questHandler.DeletePlayerCurrentGameQuest))
-	api.router.HandleFunc("PATCH /quest/{id}/complete", AuthAdapt(api.auth, questHandler.CompletePlayerCurrentGameQuest))
-	api.router.HandleFunc("PATCH /quest/{id}/fail", AuthAdapt(api.auth, questHandler.FailPlayerCurrentGameQuest))
-	api.router.HandleFunc("PATCH /quest/{id}/reset", AuthAdapt(api.auth, questHandler.ResetPlayerCurrentGameQuest))
+	api.router.HandleFunc("PATCH /quest/{ext}/complete", AuthAdapt(api.auth, questHandler.CompletePlayerCurrentGameQuest))
+	api.router.HandleFunc("PATCH /quest/{ext}/fail", AuthAdapt(api.auth, questHandler.FailPlayerCurrentGameQuest))
+	api.router.HandleFunc("PATCH /quest/{ext}/reset", AuthAdapt(api.auth, questHandler.ResetPlayerCurrentGameQuest))
 
 	api.router.HandleFunc("PATCH /quest/tasks", AuthAdapt(api.auth, questHandler.UpdatePlayerCurrentGameQuestTasks))
 

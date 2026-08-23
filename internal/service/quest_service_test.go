@@ -28,6 +28,15 @@ func (r *questRepoStub) GetPlayerCurrentGameQuestByID(_ context.Context, gameID,
 	return &copy, nil
 }
 
+func (r *questRepoStub) GetPlayerCurrentGameQuestByExt(_ context.Context, gameID int, ext string) (*domain.Quest, error) {
+	if r.quest == nil || r.quest.ExtID != ext || r.quest.GameID != gameID {
+		return nil, nil
+	}
+	copy := *r.quest
+	copy.Tasks = append([]domain.QuestTask(nil), r.quest.Tasks...)
+	return &copy, nil
+}
+
 func (r *questRepoStub) FilterAllowedTasks(_ context.Context, tasks []domain.QuestTask, playerID int) ([]domain.QuestTask, error) {
 	allowed := make([]domain.QuestTask, 0, len(tasks))
 	for _, task := range tasks {
@@ -65,11 +74,11 @@ func TestEditQuestAllowsVisibleAndOwnHiddenSameGameQuest(t *testing.T) {
 		{name: "own hidden", hiddenBy: 12},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			repository := &questRepoStub{quest: &domain.Quest{ID: 5, GameID: 8, HiddenBy: test.hiddenBy}}
+			repository := &questRepoStub{quest: &domain.Quest{ID: 5, ExtID: "quest-ext", GameID: 8, HiddenBy: test.hiddenBy}}
 			service := NewQuestService(repository, nil)
 			player := &domain.Player{ID: 12, CurrentGameID: 8}
 
-			_, err := service.EditPlayerCurrentGameQuest(context.Background(), player, &dto.QuestUpdateData{Quest: dto.QuestUpdate{ID: 5}})
+			_, err := service.EditPlayerCurrentGameQuest(context.Background(), player, &dto.QuestUpdateData{Quest: dto.QuestUpdate{ExtID: "quest-ext"}})
 			if err != nil {
 				t.Fatalf("edit returned an unexpected error: %v", err)
 			}
@@ -92,7 +101,7 @@ func TestQuestMutationsRejectQuestHiddenByAnotherPlayerBeforeWrite(t *testing.T)
 		{
 			name: "edit",
 			mutate: func(s *QuestService, p *domain.Player) error {
-				_, err := s.EditPlayerCurrentGameQuest(context.Background(), p, &dto.QuestUpdateData{Quest: dto.QuestUpdate{ID: 5}})
+				_, err := s.EditPlayerCurrentGameQuest(context.Background(), p, &dto.QuestUpdateData{Quest: dto.QuestUpdate{ExtID: "quest-ext"}})
 				return err
 			},
 			called: func(r *questRepoStub) bool { return r.editCalled },
@@ -100,7 +109,7 @@ func TestQuestMutationsRejectQuestHiddenByAnotherPlayerBeforeWrite(t *testing.T)
 		{
 			name: "finish",
 			mutate: func(s *QuestService, p *domain.Player) error {
-				_, err := s.FinishPlayerCurrentGameQuest(context.Background(), p, 5, true)
+				_, err := s.FinishPlayerCurrentGameQuest(context.Background(), p, "quest-ext", true)
 				return err
 			},
 			called: func(r *questRepoStub) bool { return r.finishCalled },
@@ -108,7 +117,7 @@ func TestQuestMutationsRejectQuestHiddenByAnotherPlayerBeforeWrite(t *testing.T)
 		{
 			name: "reset",
 			mutate: func(s *QuestService, p *domain.Player) error {
-				_, err := s.ResetPlayerCurrentGameQuest(context.Background(), p, 5)
+				_, err := s.ResetPlayerCurrentGameQuest(context.Background(), p, "quest-ext")
 				return err
 			},
 			called: func(r *questRepoStub) bool { return r.resetCalled },
@@ -117,7 +126,7 @@ func TestQuestMutationsRejectQuestHiddenByAnotherPlayerBeforeWrite(t *testing.T)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			repository := &questRepoStub{quest: &domain.Quest{ID: 5, GameID: 8, HiddenBy: 99}}
+			repository := &questRepoStub{quest: &domain.Quest{ID: 5, ExtID: "quest-ext", GameID: 8, HiddenBy: 99}}
 			player := &domain.Player{ID: 12, CurrentGameID: 8}
 			err := test.mutate(NewQuestService(repository, nil), player)
 			assertAppErrorType(t, err, e.ErrForbidden)
@@ -129,11 +138,11 @@ func TestQuestMutationsRejectQuestHiddenByAnotherPlayerBeforeWrite(t *testing.T)
 }
 
 func TestEditQuestRejectsCrossGameIDBeforeWrite(t *testing.T) {
-	repository := &questRepoStub{quest: &domain.Quest{ID: 5, GameID: 9}}
+	repository := &questRepoStub{quest: &domain.Quest{ID: 5, ExtID: "quest-ext", GameID: 9}}
 	service := NewQuestService(repository, nil)
 	player := &domain.Player{ID: 12, CurrentGameID: 8}
 
-	_, err := service.EditPlayerCurrentGameQuest(context.Background(), player, &dto.QuestUpdateData{Quest: dto.QuestUpdate{ID: 5}})
+	_, err := service.EditPlayerCurrentGameQuest(context.Background(), player, &dto.QuestUpdateData{Quest: dto.QuestUpdate{ExtID: "quest-ext"}})
 	assertAppErrorType(t, err, e.ErrNotFound)
 	if repository.editCalled {
 		t.Fatal("repository edit was called for a cross-game quest")
@@ -143,6 +152,7 @@ func TestEditQuestRejectsCrossGameIDBeforeWrite(t *testing.T) {
 func TestEditQuestRejectsHiddenTaskIDBeforeWrite(t *testing.T) {
 	repository := &questRepoStub{quest: &domain.Quest{
 		ID:     5,
+		ExtID:  "quest-ext",
 		GameID: 8,
 		Tasks: []domain.QuestTask{
 			{ID: 10, GameID: 8, QuestID: 5},
@@ -152,7 +162,7 @@ func TestEditQuestRejectsHiddenTaskIDBeforeWrite(t *testing.T) {
 	service := NewQuestService(repository, nil)
 	player := &domain.Player{ID: 12, CurrentGameID: 8}
 	update := &dto.QuestUpdateData{
-		Quest: dto.QuestUpdate{ID: 5},
+		Quest: dto.QuestUpdate{ExtID: "quest-ext"},
 		Tasks: []dto.TaskUpdate{{ID: 10}, {ID: 11}},
 	}
 

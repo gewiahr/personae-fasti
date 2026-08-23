@@ -19,10 +19,17 @@ func RecordToRecordFull(r domain.Record, playerExt, gameExt string) dto.RecordFu
 		Text:        r.Text,
 		PlayerExtID: playerExt,
 		GameExtID:   gameExt,
-		QuestID:     r.QuestID,
+		QuestExtID:  recordQuestExt(r),
 		Hidden:      r.HiddenBy != 0,
 		Created:     r.Created,
 		Updated:     r.Updated,
 		Deleted:     r.Deleted,
 	}
+}
+
+func recordQuestExt(record domain.Record) string {
+	if record.Quest == nil {
+		return ""
+	}
+	return record.Quest.ExtID
 }

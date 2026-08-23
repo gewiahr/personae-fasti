@@ -47,8 +47,9 @@ func (r *QuestRepo) GetPlayerCurrentGameQuestByID(ctx context.Context, gameID, q
 
 	if err := r.db.NewSelect().
 		Model(&quest).
-		Where("id = ? AND game_id = ?", questID, gameID).
+		Where("\"quest\".id = ? AND \"quest\".game_id = ?", questID, gameID).
 		Relation("Records").
+		Relation("Records.Quest").
 		Relation("Tasks").
 		Scan(ctx); err == sql.ErrNoRows {
 		return nil, nil
@@ -56,6 +57,22 @@ func (r *QuestRepo) GetPlayerCurrentGameQuestByID(ctx context.Context, gameID, q
 		return nil, err
 	}
 
+	return &quest, nil
+}
+
+func (r *QuestRepo) GetPlayerCurrentGameQuestByExt(ctx context.Context, gameID int, questExt string) (*domain.Quest, error) {
+	quest := domain.Quest{}
+	if err := r.db.NewSelect().
+		Model(&quest).
+		Where("\"quest\".ext = ? AND \"quest\".game_id = ?", questExt, gameID).
+		Relation("Records").
+		Relation("Records.Quest").
+		Relation("Tasks").
+		Scan(ctx); err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
 	return &quest, nil
 }
 
@@ -68,9 +85,6 @@ func (r *QuestRepo) CreatePlayerCurrentGameQuest(ctx context.Context, questCreat
 			Title:       questCreateData.Quest.Title,
 			Description: questCreateData.Quest.Description,
 			GameID:      gameID,
-			ParentID:    questCreateData.Quest.ParentID,
-			ChildID:     questCreateData.Quest.ChildID,
-			HeadID:      questCreateData.Quest.HeadID,
 			Successful:  questCreateData.Quest.Successful,
 			HiddenBy:    gewiutils.TernaryInt(questCreateData.Quest.Hidden, playerID, 0),
 		}
@@ -226,6 +240,7 @@ func (r *QuestRepo) EditPlayerCurrentGameQuest(ctx context.Context, questUpdateD
 	if err := r.db.NewSelect().Model(quest).
 		Where("id = ? AND game_id = ?", quest.ID, gameID).
 		Relation("Records").
+		Relation("Records.Quest").
 		Relation("Tasks").
 		Scan(ctx); err == sql.ErrNoRows {
 		return nil, nil

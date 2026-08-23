@@ -9,7 +9,8 @@ import (
 type Quest struct {
 	bun.BaseModel `bun:"quest"`
 
-	ID int `bun:"id,pk,autoincrement"`
+	ID    int    `bun:"id,pk,autoincrement"`
+	ExtID string `bun:"ext,unique,notnull,type:varchar(16),default:nanoid(12)"`
 
 	GameID int   `bun:"game_id,notnull"`
 	Game   *Game `bun:"rel:belongs-to,join:game_id=id"`
