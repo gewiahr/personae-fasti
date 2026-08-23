@@ -39,21 +39,29 @@ func (s *QuestService) GetPlayerCurrentGameQuests(ctx context.Context, player *d
 }
 
 func (s *QuestService) GetPlayerCurrentGameQuestByID(ctx context.Context, player *domain.Player, questID int) (*domain.Quest, error) {
-	quest, err := s.repo.GetPlayerCurrentGameQuestByID(ctx, questID)
+	quest, err := s.repo.GetPlayerCurrentGameQuestByID(ctx, player.CurrentGameID, questID)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка получения данных квеста", err)
 	} else if quest == nil {
 		return nil, e.NewNotFoundError(fmt.Sprintf("no quest with id %d", questID))
 	} else if quest.GameID != player.CurrentGameID {
 		return nil, e.NewForbiddenError(fmt.Sprintf("quest %d is not allowed to request for the game %d", quest.ID, player.CurrentGameID))
+	} else if err := ensureHiddenContentEditable(quest.HiddenBy, player.ID); err != nil {
+		return nil, err
 	}
 
 	if len(quest.Tasks) > 0 {
 		quest.Tasks, err = s.repo.FilterAllowedTasks(ctx, quest.Tasks, player.ID)
+		if err != nil {
+			return nil, e.NewInternalError("Ошибка получения задач квеста", err)
+		}
 	}
 
 	if len(quest.Records) > 0 {
 		quest.Records, err = s.recordRepo.FilterAllowedRecords(ctx, quest.Records, player.ID)
+		if err != nil {
+			return nil, e.NewInternalError("Ошибка получения записей квеста", err)
+		}
 	}
 
 	return quest, nil
@@ -71,13 +79,19 @@ func (s *QuestService) PostPlayerCurrentGameQuest(ctx context.Context, player *d
 }
 
 func (s *QuestService) EditPlayerCurrentGameQuest(ctx context.Context, player *domain.Player, questUpdateData *dto.QuestUpdateData) (*domain.Quest, error) {
-	quest, err := s.repo.EditPlayerCurrentGameQuest(ctx, questUpdateData, player.ID)
+	existing, err := s.GetPlayerCurrentGameQuestByID(ctx, player, questUpdateData.Quest.ID)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateQuestTaskEdits(questUpdateData.Tasks, existing.Tasks); err != nil {
+		return nil, err
+	}
+
+	quest, err := s.repo.EditPlayerCurrentGameQuest(ctx, questUpdateData, player.ID, player.CurrentGameID)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка получения данных квеста", err)
 	} else if quest == nil {
-		return nil, e.NewNotFoundError(fmt.Sprintf("no char with id %d", questUpdateData.Quest.ID))
-	} else if quest.HiddenBy != 0 && quest.HiddenBy != player.ID {
-		return nil, e.NewForbiddenError(fmt.Sprintf("char %d is not allowed to request for the player %d", quest.ID, player.ID))
+		return nil, e.NewNotFoundError(fmt.Sprintf("no quest with id %d", questUpdateData.Quest.ID))
 	}
 
 	if len(quest.Records) > 0 {
@@ -91,7 +105,11 @@ func (s *QuestService) EditPlayerCurrentGameQuest(ctx context.Context, player *d
 }
 
 func (s *QuestService) FinishPlayerCurrentGameQuest(ctx context.Context, player *domain.Player, questID int, successful bool) (*domain.Quest, error) {
-	quest, err := s.repo.FinishPlayerCurrentGameQuest(ctx, questID, successful)
+	if _, err := s.GetPlayerCurrentGameQuestByID(ctx, player, questID); err != nil {
+		return nil, err
+	}
+
+	quest, err := s.repo.FinishPlayerCurrentGameQuest(ctx, questID, player.CurrentGameID, player.ID, successful)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка получения данных квеста", err)
 	}
@@ -100,7 +118,11 @@ func (s *QuestService) FinishPlayerCurrentGameQuest(ctx context.Context, player 
 }
 
 func (s *QuestService) ResetPlayerCurrentGameQuest(ctx context.Context, player *domain.Player, questID int) (*domain.Quest, error) {
-	quest, err := s.repo.ResetPlayerCurrentGameQuest(ctx, questID)
+	if _, err := s.GetPlayerCurrentGameQuestByID(ctx, player, questID); err != nil {
+		return nil, err
+	}
+
+	quest, err := s.repo.ResetPlayerCurrentGameQuest(ctx, questID, player.CurrentGameID, player.ID)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка получения данных квеста", err)
 	}
@@ -114,6 +136,29 @@ func (s *QuestService) GetPlayerCurrentGameQuestTasks(ctx context.Context, quest
 		return nil, e.NewInternalError("Ошибка получения задач квеста", err)
 	}
 	return tasks, nil
+}
+
+func validateQuestTaskEdits(updates []dto.TaskUpdate, editable []domain.QuestTask) error {
+	editableIDs := make(map[int]struct{}, len(editable))
+	for _, task := range editable {
+		editableIDs[task.ID] = struct{}{}
+	}
+
+	seen := make(map[int]struct{}, len(updates))
+	for _, task := range updates {
+		if task.ID == 0 {
+			continue
+		}
+		if _, duplicate := seen[task.ID]; duplicate {
+			return e.NewValidationError(fmt.Sprintf("duplicate quest task id %d", task.ID))
+		}
+		seen[task.ID] = struct{}{}
+		if _, allowed := editableIDs[task.ID]; !allowed {
+			return e.NewForbiddenError("quest task is not editable by this player")
+		}
+	}
+
+	return nil
 }
 
 func (s *QuestService) UpdatePlayerCurrentGameQuestTasks(ctx context.Context, tasksPatch []dto.TaskPatch, quest *domain.Quest) ([]domain.QuestTask, error) {

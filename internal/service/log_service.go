@@ -27,7 +27,7 @@ func (s *LogService) InsertLog(playerID int, r *http.Request, reqBody []byte, re
 	if response != nil {
 		respBytes, err := json.Marshal(response)
 		if err != nil {
-			responseString = fmt.Sprintf("error marshal response for log: %w", err)
+			responseString = fmt.Sprintf("error marshal response for log: %v", err)
 		}
 		responseString = string(respBytes)
 	}

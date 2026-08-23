@@ -55,7 +55,7 @@ func (s *PlayerService) ChangePlayerCurrentGame(ctx context.Context, player *dom
 	}
 
 	if game == nil {
-		return nil, e.NewForbiddenError(fmt.Sprintf("Игрок не состоит в игре %d", gameExt))
+		return nil, e.NewForbiddenError(fmt.Sprintf("Игрок не состоит в игре %s", gameExt))
 	}
 
 	// TODO: transaction

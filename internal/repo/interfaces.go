@@ -99,22 +99,22 @@ type EntitiesRepository interface {
 	CreateNPC(ctx context.Context, npc *domain.NPC) (*domain.NPC, error)
 	CreateLocation(ctx context.Context, location *domain.Location) (*domain.Location, error)
 
-	EditChar(ctx context.Context, charUpdate *dto.CharUpdate, playerID int) (*domain.Char, error)
-	EditNPC(ctx context.Context, npcUpdate *dto.NPCUpdate, playerID int) (*domain.NPC, error)
-	EditLocation(ctx context.Context, locationUpdate *dto.LocationUpdate, playerID int) (*domain.Location, error)
+	EditChar(ctx context.Context, charUpdate *dto.CharUpdate, playerID, gameID int) (*domain.Char, error)
+	EditNPC(ctx context.Context, npcUpdate *dto.NPCUpdate, playerID, gameID int) (*domain.NPC, error)
+	EditLocation(ctx context.Context, locationUpdate *dto.LocationUpdate, playerID, gameID int) (*domain.Location, error)
 
 	GetCurrentGameSuggestionList(ctx context.Context, gameID, playerID int) ([]dto.Suggestion, error) // TODO: make db-level suggestion objest
 }
 
 type QuestRepository interface {
 	GetCurrentGameQuestList(ctx context.Context, gameID, playerID int) ([]domain.Quest, error)
-	GetPlayerCurrentGameQuestByID(ctx context.Context, questID int) (*domain.Quest, error)
+	GetPlayerCurrentGameQuestByID(ctx context.Context, gameID, questID int) (*domain.Quest, error)
 	CreatePlayerCurrentGameQuest(ctx context.Context, questCreateData *dto.QuestCreateData, playerID, gameID int) (*domain.Quest, error)
-	EditPlayerCurrentGameQuest(ctx context.Context, questUpdateData *dto.QuestUpdateData, playerID int) (*domain.Quest, error)
+	EditPlayerCurrentGameQuest(ctx context.Context, questUpdateData *dto.QuestUpdateData, playerID, gameID int) (*domain.Quest, error)
 	//DeleteQuest(ctx context.Context, questID int) error
 
-	FinishPlayerCurrentGameQuest(ctx context.Context, questID int, successful bool) (*domain.Quest, error)
-	ResetPlayerCurrentGameQuest(ctx context.Context, questID int) (*domain.Quest, error)
+	FinishPlayerCurrentGameQuest(ctx context.Context, questID, gameID, playerID int, successful bool) (*domain.Quest, error)
+	ResetPlayerCurrentGameQuest(ctx context.Context, questID, gameID, playerID int) (*domain.Quest, error)
 
 	GetTasksByQuest(ctx context.Context, quest *domain.Quest) ([]domain.QuestTask, error)
 	// CreateTasks(ctx context.Context, tasks []domain.QuestTask) ([]domain.QuestTask, error)

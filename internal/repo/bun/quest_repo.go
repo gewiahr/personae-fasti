@@ -42,17 +42,15 @@ func (r *QuestRepo) GetCurrentGameQuestList(ctx context.Context, gameID, playerI
 	return questList, err
 }
 
-func (r *QuestRepo) GetPlayerCurrentGameQuestByID(ctx context.Context, questID int) (*domain.Quest, error) {
-	quest := domain.Quest{
-		ID: questID,
-	}
+func (r *QuestRepo) GetPlayerCurrentGameQuestByID(ctx context.Context, gameID, questID int) (*domain.Quest, error) {
+	quest := domain.Quest{}
 
 	if err := r.db.NewSelect().
 		Model(&quest).
-		WherePK().
+		Where("id = ? AND game_id = ?", questID, gameID).
 		Relation("Records").
 		Relation("Tasks").
-		Scan(context.Background()); err == sql.ErrNoRows {
+		Scan(ctx); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -122,16 +120,18 @@ func (r *QuestRepo) CreatePlayerCurrentGameQuest(ctx context.Context, questCreat
 	return quest, nil
 }
 
-func (r *QuestRepo) EditPlayerCurrentGameQuest(ctx context.Context, questUpdateData *dto.QuestUpdateData, playerID int) (*domain.Quest, error) {
+func (r *QuestRepo) EditPlayerCurrentGameQuest(ctx context.Context, questUpdateData *dto.QuestUpdateData, playerID, gameID int) (*domain.Quest, error) {
 	quest := &domain.Quest{ID: questUpdateData.Quest.ID}
 
 	if err := r.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
-		if _, err := tx.NewUpdate().Model(quest).WherePK().
+		if _, err := tx.NewUpdate().Model(quest).
+			Where("id = ? AND game_id = ?", questUpdateData.Quest.ID, gameID).
+			Where("(hidden_by = 0 OR hidden_by = ?)", playerID).
 			Set("name = ?", questUpdateData.Quest.Name).
 			Set("title = ?", questUpdateData.Quest.Title).
 			Set("description = ?", questUpdateData.Quest.Description).
 			Set("hidden_by = ?", gewiutils.TernaryInt(questUpdateData.Quest.Hidden, playerID, 0)).
-			Returning("*").Exec(context.Background()); err != nil {
+			Returning("*").Exec(ctx); err != nil {
 			return fmt.Errorf("failed to update quest: %w", err)
 		}
 
@@ -139,7 +139,8 @@ func (r *QuestRepo) EditPlayerCurrentGameQuest(ctx context.Context, questUpdateD
 
 			if _, err := tx.NewDelete().
 				Model((*domain.QuestTask)(nil)).
-				Where("quest_id = ?", quest.ID).
+				Where("quest_id = ? AND game_id = ?", quest.ID, gameID).
+				Where("(hidden_by = 0 OR hidden_by = ?)", playerID).
 				Exec(ctx); err != nil {
 				return fmt.Errorf("failed to update quest: %w", err)
 			}
@@ -177,7 +178,8 @@ func (r *QuestRepo) EditPlayerCurrentGameQuest(ctx context.Context, questUpdateD
 						capacity = i.capacity,
 						hidden_by = i.hidden_by
 					FROM input_data i
-					WHERE t.id = i.id AND t.quest_id = ?
+					WHERE t.id = i.id AND t.quest_id = ? AND t.game_id = ?
+					AND (t.hidden_by = 0 OR t.hidden_by = ?)
 					RETURNING t.id
 				),
 				inserted AS (
@@ -186,13 +188,14 @@ func (r *QuestRepo) EditPlayerCurrentGameQuest(ctx context.Context, questUpdateD
 					SELECT
 						?, q.game_id, i.name, i.description, i.type, i.capacity, i.hidden_by
 					FROM input_data i
-					JOIN quest q ON q.id = ?
+					JOIN quest q ON q.id = ? AND q.game_id = ?
 					WHERE i.id = 0
 					RETURNING id
 				),
 				deleted AS (
 					DELETE FROM quest_task
-					WHERE quest_id = ?
+					WHERE quest_id = ? AND game_id = ?
+					AND (hidden_by = 0 OR hidden_by = ?)
 					AND id NOT IN (SELECT id FROM input_data WHERE id != 0)
 					RETURNING id
 				)
@@ -203,7 +206,11 @@ func (r *QuestRepo) EditPlayerCurrentGameQuest(ctx context.Context, questUpdateD
 			`,
 				strings.Join(valuePlaceholders, ","))
 
-			values = append(values, quest.ID, quest.ID, quest.ID, quest.ID)
+			values = append(values,
+				quest.ID, gameID, playerID,
+				quest.ID, quest.ID, gameID,
+				quest.ID, gameID, playerID,
+			)
 
 			if _, err := tx.Exec(query, values...); err != nil {
 				return fmt.Errorf("bulk task update failed: %w", err)
@@ -216,7 +223,11 @@ func (r *QuestRepo) EditPlayerCurrentGameQuest(ctx context.Context, questUpdateD
 		return nil, fmt.Errorf("transaction failed: %w", err)
 	}
 
-	if err := r.db.NewSelect().Model(quest).WherePK().Relation("Records").Relation("Tasks").Scan(context.Background()); err == sql.ErrNoRows {
+	if err := r.db.NewSelect().Model(quest).
+		Where("id = ? AND game_id = ?", quest.ID, gameID).
+		Relation("Records").
+		Relation("Tasks").
+		Scan(ctx); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -244,29 +255,31 @@ func (r *QuestRepo) EditPlayerCurrentGameQuest(ctx context.Context, questUpdateD
 // 	return nil
 // }
 
-func (r *QuestRepo) FinishPlayerCurrentGameQuest(ctx context.Context, questID int, successful bool) (*domain.Quest, error) {
+func (r *QuestRepo) FinishPlayerCurrentGameQuest(ctx context.Context, questID, gameID, playerID int, successful bool) (*domain.Quest, error) {
 	quest := &domain.Quest{ID: questID}
 	if _, err := r.db.NewUpdate().
 		Model(quest).
-		WherePK().
+		Where("id = ? AND game_id = ?", questID, gameID).
+		Where("(hidden_by = 0 OR hidden_by = ?)", playerID).
 		Set("finished = ?", time.Now().UTC()).
 		Set("successful = ?", successful).
 		Returning("*").
-		Exec(context.Background()); err != nil {
+		Exec(ctx); err != nil {
 		return nil, err
 	}
 	return quest, nil
 }
 
-func (r *QuestRepo) ResetPlayerCurrentGameQuest(ctx context.Context, questID int) (*domain.Quest, error) {
+func (r *QuestRepo) ResetPlayerCurrentGameQuest(ctx context.Context, questID, gameID, playerID int) (*domain.Quest, error) {
 	quest := &domain.Quest{ID: questID}
 	if _, err := r.db.NewUpdate().
 		Model(quest).
-		WherePK().
+		Where("id = ? AND game_id = ?", questID, gameID).
+		Where("(hidden_by = 0 OR hidden_by = ?)", playerID).
 		Set("finished = ?", nil).
 		Set("successful = ?", false).
 		Returning("*").
-		Exec(context.Background()); err != nil {
+		Exec(ctx); err != nil {
 		return nil, err
 	}
 	return quest, nil

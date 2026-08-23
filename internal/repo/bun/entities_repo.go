@@ -61,10 +61,10 @@ func (r *EntitiesRepo) GetCurrentGameLocationList(ctx context.Context, gameID, p
 }
 
 func (r *EntitiesRepo) GetCurrentGameCharByID(ctx context.Context, gameID, charID int) (*domain.Char, error) {
-	char := domain.Char{ID: charID, GameID: gameID}
+	char := domain.Char{}
 	err := r.db.NewSelect().
 		Model(&char).
-		WherePK().
+		Where("id = ? AND game_id = ?", charID, gameID).
 		Relation("Records").
 		Scan(ctx)
 	if err == sql.ErrNoRows {
@@ -123,10 +123,10 @@ func (r *EntitiesRepo) GetCurrentGameCharByID(ctx context.Context, gameID, charI
 // }
 
 func (r *EntitiesRepo) GetCurrentGameNPCByID(ctx context.Context, gameID, npcID int) (*domain.NPC, error) {
-	npc := domain.NPC{ID: npcID, GameID: gameID}
+	npc := domain.NPC{}
 	err := r.db.NewSelect().
 		Model(&npc).
-		WherePK().
+		Where("id = ? AND game_id = ?", npcID, gameID).
 		Relation("Records").
 		Scan(ctx)
 	if err == sql.ErrNoRows {
@@ -139,10 +139,10 @@ func (r *EntitiesRepo) GetCurrentGameNPCByID(ctx context.Context, gameID, npcID 
 }
 
 func (r *EntitiesRepo) GetCurrentGameLocationByID(ctx context.Context, gameID, locationID int) (*domain.Location, error) {
-	location := domain.Location{ID: locationID, GameID: gameID}
+	location := domain.Location{}
 	err := r.db.NewSelect().
 		Model(&location).
-		WherePK().
+		Where("id = ? AND game_id = ?", locationID, gameID).
 		Relation("Records").
 		Relation("Parent"). // ** PARENT is not guarded if hidden ** //
 		Scan(ctx)
@@ -215,12 +215,13 @@ func (r *EntitiesRepo) CreateLocation(ctx context.Context, location *domain.Loca
 	return location, nil
 }
 
-func (r *EntitiesRepo) EditChar(ctx context.Context, charUpdate *dto.CharUpdate, playerID int) (*domain.Char, error) {
+func (r *EntitiesRepo) EditChar(ctx context.Context, charUpdate *dto.CharUpdate, playerID, gameID int) (*domain.Char, error) {
 	var char domain.Char
 
 	_, err := r.db.NewUpdate().
 		Model(&char).
-		Where("id = ?", charUpdate.ID).
+		Where("id = ? AND game_id = ?", charUpdate.ID, gameID).
+		Where("(hidden_by = 0 OR hidden_by = ?)", playerID).
 		Set("name = ?", charUpdate.Name).
 		Set("title = ?", charUpdate.Title).
 		Set("description = ?", charUpdate.Description).
@@ -236,12 +237,13 @@ func (r *EntitiesRepo) EditChar(ctx context.Context, charUpdate *dto.CharUpdate,
 	return &char, nil
 }
 
-func (r *EntitiesRepo) EditNPC(ctx context.Context, npcUpdate *dto.NPCUpdate, playerID int) (*domain.NPC, error) {
+func (r *EntitiesRepo) EditNPC(ctx context.Context, npcUpdate *dto.NPCUpdate, playerID, gameID int) (*domain.NPC, error) {
 	var npc domain.NPC
 
 	_, err := r.db.NewUpdate().
 		Model(&npc).
-		Where("id = ?", npcUpdate.ID).
+		Where("id = ? AND game_id = ?", npcUpdate.ID, gameID).
+		Where("(hidden_by = 0 OR hidden_by = ?)", playerID).
 		Set("name = ?", npcUpdate.Name).
 		Set("title = ?", npcUpdate.Title).
 		Set("description = ?", npcUpdate.Description).
@@ -257,12 +259,13 @@ func (r *EntitiesRepo) EditNPC(ctx context.Context, npcUpdate *dto.NPCUpdate, pl
 	return &npc, nil
 }
 
-func (r *EntitiesRepo) EditLocation(ctx context.Context, locationUpdate *dto.LocationUpdate, playerID int) (*domain.Location, error) {
+func (r *EntitiesRepo) EditLocation(ctx context.Context, locationUpdate *dto.LocationUpdate, playerID, gameID int) (*domain.Location, error) {
 	var location domain.Location
 
 	_, err := r.db.NewUpdate().
 		Model(&location).
-		Where("id = ?", locationUpdate.ID).
+		Where("id = ? AND game_id = ?", locationUpdate.ID, gameID).
+		Where("(hidden_by = 0 OR hidden_by = ?)", playerID).
 		Set("name = ?", locationUpdate.Name).
 		Set("title = ?", locationUpdate.Title).
 		Set("description = ?", locationUpdate.Description).

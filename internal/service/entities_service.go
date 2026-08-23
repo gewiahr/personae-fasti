@@ -202,13 +202,20 @@ func (s *EntitiesService) PostPlayerCurrentGameLocation(ctx context.Context, pla
 }
 
 func (s *EntitiesService) EditPlayerCurrentGameChar(ctx context.Context, player *domain.Player, charUpdate *dto.CharUpdate) (*domain.Char, error) {
-	char, err := s.repo.EditChar(ctx, charUpdate, player.ID)
+	existing, err := s.repo.GetCurrentGameCharByID(ctx, player.CurrentGameID, charUpdate.ID)
+	if err != nil {
+		return nil, e.NewInternalError("Ошибка получения данных персонажа", err)
+	} else if existing == nil {
+		return nil, e.NewNotFoundError(fmt.Sprintf("no char with id %d", charUpdate.ID))
+	} else if err := ensureHiddenContentEditable(existing.HiddenBy, player.ID); err != nil {
+		return nil, err
+	}
+
+	char, err := s.repo.EditChar(ctx, charUpdate, player.ID, player.CurrentGameID)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка получения данных персонажа", err)
 	} else if char == nil {
 		return nil, e.NewNotFoundError(fmt.Sprintf("no char with id %d", charUpdate.ID))
-	} else if char.HiddenBy != 0 && char.HiddenBy != player.ID {
-		return nil, e.NewForbiddenError(fmt.Sprintf("char %d is not allowed to request for the player %d", char.ID, player.ID))
 	}
 
 	if len(char.Records) > 0 {
@@ -222,13 +229,20 @@ func (s *EntitiesService) EditPlayerCurrentGameChar(ctx context.Context, player 
 }
 
 func (s *EntitiesService) EditPlayerCurrentGameNPC(ctx context.Context, player *domain.Player, NPCUpdate *dto.NPCUpdate) (*domain.NPC, error) {
-	npc, err := s.repo.EditNPC(ctx, NPCUpdate, player.ID)
+	existing, err := s.repo.GetCurrentGameNPCByID(ctx, player.CurrentGameID, NPCUpdate.ID)
+	if err != nil {
+		return nil, e.NewInternalError("Ошибка получения данных персонажа", err)
+	} else if existing == nil {
+		return nil, e.NewNotFoundError(fmt.Sprintf("no npc with id %d", NPCUpdate.ID))
+	} else if err := ensureHiddenContentEditable(existing.HiddenBy, player.ID); err != nil {
+		return nil, err
+	}
+
+	npc, err := s.repo.EditNPC(ctx, NPCUpdate, player.ID, player.CurrentGameID)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка получения данных персонажа", err)
 	} else if npc == nil {
 		return nil, e.NewNotFoundError(fmt.Sprintf("no npc with id %d", NPCUpdate.ID))
-	} else if npc.HiddenBy != 0 && npc.HiddenBy != player.ID {
-		return nil, e.NewForbiddenError(fmt.Sprintf("npc %d is not allowed to request for the player %d", npc.ID, player.ID))
 	}
 
 	if len(npc.Records) > 0 {
@@ -242,13 +256,20 @@ func (s *EntitiesService) EditPlayerCurrentGameNPC(ctx context.Context, player *
 }
 
 func (s *EntitiesService) EditPlayerCurrentGameLocation(ctx context.Context, player *domain.Player, locationUpdate *dto.LocationUpdate) (*domain.Location, error) {
-	location, err := s.repo.EditLocation(ctx, locationUpdate, player.ID)
+	existing, err := s.repo.GetCurrentGameLocationByID(ctx, player.CurrentGameID, locationUpdate.ID)
+	if err != nil {
+		return nil, e.NewInternalError("Ошибка получения данных локации", err)
+	} else if existing == nil {
+		return nil, e.NewNotFoundError(fmt.Sprintf("no location with id %d", locationUpdate.ID))
+	} else if err := ensureHiddenContentEditable(existing.HiddenBy, player.ID); err != nil {
+		return nil, err
+	}
+
+	location, err := s.repo.EditLocation(ctx, locationUpdate, player.ID, player.CurrentGameID)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка получения данных локации", err)
 	} else if location == nil {
 		return nil, e.NewNotFoundError(fmt.Sprintf("no location with id %d", locationUpdate.ID))
-	} else if location.HiddenBy != 0 && location.HiddenBy != player.ID {
-		return nil, e.NewForbiddenError(fmt.Sprintf("location %d is not allowed to request for the player %d", location.ID, player.ID))
 	}
 
 	if len(location.Records) > 0 {
@@ -259,6 +280,13 @@ func (s *EntitiesService) EditPlayerCurrentGameLocation(ctx context.Context, pla
 	}
 
 	return location, nil
+}
+
+func ensureHiddenContentEditable(hiddenBy, playerID int) error {
+	if hiddenBy != 0 && hiddenBy != playerID {
+		return e.NewForbiddenError("content is hidden by another player")
+	}
+	return nil
 }
 
 func (s *EntitiesService) GetPlayerCurrentGameSuggestions(ctx context.Context, player *domain.Player) ([]dto.Suggestion, error) {
