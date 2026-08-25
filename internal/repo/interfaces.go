@@ -64,6 +64,8 @@ type PlayerRepository interface {
 	InsertToken(ctx context.Context, token *domain.Token) (*domain.Token, error)
 	SetPlayerPassword(ctx context.Context, playerID int, passwordHash string) (*domain.Player, error)
 	ChangeCurrentGame(ctx context.Context, playerID, gameID int) (*domain.Player, error)
+	GetPersonalNote(ctx context.Context, playerID int) (string, error)
+	UpdatePersonalNote(ctx context.Context, playerID int, note string) (string, error)
 
 	GetInvite(ctx context.Context, playerID int, inviteCode string) (*domain.GameInvite, error)
 	//DeleteInvite(ctx context.Context, invite *domain.GameInvite) error

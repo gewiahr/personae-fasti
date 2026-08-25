@@ -152,6 +152,33 @@ func (r *PlayerRepo) ChangeCurrentGame(ctx context.Context, playerID, gameID int
 	return player, nil
 }
 
+func (r *PlayerRepo) GetPersonalNote(ctx context.Context, playerID int) (string, error) {
+	var note string
+	err := r.db.NewSelect().
+		Model((*domain.Player)(nil)).
+		Column("personal_note").
+		Where("id = ?", playerID).
+		Scan(ctx, &note)
+	if err != nil {
+		return "", err
+	}
+	return note, nil
+}
+
+func (r *PlayerRepo) UpdatePersonalNote(ctx context.Context, playerID int, note string) (string, error) {
+	player := &domain.Player{ID: playerID}
+	_, err := r.db.NewUpdate().
+		Model(player).
+		WherePK().
+		Set("personal_note = ?", note).
+		Returning("personal_note").
+		Exec(ctx, player)
+	if err != nil {
+		return "", err
+	}
+	return player.PersonalNote, nil
+}
+
 //GetInviteByExt
 
 func (r *PlayerRepo) GetInvite(ctx context.Context, playerID int, inviteCode string) (*domain.GameInvite, error) {

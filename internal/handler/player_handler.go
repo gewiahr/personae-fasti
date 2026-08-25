@@ -77,6 +77,26 @@ func (h *PlayerHandler) GetPlayerSettings(req httputils.RequestData[dto.NoBody])
 	}}
 }
 
+// GetPersonalNote handles GET /notes (protected).
+func (h *PlayerHandler) GetPersonalNote(req httputils.RequestData[dto.NoBody]) httputils.Responder {
+	note, err := h.svc.GetPersonalNote(req.Context, req.Player)
+	if err != nil {
+		return e.ErrToApiError(err)
+	}
+
+	return httputils.Response{Status: http.StatusOK, Body: dto.PersonalNote{PersonalNote: note}}
+}
+
+// UpdatePersonalNote handles PUT /notes (protected).
+func (h *PlayerHandler) UpdatePersonalNote(req httputils.RequestData[dto.PersonalNote]) httputils.Responder {
+	note, err := h.svc.UpdatePersonalNote(req.Context, req.Player, req.Body.PersonalNote)
+	if err != nil {
+		return e.ErrToApiError(err)
+	}
+
+	return httputils.Response{Status: http.StatusOK, Body: dto.PersonalNote{PersonalNote: note}}
+}
+
 // GameInviteAccept handles POST /player/invite/accept/{inviteCode} (protected).
 func (h *PlayerHandler) AcceptGameInvite(req httputils.RequestData[dto.NoBody]) httputils.Responder {
 	inviteCode := req.Request.PathValue("inviteCode")

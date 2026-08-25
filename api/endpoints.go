@@ -88,6 +88,8 @@ func (api *APIServer) SetHandlers(
 	// 	router.HandleFunc("PATCH /player/username", api.HTTPWrapper(api.PlayerWrapper(api.handleChangePlayerUsername)))
 
 	api.router.HandleFunc("GET /player/settings", AuthAdapt(api.auth, playerHandler.GetPlayerSettings))
+	api.router.HandleFunc("GET /notes", AuthAdapt(api.auth, playerHandler.GetPersonalNote))
+	api.router.HandleFunc("PUT /notes", AuthAdapt(api.auth, playerHandler.UpdatePersonalNote))
 
 	/* APPLICATION */
 	api.router.HandleFunc("POST /feedback", AuthAdapt(api.auth, appHandler.LoginByToken))

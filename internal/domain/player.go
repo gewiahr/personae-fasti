@@ -14,6 +14,7 @@ type Player struct {
 	Username     string  `bun:"username,unique,notnull"`
 	Email        string  `bun:"email,type:varchar(255)"`
 	PasswordHash string  `bun:"password_hash,type:varchar(255)"`
+	PersonalNote string  `bun:"personal_note,notnull,default:''"`
 	Tokens       []Token `bun:"rel:has-many,join:id=player_id"`
 
 	TelegramID int64     `bun:"telegram_id"`

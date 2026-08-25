@@ -76,6 +76,22 @@ func (s *PlayerService) GetPlayerSettings(ctx context.Context, player *domain.Pl
 	return p, nil
 }
 
+func (s *PlayerService) GetPersonalNote(ctx context.Context, player *domain.Player) (string, error) {
+	note, err := s.playerRepo.GetPersonalNote(ctx, player.ID)
+	if err != nil {
+		return "", e.NewInternalError("Ошибка получения личных заметок", err)
+	}
+	return note, nil
+}
+
+func (s *PlayerService) UpdatePersonalNote(ctx context.Context, player *domain.Player, note string) (string, error) {
+	updatedNote, err := s.playerRepo.UpdatePersonalNote(ctx, player.ID, note)
+	if err != nil {
+		return "", e.NewInternalError("Ошибка сохранения личных заметок", err)
+	}
+	return updatedNote, nil
+}
+
 func (s *PlayerService) GetPlayerInvites(ctx context.Context, player *domain.Player) ([]domain.GameInvite, error) {
 	invites, err := s.gameRepo.GetPlayerInvites(ctx, player.ID)
 	if err != nil {

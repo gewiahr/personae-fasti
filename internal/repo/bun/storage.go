@@ -99,6 +99,9 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 	if err := s.applyPublicExtMigration(ctx); err != nil {
 		return err
 	}
+	if err := s.applyPersonalNoteMigration(ctx); err != nil {
+		return err
+	}
 
 	_, err = s.db.NewCreateIndex().
 		IfNotExists().
@@ -150,6 +153,48 @@ func addNanoID(db *bun.DB) error {
 }
 
 const publicExtMigration = "20260824_public_entity_exts"
+
+const personalNoteMigration = "20260825_player_personal_note"
+
+func (s *BunStorage) applyPersonalNoteMigration(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migration (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create schema migration table: %w", err)
+	}
+
+	var applied bool
+	if err := s.db.NewSelect().
+		ColumnExpr("EXISTS (SELECT 1 FROM schema_migration WHERE name = ?)", personalNoteMigration).
+		Scan(ctx, &applied); err != nil {
+		return fmt.Errorf("failed to check personal note migration: %w", err)
+	}
+	if applied {
+		return nil
+	}
+
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.ExecContext(ctx, `
+			ALTER TABLE player
+			ADD COLUMN IF NOT EXISTS personal_note TEXT NOT NULL DEFAULT ''
+		`); err != nil {
+			return fmt.Errorf("personal note migration failed: %w", err)
+		}
+
+		if _, err := tx.ExecContext(
+			ctx,
+			"INSERT INTO schema_migration (name) VALUES (?)",
+			personalNoteMigration,
+		); err != nil {
+			return fmt.Errorf("failed to record personal note migration: %w", err)
+		}
+
+		return nil
+	})
+}
 
 func (s *BunStorage) applyPublicExtMigration(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, `
