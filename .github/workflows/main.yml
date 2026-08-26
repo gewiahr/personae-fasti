@@ -46,8 +46,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           envs: RELEASE
-          script_stop: true
           script: |
+            set -eu
             stage="/tmp/storyshard-api-${RELEASE}"
             image="storyshard-api:${RELEASE}"
             docker build --file "${stage}/deploy/Dockerfile" --tag "${image}" --tag storyshard-api:latest "${stage}"
