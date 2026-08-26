@@ -1,0 +1,34 @@
+{
+  "app": {
+    "port": ":17001",
+    "debug": false,
+    "environment": "production",
+    "allowedOrigins": ["https://app.storyshard.ru"],
+    "allowCredentials": false,
+    "readTimeout": 120,
+    "writeTimeout": 120,
+    "imageUploadTimeout": 120,
+    "migrateOnStart": false
+  },
+  "auth": {
+    "jwtSecret": "replace-me",
+    "jwtTokenLifetimeHours": 720,
+    "botToken": "replace-me"
+  },
+  "db": {
+    "host": "postgres",
+    "port": "5432",
+    "user": "storyshardapp",
+    "password": "replace-me",
+    "name": "storyshard"
+  },
+  "imageStorage": {
+    "endpoint": "http://host.docker.internal:17002",
+    "region": "garage",
+    "bucket": "storyshard",
+    "accessKey": "replace-me",
+    "secretKey": "replace-me",
+    "publicBaseUrl": "https://img.storyshard.ru",
+    "forcePathStyle": true
+  }
+}

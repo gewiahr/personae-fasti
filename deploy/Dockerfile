@@ -1,19 +1,24 @@
-FROM golang:1.26.1 AS builder
+FROM golang:1.26.1-alpine AS builder
 
-WORKDIR /app
+WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
-
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o personae-fasti .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/storyshard-app ./cmd/storyshard-app
 
-FROM alpine:latest
+FROM alpine:3.23
+
+RUN apk add --no-cache ca-certificates \
+    && addgroup -S storyshard \
+    && adduser -S -G storyshard storyshard
 
 WORKDIR /app
-COPY --from=builder /personae-fasti .
+COPY --from=builder /out/storyshard-app ./storyshard-app
 
-ENV CONFIG_PATH="/app/mnt"
-ENV CONFIG_NAME="fasti.json"
+ENV CONFIG_PATH=/app/mnt \
+    CONFIG_NAME=storyshard
 
-ENTRYPOINT ["./personae-fasti", ">>mnt/personae-fasti.out", "2>&1"]
-CMD ["/bin/sh"]
+USER storyshard
+EXPOSE 17001
+
+ENTRYPOINT ["./storyshard-app"]

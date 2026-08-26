@@ -1,26 +1,54 @@
+name: storyshard
+
+x-api: &api
+  image: ${API_IMAGE:-storyshard-api:latest}
+  restart: unless-stopped
+  environment:
+    CONFIG_PATH: /app/mnt
+    CONFIG_NAME: storyshard
+  volumes:
+    - storyshard:/app/mnt:ro
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  networks:
+    - storyshard
+
 services:
-  fasti:
-    build: .
-    image: fasti-app:${TAG:-latest}
-    container_name: fasti-app
-    hostname: fasti-app
-    volumes:
-      - personae:/app/mnt
+  api:
+    <<: *api
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-17001}:17001"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:17001/readyz"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  migrate:
+    <<: *api
+    restart: "no"
+    command: ["migrate"]
+    profiles: ["tools"]
+
+  web:
+    image: ${WEB_IMAGE:-storyshard-web:latest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_HOST_PORT:-17003}:80"
     networks:
-      personae:
-        ipv4_address: 172.41.2.1
-    expose:
-      - 4121
-    labels:
-      - "com.docker.compose.project=fasti"
-      - "com.docker.compose.service=app"
-      - "com.fasti.environment=${ENV:-prod}"
+      - storyshard
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
 volumes:
-  personae:
-    name: personae
+  storyshard:
+    name: storyshard
 
 networks:
-  personae:
-    external: true
-    name: personae
+  storyshard:
+    name: storyshard

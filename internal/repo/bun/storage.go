@@ -19,7 +19,6 @@ type BunStorage struct {
 }
 
 func NewBunStorage(c *configs.DBConfig) (*BunStorage, error) {
-	ctx := context.Background()
 	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", c.User, c.Password, c.Host, c.Port, c.Name)
 	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
 
@@ -33,12 +32,22 @@ func NewBunStorage(c *configs.DBConfig) (*BunStorage, error) {
 	storage := &BunStorage{
 		db: db,
 	}
-	if err := storage.Migrate(ctx); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("database migration failed: %w", err)
-	}
+	storage.registerModels()
 
 	return storage, nil
+}
+
+func (s *BunStorage) registerModels() {
+	models := []any{
+		(*domain.PlayerGame)(nil),
+		(*domain.GameInvite)(nil),
+		(*domain.RecordChar)(nil),
+		(*domain.RecordNPC)(nil),
+		(*domain.RecordLocation)(nil),
+	}
+	for _, model := range models {
+		s.db.RegisterModel(model)
+	}
 }
 
 func (s *BunStorage) GameRepo() repo.GameRepository         { return NewGameRepo(s.db) }
@@ -54,17 +63,6 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 	err := addNanoID(s.db)
 	if err != nil {
 		return fmt.Errorf("failed to create nanoid function: %w", err)
-	}
-
-	models := []any{
-		(*domain.PlayerGame)(nil),
-		(*domain.GameInvite)(nil),
-		(*domain.RecordChar)(nil),
-		(*domain.RecordNPC)(nil),
-		(*domain.RecordLocation)(nil),
-	}
-	for _, m := range models {
-		s.db.RegisterModel(m)
 	}
 
 	tables := []any{
@@ -97,6 +95,9 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 		}
 	}
 
+	if err := s.applyLegacySchemaMigration(ctx); err != nil {
+		return err
+	}
 	if err := s.applyPublicExtMigration(ctx); err != nil {
 		return err
 	}
@@ -121,6 +122,10 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 
 func (s *BunStorage) Close() error {
 	return s.db.Close()
+}
+
+func (s *BunStorage) Ping(ctx context.Context) error {
+	return s.db.PingContext(ctx)
 }
 
 func addNanoID(db *bun.DB) error {
@@ -160,7 +165,102 @@ const publicExtMigration = "20260824_public_entity_exts"
 
 const personalNoteMigration = "20260825_player_personal_note"
 
+const legacySchemaMigration = "20260826_legacy_main_schema"
+
 const imageMigration = "20260827_image_system"
+
+func (s *BunStorage) applyLegacySchemaMigration(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migration (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create schema migration table: %w", err)
+	}
+
+	var applied bool
+	if err := s.db.NewSelect().
+		ColumnExpr("EXISTS (SELECT 1 FROM schema_migration WHERE name = ?)", legacySchemaMigration).
+		Scan(ctx, &applied); err != nil {
+		return fmt.Errorf("failed to check legacy schema migration: %w", err)
+	}
+	if applied {
+		return nil
+	}
+
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		statements := []string{
+			`ALTER TABLE game ADD COLUMN IF NOT EXISTS ext VARCHAR(16)`,
+			`UPDATE game SET ext = nanoid(12) WHERE ext IS NULL OR ext = ''`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS game_ext_idx ON game (ext)`,
+			`ALTER TABLE game ALTER COLUMN ext SET DEFAULT nanoid(12), ALTER COLUMN ext SET NOT NULL`,
+
+			`ALTER TABLE player ADD COLUMN IF NOT EXISTS ext VARCHAR(16)`,
+			`ALTER TABLE player ADD COLUMN IF NOT EXISTS email VARCHAR(255)`,
+			`ALTER TABLE player ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`,
+			`UPDATE player SET ext = nanoid(12) WHERE ext IS NULL OR ext = ''`,
+			`UPDATE player SET email = '' WHERE email IS NULL`,
+			`UPDATE player SET password_hash = '' WHERE password_hash IS NULL`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS player_ext_idx ON player (ext)`,
+			`ALTER TABLE player ALTER COLUMN ext SET DEFAULT nanoid(12), ALTER COLUMN ext SET NOT NULL`,
+			`ALTER TABLE player ALTER COLUMN email SET DEFAULT '', ALTER COLUMN email SET NOT NULL`,
+			`ALTER TABLE player ALTER COLUMN password_hash SET DEFAULT '', ALTER COLUMN password_hash SET NOT NULL`,
+			`ALTER TABLE player DROP COLUMN IF EXISTS accesskey`,
+
+			`ALTER TABLE telegram ADD COLUMN IF NOT EXISTS pic_url VARCHAR NOT NULL DEFAULT ''`,
+
+			`DO $$
+			BEGIN
+				IF EXISTS (
+					SELECT 1 FROM information_schema.columns
+					WHERE table_schema = 'public' AND table_name = 'log_api' AND column_name = 'user'
+				) AND NOT EXISTS (
+					SELECT 1 FROM information_schema.columns
+					WHERE table_schema = 'public' AND table_name = 'log_api' AND column_name = 'player_id'
+				) THEN
+					ALTER TABLE log_api RENAME COLUMN "user" TO player_id;
+				END IF;
+
+				IF EXISTS (
+					SELECT 1 FROM information_schema.columns
+					WHERE table_schema = 'public' AND table_name = 'log_api' AND column_name = 'http_code'
+				) AND NOT EXISTS (
+					SELECT 1 FROM information_schema.columns
+					WHERE table_schema = 'public' AND table_name = 'log_api' AND column_name = 'code'
+				) THEN
+					ALTER TABLE log_api RENAME COLUMN http_code TO code;
+				END IF;
+
+				IF EXISTS (
+					SELECT 1 FROM information_schema.columns
+					WHERE table_schema = 'public' AND table_name = 'log_api' AND column_name = 'time'
+						AND data_type = 'timestamp with time zone'
+				) AND NOT EXISTS (
+					SELECT 1 FROM information_schema.columns
+					WHERE table_schema = 'public' AND table_name = 'log_api' AND column_name = 'created'
+				) THEN
+					ALTER TABLE log_api RENAME COLUMN "time" TO created;
+				END IF;
+			END $$`,
+			`ALTER TABLE log_api ADD COLUMN IF NOT EXISTS player_id BIGINT NOT NULL DEFAULT 0`,
+			`ALTER TABLE log_api ADD COLUMN IF NOT EXISTS code BIGINT NOT NULL DEFAULT 0`,
+			`ALTER TABLE log_api ADD COLUMN IF NOT EXISTS time BIGINT NOT NULL DEFAULT 0`,
+			`ALTER TABLE log_api ADD COLUMN IF NOT EXISTS created TIMESTAMPTZ NOT NULL DEFAULT current_timestamp`,
+		}
+
+		for _, statement := range statements {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("legacy schema migration failed: %w", err)
+			}
+		}
+
+		if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migration (name) VALUES (?)", legacySchemaMigration); err != nil {
+			return fmt.Errorf("failed to record legacy schema migration: %w", err)
+		}
+		return nil
+	})
+}
 
 func (s *BunStorage) applyImageMigration(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, `

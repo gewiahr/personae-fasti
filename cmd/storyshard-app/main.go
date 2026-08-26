@@ -1,7 +1,13 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
+	"net/http"
+	"os"
+	"strings"
+
 	"personae-fasti/api"
 	"personae-fasti/configs"
 	"personae-fasti/internal/handler"
@@ -16,6 +22,19 @@ func main() {
 	storage, err := bunrepo.NewBunStorage(config.DB)
 	if err != nil {
 		log.Fatalf("error initializing storage: %v", err)
+	}
+	defer storage.Close()
+
+	migrationOnly := len(os.Args) > 1 && os.Args[1] == "migrate"
+	production := strings.EqualFold(config.App.Environment, "production")
+	if migrationOnly || config.App.MigrateOnStart || !production {
+		if err := storage.Migrate(context.Background()); err != nil {
+			log.Fatalf("database migration failed: %v", err)
+		}
+	}
+	if migrationOnly {
+		log.Println("database migrations applied successfully")
+		return
 	}
 	playerRepo := storage.PlayerRepo()
 	gameRepo := storage.GameRepo()
@@ -49,13 +68,13 @@ func main() {
 	privateApi := api.ConfigServer(
 		config,
 		authService,
-		logService,
+		storage.Ping,
 	)
 
 	privateApi.SetHandlers(authHandler, gameHandler, playerHandler, recordHandler, entitiesHandler, questHandler, appHandler, imageHandler)
 
 	log.Println("API server running on ", privateApi.Server.Addr)
-	if err := privateApi.Server.ListenAndServe(); err != nil {
-		panic(err)
+	if err := privateApi.Server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatalf("API server stopped: %v", err)
 	}
 }

@@ -1,10 +1,12 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"personae-fasti/internal/dto"
 	"personae-fasti/internal/pkg/httputils"
 	"personae-fasti/internal/service"
+	"time"
 )
 
 func Adapt[Body any](fn HandlerFunc[Body]) http.HandlerFunc {
@@ -60,8 +62,11 @@ func AuthAdapt[Body any](authService *service.AuthService, fn HandlerFunc[Body])
 	}
 }
 
-func ImageAdapt(authService *service.AuthService, maxRequestBytes int64, fn HandlerFunc[dto.NoBody]) http.HandlerFunc {
+func ImageAdapt(authService *service.AuthService, maxRequestBytes int64, timeout time.Duration, fn HandlerFunc[dto.NoBody]) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+		r = r.WithContext(ctx)
 		token := extractBearer(r)
 		player, err := authService.AuthenticateToken(r.Context(), token)
 		if err != nil {

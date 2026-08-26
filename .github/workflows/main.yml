@@ -1,49 +1,59 @@
-name: "Release"
+name: Release
 
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
+
+concurrency:
+  group: storyshard-api-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    name: "📦 Build and Deploy"
+    name: Build and deploy API
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
+      - name: Check out source
         uses: actions/checkout@v4
-      
-      - name: Set Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          name: id_rsa
-          known_hosts: unnecessary
-      
-      - name: Remove Unused Files
-        run: rm -rf .git && rm -rf .github
 
-      - name: SCP To Server
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: go test ./...
+
+      - name: Stage source on server
         uses: appleboy/scp-action@v1.0.0
         with:
-          host: ${{ secrets.SERVER_IP }}
+          host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          source: "." 
-          target: "/home/github/.deploy"
-          overwrite: true 
-      
-      - name: Deploy On Server
+          source: "api,cmd,configs/config.go,data,internal,pkg,deploy,go.mod,go.sum,.dockerignore"
+          target: "/tmp/storyshard-api-${{ github.sha }}"
+
+      - name: Build, migrate, and replace API container
         uses: appleboy/ssh-action@v1.2.5
+        env:
+          RELEASE: ${{ github.sha }}
         with:
-          host: ${{ secrets.SERVER_IP }}
+          host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
+          envs: RELEASE
+          script_stop: true
           script: |
-            cd /home/github/.deploy
-            make docker-prod-down
-            make docker-prod
-            rm -rf /home/github/.deploy
+            stage="/tmp/storyshard-api-${RELEASE}"
+            image="storyshard-api:${RELEASE}"
+            docker build --file "${stage}/deploy/Dockerfile" --tag "${image}" --tag storyshard-api:latest "${stage}"
+            install -d /opt/storyshard
+            cp "${stage}/deploy/docker-compose.prod.yml" /opt/storyshard/docker-compose.yml
+            cd /opt/storyshard
+            API_IMAGE="${image}" docker compose --profile tools run --rm migrate
+            API_IMAGE="${image}" docker compose up -d api
+            rm -rf "${stage}"

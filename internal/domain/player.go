@@ -10,10 +10,10 @@ type Player struct {
 	bun.BaseModel `bun:"table:player"`
 
 	ID           int     `bun:"id,pk,autoincrement"`
-	ExtID        string  `bun:"ext,unique,notnull,type:varchar(16)"`
+	ExtID        string  `bun:"ext,unique,notnull,type:varchar(16),default:nanoid(12)"`
 	Username     string  `bun:"username,unique,notnull"`
-	Email        string  `bun:"email,type:varchar(255)"`
-	PasswordHash string  `bun:"password_hash,type:varchar(255)"`
+	Email        string  `bun:"email,notnull,type:varchar(255),default:''"`
+	PasswordHash string  `bun:"password_hash,notnull,type:varchar(255),default:''"`
 	PersonalNote string  `bun:"personal_note,notnull,default:''"`
 	Tokens       []Token `bun:"rel:has-many,join:id=player_id"`
 

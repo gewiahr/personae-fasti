@@ -12,7 +12,7 @@ type Game struct {
 	bun.BaseModel `bun:"table:game"`
 
 	ID    int    `bun:"id,pk,autoincrement"`
-	ExtID string `bun:"ext,unique,notnull,type:varchar(16)"`
+	ExtID string `bun:"ext,unique,notnull,type:varchar(16),default:nanoid(12)"`
 	Name  string `bun:"name,notnull"`
 
 	GMID int     `bun:"gm_id"`

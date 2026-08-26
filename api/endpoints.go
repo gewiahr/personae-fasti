@@ -95,7 +95,7 @@ func (api *APIServer) SetHandlers(
 	/* IMAGES */
 	api.router.HandleFunc("GET /entities/{type}/{ext}/images", AuthAdapt(api.auth, imageHandler.List))
 	api.router.HandleFunc("POST /entities/{type}/{ext}/images/external", AuthAdapt(api.auth, imageHandler.CreateExternal))
-	api.router.HandleFunc("POST /entities/{type}/{ext}/images", ImageAdapt(api.auth, 32<<20, imageHandler.Upload))
+	api.router.HandleFunc("POST /entities/{type}/{ext}/images", ImageAdapt(api.auth, 32<<20, api.imageUploadTimeout, imageHandler.Upload))
 	api.router.HandleFunc("DELETE /images/{imageExt}", AuthAdapt(api.auth, imageHandler.Delete))
 	api.router.HandleFunc("PATCH /images/{imageExt}/main", AuthAdapt(api.auth, imageHandler.SetMain))
 	api.router.HandleFunc("GET /game/storage/quota", AuthAdapt(api.auth, imageHandler.GetQuota))

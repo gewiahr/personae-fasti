@@ -1,52 +1,35 @@
-APP = storyshard-app
-DOCKER_VOLUME=personae
-DOCKER_NETWORK=personae
-DOCKER_HOST=172.41.2.1
-DOCKER_PORT=4121  # The port your app listens on inside the container
-HOST_PORT=4121  # The port you want to expose on the host
+APP := storyshard-app
+IMAGE := storyshard-api:latest
+COMPOSE := docker compose -f deploy/docker-compose.prod.yml
 
-DOCKER_FILE_SERVER_NETWORK=file-server
-DOCKER_FILE_SERVER_HOST=172.72.2.1
-
+.PHONY: build run test clean docker-build docker-prod docker-prod-api docker-migrate docker-prod-down docker-logs
 
 build: clean
-	@go build ./cmd/$(APP)
+	go build -o $(APP) ./cmd/$(APP)
 
 run: build
-	@./$(APP)
+	./$(APP)
 
-docker:
-	@docker image build -t $(APP):v$(cv) .
-	@docker container create --name $(APP) -v $(DOCKER_VOLUME):/app/mnt $(APP):v$(cv)
-	@make docker-run	
-
-docker-run:
-	@docker container start $(APP)
-	@docker network connect --ip $(DOCKER_HOST) $(DOCKER_NETWORK) $(APP)
-	@docker network connect --ip $(DOCKER_FILE_SERVER_HOST) $(DOCKER_FILE_SERVER_NETWORK) $(APP)
-
-docker-stop:
-	@docker container stop $(APP)
-
-docker-rm: 
-	@docker container stop $(APP)
-	@docker container rm $(APP)
-	@docker image rm $(APP):v$(cv)
-
-docker-test:
-	docker-compose -p personae -f docker-compose.test.yml up -d
-
-docker-test-down:
-	docker-compose -p personae -f docker-compose.test.yml down
-
-docker-prod:
-	docker-compose -p personae -f docker-compose.prod.yml up -d
-
-docker-prod-down:
-	docker-compose -p personae -f docker-compose.prod.yml down
-
-test: clean
-	@go test -v ./...
+test:
+	go test -v ./...
 
 clean:
-	@rm -rf bin/*
+	rm -f $(APP)
+
+docker-build:
+	docker build -f deploy/Dockerfile -t $(IMAGE) .
+
+docker-migrate:
+	$(COMPOSE) --profile tools run --rm migrate
+
+docker-prod:
+	$(COMPOSE) up -d api web
+
+docker-prod-api:
+	$(COMPOSE) up -d api
+
+docker-prod-down:
+	$(COMPOSE) down
+
+docker-logs:
+	$(COMPOSE) logs -f api web

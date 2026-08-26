@@ -11,7 +11,6 @@ type Main struct {
 	App          *APIConfig          `json:"app"`
 	Auth         *AuthConfig         `json:"auth"`
 	DB           *DBConfig           `json:"db"`
-	FileServer   *FileServerConfig   `json:"fileServer"`
 	ImageStorage *ImageStorageConfig `json:"imageStorage"`
 }
 
@@ -26,10 +25,15 @@ type ImageStorageConfig struct {
 }
 
 type APIConfig struct {
-	Port         string `json:"port"`
-	Debug        bool   `json:"debug"`
-	ReadTimeout  int    `json:"readTimeout"`
-	WriteTimeout int    `json:"writeTimeout"`
+	Port               string   `json:"port"`
+	Debug              bool     `json:"debug"`
+	Environment        string   `json:"environment"`
+	AllowedOrigins     []string `json:"allowedOrigins"`
+	AllowCredentials   bool     `json:"allowCredentials"`
+	ReadTimeout        int      `json:"readTimeout"`
+	WriteTimeout       int      `json:"writeTimeout"`
+	ImageUploadTimeout int      `json:"imageUploadTimeout"`
+	MigrateOnStart     bool     `json:"migrateOnStart"`
 }
 
 type AuthConfig struct {
@@ -44,12 +48,6 @@ type DBConfig struct {
 	User     string `json:"user"`
 	Password string `json:"password"`
 	Name     string `json:"name"`
-}
-
-type FileServerConfig struct {
-	Addr string `json:"addr"`
-	Pass string `json:"pass"`
-	Proj string `json:"proj"`
 }
 
 func InitConfig() *Main {
