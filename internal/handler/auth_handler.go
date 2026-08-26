@@ -85,7 +85,7 @@ func (h *AuthHandler) Login(req httputils.RequestData[dto.LoginRequest]) httputi
 	// 	loginInfo.CurrentGame = respData.GameToGameFullInfo(player.CurrentGame)
 	// }
 
-	return httputils.Response{Status: http.StatusOK, Body: &loginInfo}
+	return httputils.Response{Status: http.StatusOK, Body: loginInfo}
 }
 
 // SignUp handles POST /signup

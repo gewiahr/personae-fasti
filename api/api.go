@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"log"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -65,7 +67,7 @@ func ConfigServer(c *configs.Main, s *service.AuthService, readinessCheck Readin
 	api := &APIServer{
 		Server: &http.Server{
 			Addr:              c.App.Port,
-			Handler:           crs.Handler(router),
+			Handler:           crs.Handler(recoverPanics(router)),
 			ReadHeaderTimeout: 10 * time.Second,
 			ReadTimeout:       readTimeout,
 			WriteTimeout:      writeTimeout,
@@ -77,6 +79,18 @@ func ConfigServer(c *configs.Main, s *service.AuthService, readinessCheck Readin
 	}
 
 	return api
+}
+
+func recoverPanics(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				log.Printf("panic handling %s %s: %v\n%s", r.Method, r.URL.Path, recovered, debug.Stack())
+				http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }
 
 func configureHealthEndpoints(router *http.ServeMux, readinessCheck ReadinessCheck) {

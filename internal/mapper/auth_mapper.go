@@ -15,7 +15,7 @@ func FormLoginInfoResponse(auth string, player *domain.Player) *dto.LoginInfo {
 		},
 	}
 
-	if player.RegData.UsernameSet {
+	if player.RegData != nil && player.RegData.UsernameSet {
 		loginInfo.Player.Settings = &dto.LoginPlayerInfoSettings{
 			CouldChangeUsername: false,
 		}

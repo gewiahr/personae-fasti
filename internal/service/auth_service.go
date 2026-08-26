@@ -69,10 +69,11 @@ func (s *AuthService) AuthenticatePlayerWeb(ctx context.Context, req dto.LoginRe
 		if err != nil {
 			return nil, e.NewInternalError("", err)
 		}
-		player, err = s.playerRepo.SetPlayerPassword(ctx, player.ID, newPWHash)
+		updatedPlayer, err := s.playerRepo.SetPlayerPassword(ctx, player.ID, newPWHash)
 		if err != nil {
 			return nil, e.NewInternalError("не удалось изменить пароль", err)
 		}
+		player.PasswordHash = updatedPlayer.PasswordHash
 	} else {
 		valid, err := s.validateHash(req.LoginData, player.PasswordHash)
 		if err != nil || !valid {

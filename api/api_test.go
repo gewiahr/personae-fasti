@@ -86,3 +86,25 @@ func TestWildcardCORSDisablesCredentials(t *testing.T) {
 		t.Fatalf("allow credentials must be empty for wildcard origin, got %q", got)
 	}
 }
+
+func TestPanicsReturnCORSResponse(t *testing.T) {
+	server := ConfigServer(&configs.Main{App: &configs.APIConfig{
+		Environment:    "production",
+		AllowedOrigins: []string{"https://app.storyshard.ru"},
+	}}, nil, nil)
+	server.router.HandleFunc("GET /panic", func(http.ResponseWriter, *http.Request) {
+		panic("test panic")
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/panic", nil)
+	request.Header.Set("Origin", "https://app.storyshard.ru")
+	response := httptest.NewRecorder()
+	server.Server.Handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusInternalServerError)
+	}
+	if got := response.Header().Get("Access-Control-Allow-Origin"); got != "https://app.storyshard.ru" {
+		t.Fatalf("allow origin = %q", got)
+	}
+}
