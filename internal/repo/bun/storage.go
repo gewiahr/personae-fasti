@@ -7,6 +7,7 @@ import (
 	"personae-fasti/configs"
 	"personae-fasti/internal/domain"
 	"personae-fasti/internal/repo"
+	"time"
 
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
@@ -20,7 +21,12 @@ type BunStorage struct {
 
 func NewBunStorage(c *configs.DBConfig) (*BunStorage, error) {
 	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", c.User, c.Password, c.Host, c.Port, c.Name)
-	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
+	sqldb := sql.OpenDB(pgdriver.NewConnector(
+		pgdriver.WithDSN(dsn),
+		pgdriver.WithDialTimeout(dbTimeout(c.DialTimeout, 5*time.Second)),
+		pgdriver.WithReadTimeout(dbTimeout(c.ReadTimeout, 120*time.Second)),
+		pgdriver.WithWriteTimeout(dbTimeout(c.WriteTimeout, 30*time.Second)),
+	))
 
 	if err := sqldb.Ping(); err != nil {
 		return nil, fmt.Errorf("db ping failed: %w", err)
@@ -35,6 +41,13 @@ func NewBunStorage(c *configs.DBConfig) (*BunStorage, error) {
 	storage.registerModels()
 
 	return storage, nil
+}
+
+func dbTimeout(seconds int, fallback time.Duration) time.Duration {
+	if seconds <= 0 {
+		return fallback
+	}
+	return time.Duration(seconds) * time.Second
 }
 
 func (s *BunStorage) registerModels() {

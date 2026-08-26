@@ -43,11 +43,14 @@ type AuthConfig struct {
 }
 
 type DBConfig struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
+	Host         string `json:"host"`
+	Port         string `json:"port"`
+	User         string `json:"user"`
+	Password     string `json:"password"`
+	Name         string `json:"name"`
+	DialTimeout  int    `json:"dialTimeout"`
+	ReadTimeout  int    `json:"readTimeout"`
+	WriteTimeout int    `json:"writeTimeout"`
 }
 
 func InitConfig() *Main {

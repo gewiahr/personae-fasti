@@ -20,7 +20,10 @@
     "port": "5432",
     "user": "storyshardapp",
     "password": "replace-me",
-    "name": "storyshard"
+    "name": "storyshard",
+    "dialTimeout": 5,
+    "readTimeout": 120,
+    "writeTimeout": 30
   },
   "imageStorage": {
     "endpoint": "http://host.docker.internal:17002",
