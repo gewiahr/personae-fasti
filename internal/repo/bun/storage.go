@@ -48,6 +48,7 @@ func (s *BunStorage) EntitiesRepo() repo.EntitiesRepository { return NewEntities
 func (s *BunStorage) QuestRepo() repo.QuestRepository       { return NewQuestRepo(s.db) }
 func (s *BunStorage) LogRepo() repo.LogRepository           { return NewLogRepo(s.db) }
 func (s *BunStorage) AppRepo() repo.AppRepository           { return NewAppRepo(s.db) }
+func (s *BunStorage) ImageRepo() repo.ImageRepository       { return NewImageRepo(s.db) }
 
 func (s *BunStorage) Migrate(ctx context.Context) error {
 	err := addNanoID(s.db)
@@ -100,6 +101,9 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 		return err
 	}
 	if err := s.applyPersonalNoteMigration(ctx); err != nil {
+		return err
+	}
+	if err := s.applyImageMigration(ctx); err != nil {
 		return err
 	}
 
@@ -155,6 +159,81 @@ func addNanoID(db *bun.DB) error {
 const publicExtMigration = "20260824_public_entity_exts"
 
 const personalNoteMigration = "20260825_player_personal_note"
+
+const imageMigration = "20260827_image_system"
+
+func (s *BunStorage) applyImageMigration(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migration (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create schema migration table: %w", err)
+	}
+
+	var applied bool
+	if err := s.db.NewSelect().
+		ColumnExpr("EXISTS (SELECT 1 FROM schema_migration WHERE name = ?)", imageMigration).
+		Scan(ctx, &applied); err != nil {
+		return fmt.Errorf("failed to check image migration: %w", err)
+	}
+	if applied {
+		return nil
+	}
+
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		statements := []string{
+			`CREATE TABLE IF NOT EXISTS image (
+				id BIGSERIAL PRIMARY KEY,
+				ext VARCHAR(16) UNIQUE NOT NULL DEFAULT nanoid(16),
+				entity_type TEXT NOT NULL CHECK (entity_type IN ('char', 'npc', 'location')),
+				entity_id INT NOT NULL,
+				game_id INT NOT NULL REFERENCES game(id),
+				uploaded_by INT NOT NULL REFERENCES player(id),
+				source_type TEXT NOT NULL CHECK (source_type IN ('uploaded', 'external')),
+				storage_key TEXT,
+				thumb_key TEXT,
+				external_url TEXT,
+				content_type TEXT,
+				byte_size BIGINT NOT NULL DEFAULT 0,
+				width INT,
+				height INT,
+				checksum TEXT,
+				is_main BOOLEAN NOT NULL DEFAULT false,
+				status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'complete', 'deleted')),
+				created TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+				deleted TIMESTAMPTZ,
+				CHECK (
+					(source_type = 'external' AND external_url IS NOT NULL AND storage_key IS NULL AND thumb_key IS NULL)
+					OR (source_type = 'uploaded' AND external_url IS NULL)
+				)
+			)`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS image_single_main_idx ON image(entity_type, entity_id) WHERE is_main AND deleted IS NULL`,
+			`CREATE INDEX IF NOT EXISTS image_entity_idx ON image(entity_type, entity_id, created) WHERE deleted IS NULL`,
+			`CREATE INDEX IF NOT EXISTS image_game_idx ON image(game_id) WHERE deleted IS NULL`,
+			`CREATE TABLE IF NOT EXISTS game_image_quota (
+				game_id INT PRIMARY KEY REFERENCES game(id) ON DELETE CASCADE,
+				max_bytes BIGINT NOT NULL DEFAULT 0 CHECK (max_bytes >= 0),
+				used_bytes BIGINT NOT NULL DEFAULT 0 CHECK (used_bytes >= 0),
+				reserved_bytes BIGINT NOT NULL DEFAULT 0 CHECK (reserved_bytes >= 0),
+				max_file_bytes BIGINT NOT NULL DEFAULT 5242880 CHECK (max_file_bytes > 0),
+				max_images INT NOT NULL DEFAULT 0 CHECK (max_images >= 0)
+			)`,
+			`INSERT INTO game_image_quota (game_id) SELECT id FROM game ON CONFLICT (game_id) DO NOTHING`,
+		}
+		for _, statement := range statements {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("image migration failed: %w", err)
+			}
+		}
+
+		if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migration (name) VALUES (?)", imageMigration); err != nil {
+			return fmt.Errorf("failed to record image migration: %w", err)
+		}
+		return nil
+	})
+}
 
 func (s *BunStorage) applyPersonalNoteMigration(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, `

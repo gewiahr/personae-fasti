@@ -7,6 +7,7 @@ import (
 	"personae-fasti/internal/handler"
 	bunrepo "personae-fasti/internal/repo/bun"
 	"personae-fasti/internal/service"
+	objectstorage "personae-fasti/internal/storage"
 )
 
 func main() {
@@ -23,6 +24,7 @@ func main() {
 	questRepo := storage.QuestRepo()
 	logRepo := storage.LogRepo()
 	appRepo := storage.AppRepo()
+	imageRepo := storage.ImageRepo()
 
 	logService := service.NewLogService(logRepo)
 	authService := service.NewAuthService(config.Auth, logService, playerRepo)
@@ -32,6 +34,8 @@ func main() {
 	entitiesService := service.NewEntitiesService(entitiesRepo, recordRepo)
 	questService := service.NewQuestService(questRepo, recordRepo)
 	appService := service.NewAppService(appRepo)
+	imageStorage := objectstorage.NewImageStorage(config.ImageStorage)
+	imageService := service.NewImageService(imageRepo, entitiesRepo, imageStorage)
 
 	authHandler := handler.NewAuthHandler(authService)
 	gameHandler := handler.NewGameHandler(gameService)
@@ -40,6 +44,7 @@ func main() {
 	entitiesHandler := handler.NewEntitiesHandler(entitiesService)
 	questHandler := handler.NewQuestHandler(questService)
 	appHandler := handler.NewAppHandler(appService)
+	imageHandler := handler.NewImageHandler(imageService)
 
 	privateApi := api.ConfigServer(
 		config,
@@ -47,7 +52,7 @@ func main() {
 		logService,
 	)
 
-	privateApi.SetHandlers(authHandler, gameHandler, playerHandler, recordHandler, entitiesHandler, questHandler, appHandler)
+	privateApi.SetHandlers(authHandler, gameHandler, playerHandler, recordHandler, entitiesHandler, questHandler, appHandler, imageHandler)
 
 	log.Println("API server running on ", privateApi.Server.Addr)
 	if err := privateApi.Server.ListenAndServe(); err != nil {

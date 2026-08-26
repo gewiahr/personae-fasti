@@ -8,10 +8,21 @@ import (
 )
 
 type Main struct {
-	App        *APIConfig        `json:"app"`
-	Auth       *AuthConfig       `json:"auth"`
-	DB         *DBConfig         `json:"db"`
-	FileServer *FileServerConfig `json:"fileServer"`
+	App          *APIConfig          `json:"app"`
+	Auth         *AuthConfig         `json:"auth"`
+	DB           *DBConfig           `json:"db"`
+	FileServer   *FileServerConfig   `json:"fileServer"`
+	ImageStorage *ImageStorageConfig `json:"imageStorage"`
+}
+
+type ImageStorageConfig struct {
+	Endpoint       string `json:"endpoint"`
+	Region         string `json:"region"`
+	Bucket         string `json:"bucket"`
+	AccessKey      string `json:"accessKey"`
+	SecretKey      string `json:"secretKey"`
+	PublicBaseURL  string `json:"publicBaseUrl"`
+	ForcePathStyle bool   `json:"forcePathStyle"`
 }
 
 type APIConfig struct {

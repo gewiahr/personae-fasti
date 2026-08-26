@@ -16,14 +16,30 @@ type Storage interface {
 	EntitiesRepo() EntitiesRepository
 	LogRepo() LogRepository
 	AppRepo() AppRepository
+	ImageRepo() ImageRepository
 
 	Migrate(ctx context.Context) error
 	Close() error
 }
 
+type ImageRepository interface {
+	ListByEntity(ctx context.Context, gameID int, entityType string, entityID int) ([]domain.Image, error)
+	GetByExt(ctx context.Context, gameID int, imageExt string) (*domain.Image, error)
+	CreateExternal(ctx context.Context, image *domain.Image) (*domain.Image, error)
+	CreatePendingUpload(ctx context.Context, image *domain.Image) error
+	CompleteUpload(ctx context.Context, image *domain.Image) (*domain.Image, error)
+	AbortUpload(ctx context.Context, image *domain.Image) error
+	SetMain(ctx context.Context, image *domain.Image) (*domain.Image, error)
+	SoftDelete(ctx context.Context, image *domain.Image) error
+	GetQuota(ctx context.Context, gameID int) (*domain.GameImageQuota, error)
+}
+
 var (
-	ErrNotFound   = errors.New("not found")
-	ErrDBInternal = errors.New("db internal")
+	ErrNotFound       = errors.New("not found")
+	ErrDBInternal     = errors.New("db internal")
+	ErrUploadDisabled = errors.New("image upload disabled")
+	ErrQuotaExceeded  = errors.New("image quota exceeded")
+	ErrImageLimit     = errors.New("image count limit exceeded")
 )
 
 type GameRepository interface {

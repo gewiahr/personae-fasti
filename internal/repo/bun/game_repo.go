@@ -58,10 +58,13 @@ func (r *GameRepo) GetByExt(ctx context.Context, gameExt string) (*domain.Game, 
 }
 
 func (r *GameRepo) Create(ctx context.Context, game *domain.Game) (*domain.Game, error) {
-	_, err := r.db.NewInsert().
-		Model(game).
-		Returning("*").
-		Exec(ctx)
+	err := r.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewInsert().Model(game).Returning("*").Exec(ctx); err != nil {
+			return err
+		}
+		_, err := tx.NewInsert().Model(&domain.GameImageQuota{GameID: game.ID}).Exec(ctx)
+		return err
+	})
 	return game, err
 }
 
