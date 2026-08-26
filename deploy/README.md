@@ -71,7 +71,7 @@ container listens on its standard internal port `80`, published as host port
 `17003`.
 
 The API virtual host needs `client_max_body_size 32m` and proxy read/send
-timeouts of at least 130 seconds. `nginx-host.example.conf` is a starting point
+timeouts of at least 130 seconds. `storyshard.nginx.conf` is the complete file
 for the existing host Nginx; it is not an additional container.
 
 Garage's public web endpoint remains on `127.0.0.1:3902`. The API container
