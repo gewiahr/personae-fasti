@@ -47,8 +47,10 @@ services:
 
 volumes:
   storyshard:
+    external: true
     name: storyshard
 
 networks:
   storyshard:
+    external: true
     name: storyshard
