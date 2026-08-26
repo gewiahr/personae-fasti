@@ -9,7 +9,7 @@ import (
 func ErrToApiError(err error) ApiError {
 	var appErr *AppError
 	if errors.As(err, &appErr) {
-		ae := ApiError{Message: appErr.Message}
+		ae := ApiError{Message: appErr.Message, Fields: appErr.Fields}
 		switch appErr.Type {
 		case ErrNotFound:
 			ae.Status = http.StatusNotFound
@@ -33,9 +33,10 @@ func ErrToApiError(err error) ApiError {
 }
 
 type ApiError struct {
-	Status  int    `json:"-"`
-	Message string `json:"error"`
-	inner   error  `json:"-"`
+	Status  int               `json:"-"`
+	Message string            `json:"error"`
+	Fields  map[string]string `json:"fields,omitempty"`
+	inner   error             `json:"-"`
 }
 
 func (e ApiError) Respond(w http.ResponseWriter) error {

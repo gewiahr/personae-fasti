@@ -2,11 +2,20 @@ package validation
 
 import (
 	"slices"
+	"strings"
 	"unicode/utf8"
 )
 
+func CharacterCount(str string) int {
+	return utf8.RuneCountInString(str)
+}
+
+func IsBlank(str string) bool {
+	return strings.TrimSpace(str) == ""
+}
+
 func IsValidLength(str string, min, max int) (bool, int) {
-	charCount := utf8.RuneCountInString(str)
+	charCount := CharacterCount(str)
 	if charCount < min {
 		return false, charCount - min
 	} else if charCount > max {

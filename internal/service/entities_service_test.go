@@ -100,7 +100,7 @@ func TestEditEntityAllowsVisibleAndOwnHiddenContent(t *testing.T) {
 			service := NewEntitiesService(repository, nil)
 			player := &domain.Player{ID: 12, CurrentGameID: 8}
 
-			_, err := service.EditPlayerCurrentGameChar(context.Background(), player, &dto.CharUpdate{ExtID: "char-ext"})
+			_, err := service.EditPlayerCurrentGameChar(context.Background(), player, &dto.CharUpdate{ExtID: "char-ext", Name: "Valid name"})
 			if err != nil {
 				t.Fatalf("edit returned an unexpected error: %v", err)
 			}
@@ -167,6 +167,18 @@ func TestEditEntityRejectsCrossGameIDBeforeWrite(t *testing.T) {
 	assertAppErrorType(t, err, e.ErrNotFound)
 	if repository.editCalled {
 		t.Fatal("repository edit was called for a cross-game entity")
+	}
+}
+
+func TestInvalidEntityDoesNotReachRepositoryWrite(t *testing.T) {
+	repository := &entitiesRepoStub{char: &domain.Char{ID: 4, ExtID: "char-ext", GameID: 8}}
+	service := NewEntitiesService(repository, nil)
+	player := &domain.Player{ID: 12, CurrentGameID: 8}
+
+	_, err := service.EditPlayerCurrentGameChar(context.Background(), player, &dto.CharUpdate{ExtID: "char-ext", Name: "   "})
+	assertAppErrorType(t, err, e.ErrValidation)
+	if repository.editCalled {
+		t.Fatal("repository write was called with invalid entity data")
 	}
 }
 

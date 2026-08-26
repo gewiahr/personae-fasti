@@ -161,6 +161,9 @@ func (s *EntitiesService) GetPlayerCurrentGameLocationChildrenByID(ctx context.C
 }
 
 func (s *EntitiesService) PostPlayerCurrentGameChar(ctx context.Context, player *domain.Player, charCreate *dto.CharCreate) (*domain.Char, error) {
+	if err := normalizeAndValidateEntity(&charCreate.Name, &charCreate.Title, charCreate.Description); err != nil {
+		return nil, err
+	}
 	char := &domain.Char{
 		Name:        charCreate.Name,
 		Title:       charCreate.Title,
@@ -190,6 +193,9 @@ func (s *EntitiesService) PostPlayerCurrentGameChar(ctx context.Context, player 
 }
 
 func (s *EntitiesService) PostPlayerCurrentGameNPC(ctx context.Context, player *domain.Player, npcCreate *dto.NPCCreate) (*domain.NPC, error) {
+	if err := normalizeAndValidateEntity(&npcCreate.Name, &npcCreate.Title, npcCreate.Description); err != nil {
+		return nil, err
+	}
 	npc := &domain.NPC{
 		Name:        npcCreate.Name,
 		Title:       npcCreate.Title,
@@ -218,6 +224,9 @@ func (s *EntitiesService) PostPlayerCurrentGameNPC(ctx context.Context, player *
 }
 
 func (s *EntitiesService) PostPlayerCurrentGameLocation(ctx context.Context, player *domain.Player, locationCreate *dto.LocationCreate) (*domain.Location, error) {
+	if err := normalizeAndValidateEntity(&locationCreate.Name, &locationCreate.Title, locationCreate.Description); err != nil {
+		return nil, err
+	}
 	parentID, err := s.resolveLocationParent(ctx, player, locationCreate.ParentExtID, "")
 	if err != nil {
 		return nil, err
@@ -259,6 +268,9 @@ func (s *EntitiesService) EditPlayerCurrentGameChar(ctx context.Context, player 
 	} else if err := ensureHiddenContentEditable(existing.HiddenBy, player.ID); err != nil {
 		return nil, err
 	}
+	if err := normalizeAndValidateEntity(&charUpdate.Name, &charUpdate.Title, charUpdate.Description); err != nil {
+		return nil, err
+	}
 
 	char, err := s.repo.EditChar(ctx, charUpdate, player.ID, player.CurrentGameID)
 	if err != nil {
@@ -286,6 +298,9 @@ func (s *EntitiesService) EditPlayerCurrentGameNPC(ctx context.Context, player *
 	} else if err := ensureHiddenContentEditable(existing.HiddenBy, player.ID); err != nil {
 		return nil, err
 	}
+	if err := normalizeAndValidateEntity(&NPCUpdate.Name, &NPCUpdate.Title, NPCUpdate.Description); err != nil {
+		return nil, err
+	}
 
 	npc, err := s.repo.EditNPC(ctx, NPCUpdate, player.ID, player.CurrentGameID)
 	if err != nil {
@@ -311,6 +326,9 @@ func (s *EntitiesService) EditPlayerCurrentGameLocation(ctx context.Context, pla
 	} else if existing == nil {
 		return nil, e.NewNotFoundError(fmt.Sprintf("no location with ext %s", locationUpdate.ExtID))
 	} else if err := ensureHiddenContentEditable(existing.HiddenBy, player.ID); err != nil {
+		return nil, err
+	}
+	if err := normalizeAndValidateEntity(&locationUpdate.Name, &locationUpdate.Title, locationUpdate.Description); err != nil {
 		return nil, err
 	}
 	parentID, err := s.resolveLocationParent(ctx, player, locationUpdate.ParentExtID, locationUpdate.ExtID)
@@ -341,14 +359,14 @@ func (s *EntitiesService) resolveLocationParent(ctx context.Context, player *dom
 		return 0, nil
 	}
 	if parentExt == locationExt {
-		return 0, e.NewValidationError("location cannot be its own parent")
+		return 0, e.NewFieldValidationError(map[string]string{"parentExt": "Место не может находиться внутри себя"})
 	}
 	parent, err := s.repo.GetCurrentGameLocationByExt(ctx, player.CurrentGameID, parentExt)
 	if err != nil {
 		return 0, e.NewInternalError("Ошибка получения родительской локации", err)
 	}
 	if parent == nil {
-		return 0, e.NewValidationError("parent location is not in the current game")
+		return 0, e.NewFieldValidationError(map[string]string{"parentExt": "Родительское место не найдено в текущей игре"})
 	}
 	if err := ensureHiddenContentEditable(parent.HiddenBy, player.ID); err != nil {
 		return 0, err

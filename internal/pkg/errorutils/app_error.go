@@ -13,6 +13,7 @@ var (
 type AppError struct {
 	Type    error
 	Message string
+	Fields  map[string]string
 	Inner   error
 }
 
@@ -24,6 +25,9 @@ func NewNotFoundError(msg string) *AppError {
 }
 func NewValidationError(msg string) *AppError {
 	return &AppError{Type: ErrValidation, Message: msg}
+}
+func NewFieldValidationError(fields map[string]string) *AppError {
+	return &AppError{Type: ErrValidation, Message: "validation_failed", Fields: fields}
 }
 func NewUnauthorizedError(msg string) *AppError {
 	return &AppError{Type: ErrUnauthorized, Message: msg}
