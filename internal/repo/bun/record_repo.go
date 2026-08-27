@@ -39,18 +39,6 @@ func (r *RecordRepo) GetCurrentGameRecordList(ctx context.Context, gameID, playe
 	return records, nil
 }
 
-// func (r *RecordRepo) GetListByGame(ctx context.Context, gameID int) ([]domain.Record, error) {
-// 	// player := new(domain.Player)
-// 	// err := r.db.NewSelect().
-// 	// 	Model(player).
-// 	// 	Where("token = ?", tokenHash).
-// 	// 	Scan(ctx)
-// 	// if err != nil {
-// 	// 	return nil, err
-// 	// }
-// 	return []domain.Record{}, nil
-// }
-
 func (r *RecordRepo) GetRecord(ctx context.Context, playerID int, recordID int) (*domain.Record, error) {
 	record := &domain.Record{ID: recordID}
 	err := r.db.NewSelect().Model(record).WherePK().Scan(context.Background(), record)

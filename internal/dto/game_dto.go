@@ -54,16 +54,7 @@ type GameUpdate struct {
 
 type GamePage struct {
 	Game GameFull `json:"game"`
-	// Players []PlayerInfo `json:"players"`
-	// Invites []PlayerInfo `json:"invites"`
 }
-
-// type GameRecords struct {
-// 	Records     []domain.Record  `json:"records"`
-// 	Sessions    []domain.Session `json:"sessions"`
-// 	Players     []PlayerInfo     `json:"players"`
-// 	CurrentGame GameInfo         `json:"currentGame"`
-// }
 
 type PlayerSettingsResponse struct {
 	CurrentGame   *GameFull    `json:"currentGame"`

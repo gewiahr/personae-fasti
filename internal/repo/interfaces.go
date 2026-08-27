@@ -66,9 +66,6 @@ type GameRepository interface {
 	DeleteInvite(ctx context.Context, invite *domain.GameInvite) error
 
 	UpdateGameSettings(ctx context.Context, gameID int, settingsUpdate *dto.GameSettingsUpdate) (*domain.GameSettings, error)
-
-	// Create(ctx context.Context, game *domain.Game) error
-	// GetByID(ctx context.Context, id int) (*domain.Game, error)
 }
 
 type PlayerRepository interface {
@@ -85,13 +82,11 @@ type PlayerRepository interface {
 	UpdatePersonalNote(ctx context.Context, playerID int, note string) (string, error)
 
 	GetInvite(ctx context.Context, playerID int, inviteCode string) (*domain.GameInvite, error)
-	//DeleteInvite(ctx context.Context, invite *domain.GameInvite) error
 	AddPlayerToGame(ctx context.Context, playerID, gameID int) error
 }
 
 type RecordRepository interface {
 	GetCurrentGameRecordList(ctx context.Context, gameID, playerID int) ([]domain.Record, error)
-	//GetListByGame(ctx context.Context, gameID int) ([]domain.Record, error)
 	GetRecord(ctx context.Context, playerID int, recordID int) (*domain.Record, error)
 	PostRecord(ctx context.Context, record *domain.Record) (*domain.Record, error)
 	EditRecord(ctx context.Context, recordUpdate *dto.RecordUpdate, playerID int) (*domain.Record, error)
@@ -134,14 +129,10 @@ type QuestRepository interface {
 	GetPlayerCurrentGameQuestByExt(ctx context.Context, gameID int, questExt string) (*domain.Quest, error)
 	CreatePlayerCurrentGameQuest(ctx context.Context, questCreateData *dto.QuestCreateData, playerID, gameID int) (*domain.Quest, error)
 	EditPlayerCurrentGameQuest(ctx context.Context, questUpdateData *dto.QuestUpdateData, playerID, gameID int) (*domain.Quest, error)
-	//DeleteQuest(ctx context.Context, questID int) error
-
 	FinishPlayerCurrentGameQuest(ctx context.Context, questID, gameID, playerID int, successful bool) (*domain.Quest, error)
 	ResetPlayerCurrentGameQuest(ctx context.Context, questID, gameID, playerID int) (*domain.Quest, error)
 
 	GetTasksByQuest(ctx context.Context, quest *domain.Quest) ([]domain.QuestTask, error)
-	// CreateTasks(ctx context.Context, tasks []domain.QuestTask) ([]domain.QuestTask, error)
-	// EditTasks(ctx context.Context, tasksUpdate []dto.TaskUpdate, playerID int) ([]domain.QuestTask, error)
 	UpdateTasks(ctx context.Context, tasksPatch []dto.TaskPatch, quest *domain.Quest) ([]domain.QuestTask, error)
 
 	FilterAllowedTasks(ctx context.Context, tasks []domain.QuestTask, playerID int) ([]domain.QuestTask, error)
@@ -154,5 +145,4 @@ type LogRepository interface {
 
 type AppRepository interface {
 	InsertFeedback(ctx context.Context, feedback *domain.ServiceFeedback) (*domain.ServiceFeedback, error)
-	// Insert(ctx context.Context, log *domain.ApiLog) error
 }

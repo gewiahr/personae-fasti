@@ -23,12 +23,6 @@ type CharFull struct {
 	Hidden      bool   `json:"hidden"`
 }
 
-// type GameChars struct {
-// 	Chars       []CharInfo   `json:"chars"`
-// 	Players     []PlayerInfo `json:"players"`
-// 	CurrentGame GameInfo     `json:"currentGame"`
-// }
-
 type CharPage struct {
 	Char    CharFull     `json:"char"`
 	Records []RecordFull `json:"records"`
@@ -69,11 +63,6 @@ type NPCFull struct {
 	GameExtID string `json:"gameExt"`
 	Hidden    bool   `json:"hidden"`
 }
-
-// type GameNPCs struct {
-// 	NPCs        []NPCInfo `json:"npcs"`
-// 	CurrentGame GameInfo  `json:"currentGame"`
-// }
 
 type NPCPage struct {
 	NPC     NPCFull      `json:"npc"`
@@ -118,11 +107,6 @@ type LocationFull struct {
 	Hidden    bool   `json:"hidden"`
 }
 
-// type GameLocations struct {
-// 	Locations   []LocationInfo `json:"locations"`
-// 	CurrentGame GameInfo       `json:"currentGame"`
-// }
-
 type LocationPage struct {
 	Location LocationFull    `json:"location"`
 	Records  []RecordFull    `json:"records"`
@@ -154,8 +138,6 @@ type Suggestion struct {
 	ExtID    string `bun:"ext" json:"ext"`
 	StringID string `bun:"sid" json:"sid"`
 	Type     string `json:"type"`
-	//TypeName string `json:"typeName"`
-	Name string `json:"name"`
-	// Hidden bool   `json:"hidden"`
-	Secret bool `json:"secret"`
+	Name     string `json:"name"`
+	Secret   bool   `json:"secret"`
 }

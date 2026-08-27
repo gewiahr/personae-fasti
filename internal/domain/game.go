@@ -52,18 +52,7 @@ type PlayerGame struct {
 	Player   *Player `bun:"rel:belongs-to,join:player_id=id"`
 	GameID   int     `bun:"game_id,pk"`
 	Game     *Game   `bun:"rel:belongs-to,join:game_id=id"`
-	// Status   PlayerGameStatus `bun:"status,default:1"`
 }
-
-// type PlayerGameStatus int8
-
-// const (
-// 	PlayerGameStatusBanned      PlayerGameStatus = -2
-// 	PlayerGameStatusLeft        PlayerGameStatus = -1
-// 	PlayerGameStatusInvited     PlayerGameStatus = 0
-// 	PlayerGameStatusParticipant PlayerGameStatus = 1
-// 	PlayerGameStatusSpectator   PlayerGameStatus = 2
-// )
 
 type GameInvite struct {
 	bun.BaseModel `bun:"game_invites"`

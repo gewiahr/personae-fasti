@@ -26,12 +26,6 @@ type APIServer struct {
 
 type HandlerFunc[Body any] func(httputils.RequestData[Body]) httputils.Responder
 
-//type AuthHandlerFunc[Body any] func(PlayerAuth, RequestData[Body]) Response
-
-// type PlayerAuth struct {
-// 	userID int64
-// }
-
 type ReadinessCheck func(context.Context) error
 
 func ConfigServer(c *configs.Main, s *service.AuthService, logService *service.LogService, readinessCheck ReadinessCheck) *APIServer {

@@ -67,6 +67,5 @@ func (h *RecordHandler) DeletePlayerCurrentGameRecord(req httputils.RequestData[
 		return e.ErrToApiError(err)
 	}
 
-	// resp := mapper.RecordToRecordFull(*record, req.Player.ExtID, req.Player.CurrentGame.ExtID)
 	return httputils.Response{Status: http.StatusCreated, Body: nil}
 }

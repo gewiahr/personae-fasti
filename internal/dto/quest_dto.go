@@ -31,11 +31,6 @@ type QuestPage struct {
 	Records []RecordFull    `json:"records"`
 }
 
-// type GameQuests struct {
-// 	Quests []QuestInfo `json:"quests"`
-// 	//CurrentGame GameInfo    `json:"currentGame"`
-// }
-
 /* Task */
 
 type QuestTaskFull struct {

@@ -77,52 +77,6 @@ func (r *EntitiesRepo) GetCurrentGameCharByID(ctx context.Context, gameID, charI
 	return &char, nil
 }
 
-// func (s *Storage) CreateChar(charCreate *reqData.CharCreate, player *Player) (*Char, error) {
-// 	if charCreate.Name == "" {
-// 		return nil, fmt.Errorf("name cannot be empty")
-// 	}
-
-// 	var hiddenBy = 0
-// 	if charCreate.Hidden {
-// 		hiddenBy = player.ID
-// 	}
-
-// 	char := Char{
-// 		Name:        charCreate.Name,
-// 		Title:       charCreate.Title,
-// 		Description: charCreate.Description,
-// 		HiddenBy:    hiddenBy,
-// 		PlayerID:    player.ID,
-// 		GameID:      player.CurrentGameID,
-// 	}
-
-// 	_, err := s.db.NewInsert().Model(&char).
-// 		Column("name", "title", "description", "hidden_by", "player_id", "game_id").
-// 		Returning("*").Exec(context.Background(), &char)
-// 	//Exec(context.Background())
-
-// 	return &char, err
-// }
-
-// func (s *Storage) UpdateChar(charUpdate *reqData.CharUpdate, char *Char, player *Player) (*Char, error) {
-// 	if charUpdate.Name == "" {
-// 		return nil, fmt.Errorf("name cannot be empty")
-// 	}
-
-// 	var hiddenBy = 0
-// 	if charUpdate.Hidden {
-// 		hiddenBy = player.ID
-// 	}
-
-// 	_, err := s.db.NewUpdate().Model(char).WherePK().
-// 		Set("name = ?", charUpdate.Name).
-// 		Set("title = ?", charUpdate.Title).
-// 		Set("description = ?", charUpdate.Description).
-// 		Set("hidden_by = ?", hiddenBy).
-// 		Returning("*").Exec(context.Background())
-// 	return char, err
-// }
-
 func (r *EntitiesRepo) GetCurrentGameNPCByID(ctx context.Context, gameID, npcID int) (*domain.NPC, error) {
 	npc := domain.NPC{}
 	err := r.db.NewSelect().

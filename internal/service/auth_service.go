@@ -217,23 +217,23 @@ func (s *AuthService) validateHash(password string, hash string) (bool, error) {
 // 		"https://api.telegram.org/bot%s/getChatMember?chat_id=%s&user_id=%d",
 // 		botToken, chat, userID,
 // 	)
-
+//
 // 	resp, err := http.Get(url)
 // 	if err != nil {
 // 		return false, err
 // 	}
 // 	defer resp.Body.Close()
-
+//
 // 	var data map[string]any
 // 	json.NewDecoder(resp.Body).Decode(&data)
-
+//
 // 	if !data["ok"].(bool) {
 // 		return false, fmt.Errorf("API error: %s", data["description"])
 // 	}
-
+//
 // 	result := data["result"].(map[string]any)
 // 	status := result["status"].(string)
-
+//
 // 	return status == "creator" || status == "administrator" ||
 // 		status == "member" || status == "restricted", nil
 // }

@@ -12,21 +12,15 @@ import (
 type QuestService struct {
 	repo       repo.QuestRepository
 	recordRepo repo.RecordRepository
-	// playerRepo repo.PlayerRepository
-	// gameRepo   repo.GameRepository
 }
 
 func NewQuestService(
 	repo repo.QuestRepository,
-	// playerRepo repo.PlayerRepository,
-	// gameRepo repo.GameRepository,
 	recordRepo repo.RecordRepository,
 ) *QuestService {
 	return &QuestService{
 		repo:       repo,
 		recordRepo: recordRepo,
-		// playerRepo: playerRepo,
-		// gameRepo:   gameRepo,
 	}
 }
 

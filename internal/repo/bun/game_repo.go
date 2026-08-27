@@ -103,28 +103,6 @@ func (r *GameRepo) UpdateByExt(ctx context.Context, game *domain.Game) (*domain.
 	return game, err
 }
 
-// func (r *GameRepo) GetByID(ctx context.Context, id int) (*domain.Game, error) {
-// 	game := new(domain.Game)
-// 	err := r.db.NewSelect().
-// 		Model(game).
-// 		Where("id = ?", id).
-// 		Scan(ctx)
-// 	if errors.Is(err, sql.ErrNoRows) {
-// 		return nil, repository.ErrNotFound
-// 	}
-// 	return game, err
-// }
-
-// func (s *Storage) GetCurrentGameSessions(game *Game) ([]Session, error) {
-// 	if err := s.db.NewSelect().Model(game).WherePK().Relation("Sessions").Scan(context.Background()); err == sql.ErrNoRows || game.Sessions == nil {
-// 		return []Session{}, nil
-// 	} else if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return game.Sessions, nil
-// }
-
 func (r *GameRepo) GetCurrentGameSession(ctx context.Context, gameID int) (*domain.Session, error) {
 	var currentSession domain.Session
 

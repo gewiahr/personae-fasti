@@ -32,9 +32,6 @@ func (r *QuestRepo) GetCurrentGameQuestList(ctx context.Context, gameID, playerI
 		Model(&questList).
 		Where("game_id = ? AND (hidden_by = 0 OR hidden_by = ?)", gameID, playerID).
 		Where("deleted IS NULL").
-		// WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
-		// 	return q.Where("hidden_by = 0").WhereOr("hidden_by = ?", playerID)
-		// }).
 		Scan(ctx)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, e.ErrInternal
@@ -251,25 +248,6 @@ func (r *QuestRepo) EditPlayerCurrentGameQuest(ctx context.Context, questUpdateD
 	return quest, nil
 }
 
-// func (s *Storage) DeleteQuest(questID int, p *Player) error {
-// 	now := time.Now().UTC()
-// 	quest := Quest{
-// 		ID:      questID,
-// 		Deleted: &now,
-// 	}
-
-// 	// Delete Quest
-// 	result, err := s.db.NewUpdate().Model(&quest).Column("deleted").WherePK().Exec(context.Background())
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if result == nil {
-// 		return fmt.Errorf("empty delete")
-// 	}
-
-// 	return nil
-// }
-
 func (r *QuestRepo) FinishPlayerCurrentGameQuest(ctx context.Context, questID, gameID, playerID int, successful bool) (*domain.Quest, error) {
 	quest := &domain.Quest{ID: questID}
 	if _, err := r.db.NewUpdate().
@@ -311,14 +289,6 @@ func (r *QuestRepo) GetTasksByQuest(ctx context.Context, quest *domain.Quest) ([
 
 	return tasks, nil
 }
-
-// func (r *QuestRepo) CreateTasks(ctx context.Context, tasks []domain.QuestTask) ([]domain.QuestTask, error) {
-
-// }
-
-// func (r *QuestRepo) EditTasks(ctx context.Context, tasksUpdate []dto.TaskUpdate, playerID int) ([]domain.QuestTask, error) {
-
-// }
 
 func (r *QuestRepo) UpdateTasks(ctx context.Context, tasksPatch []dto.TaskPatch, quest *domain.Quest) ([]domain.QuestTask, error) {
 	if len(tasksPatch) == 0 || len(quest.Tasks) == 0 {

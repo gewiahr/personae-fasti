@@ -26,8 +26,6 @@ type Player struct {
 
 	Feedback []ServiceFeedback `bun:"rel:has-many,join:id=player_id"`
 
-	//Records []Record `bun:"rel:has-many,join:id=game_id"`
-
 	CurrentGameID int   `bun:"current_game_id"`
 	CurrentGame   *Game `bun:"rel:belongs-to,join:current_game_id=id"`
 

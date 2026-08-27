@@ -77,21 +77,6 @@ func (h *QuestHandler) EditPlayerCurrentGameQuest(req httputils.RequestData[dto.
 	}}
 }
 
-// RemovePlayerCurrentGameQuest handles DELETE /quest/{id} (protected).
-// func (h *QuestHandler) RemovePlayerCurrentGameQuest(req httputils.RequestData[dto.NoBody]) httputils.Responder {
-// 	questID := httputils.GetPathValueInt(req.Request, "id")
-// 	if questID <= 0 {
-// 		return e.NewApiError(http.StatusBadRequest, "error parsing id: quest id is invalid")
-// 	}
-//
-// 	err := api.storage.DeleteQuest(questID, p)
-// 	if err != nil {
-// 		return api.HandleError(err)
-// 	}
-//
-// 	return api.Respond(r, w, http.StatusOK, nil)
-// }
-
 // CompletePlayerCurrentGameQuest handles PATCH /quest/{id}/complete (protected).
 func (h *QuestHandler) CompletePlayerCurrentGameQuest(req httputils.RequestData[dto.NoBody]) httputils.Responder {
 	quest, err := h.svc.FinishPlayerCurrentGameQuest(req.Context, req.Player, req.Request.PathValue("ext"), true)

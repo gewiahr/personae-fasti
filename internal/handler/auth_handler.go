@@ -65,26 +65,6 @@ func (h *AuthHandler) Login(req httputils.RequestData[dto.LoginRequest]) httputi
 
 	loginInfo := mapper.FormLoginInfoResponse(fmt.Sprintf("Web %s", token), player)
 
-	// loginInfo := respData.LoginInfo{
-	// 	Authorization: fmt.Sprintf("Web %s", token),
-	// 	Player: respData.LoginPlayerInfo{
-	// 		ExtID:    player.ExtID,
-	// 		Username: player.Username,
-	// 		Settings: nil,
-	// 	},
-	// 	CurrentGame: nil,
-	// }
-
-	// if player.RegData.UsernameSet {
-	// 	loginInfo.Player.Settings = &respData.LoginPlayerInfoSettings{
-	// 		CouldChangeUsername: false,
-	// 	}
-	// }
-
-	// if player.CurrentGame != nil {
-	// 	loginInfo.CurrentGame = respData.GameToGameFullInfo(player.CurrentGame)
-	// }
-
 	return httputils.Response{Status: http.StatusOK, Body: loginInfo}
 }
 
