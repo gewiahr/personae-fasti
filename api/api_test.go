@@ -12,7 +12,7 @@ import (
 )
 
 func TestHealthEndpoints(t *testing.T) {
-	server := ConfigServer(&configs.Main{App: &configs.APIConfig{}}, nil, nil)
+	server := ConfigServer(&configs.Main{App: &configs.APIConfig{}}, nil, nil, nil)
 
 	health := httptest.NewRecorder()
 	server.Server.Handler.ServeHTTP(health, httptest.NewRequest(http.MethodGet, "/healthz", nil))
@@ -28,7 +28,7 @@ func TestHealthEndpoints(t *testing.T) {
 }
 
 func TestReadinessFailure(t *testing.T) {
-	server := ConfigServer(&configs.Main{App: &configs.APIConfig{}}, nil, func(_ context.Context) error {
+	server := ConfigServer(&configs.Main{App: &configs.APIConfig{}}, nil, nil, func(_ context.Context) error {
 		return errors.New("database unavailable")
 	})
 
@@ -47,7 +47,7 @@ func TestProductionCORSAndUploadTimeout(t *testing.T) {
 		ReadTimeout:        10,
 		WriteTimeout:       10,
 		ImageUploadTimeout: 90,
-	}}, nil, nil)
+	}}, nil, nil, nil)
 
 	if server.Server.ReadTimeout != 90*time.Second || server.Server.WriteTimeout != 90*time.Second {
 		t.Fatalf("server timeouts = %s/%s, want at least upload timeout", server.Server.ReadTimeout, server.Server.WriteTimeout)
@@ -71,7 +71,7 @@ func TestWildcardCORSDisablesCredentials(t *testing.T) {
 	server := ConfigServer(&configs.Main{App: &configs.APIConfig{
 		Debug:            true,
 		AllowCredentials: true,
-	}}, nil, nil)
+	}}, nil, nil, nil)
 
 	request := httptest.NewRequest(http.MethodOptions, "/healthz", nil)
 	request.Header.Set("Origin", "http://localhost:5173")
@@ -91,7 +91,7 @@ func TestPanicsReturnCORSResponse(t *testing.T) {
 	server := ConfigServer(&configs.Main{App: &configs.APIConfig{
 		Environment:    "production",
 		AllowedOrigins: []string{"https://app.storyshard.ru"},
-	}}, nil, nil)
+	}}, nil, nil, nil)
 	server.router.HandleFunc("GET /panic", func(http.ResponseWriter, *http.Request) {
 		panic("test panic")
 	})

@@ -32,7 +32,7 @@ type HandlerFunc[Body any] func(httputils.RequestData[Body]) httputils.Responder
 
 type ReadinessCheck func(context.Context) error
 
-func ConfigServer(c *configs.Main, s *service.AuthService, readinessCheck ReadinessCheck) *APIServer {
+func ConfigServer(c *configs.Main, s *service.AuthService, logService *service.LogService, readinessCheck ReadinessCheck) *APIServer {
 
 	router := http.NewServeMux()
 	configureHealthEndpoints(router, readinessCheck)
@@ -67,7 +67,7 @@ func ConfigServer(c *configs.Main, s *service.AuthService, readinessCheck Readin
 	api := &APIServer{
 		Server: &http.Server{
 			Addr:              c.App.Port,
-			Handler:           crs.Handler(recoverPanics(router)),
+			Handler:           crs.Handler(logRequests(recoverPanics(router), logService)),
 			ReadHeaderTimeout: 10 * time.Second,
 			ReadTimeout:       readTimeout,
 			WriteTimeout:      writeTimeout,

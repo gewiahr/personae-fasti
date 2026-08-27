@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -19,17 +17,13 @@ func NewLogService(repo repo.LogRepository) *LogService {
 	return &LogService{repo: repo}
 }
 
-func (s *LogService) InsertLog(playerID int, r *http.Request, reqBody []byte, response any, httpCode int, errMsg string, reqStartTime time.Time) error {
+func (s *LogService) InsertLog(playerID int, r *http.Request, requestBody, responseBody string, httpCode int, reqStartTime time.Time) error {
 	completedAt := time.Now().UTC()
 	completedIn := completedAt.Sub(reqStartTime).Milliseconds()
 
-	responseString := ""
-	if response != nil {
-		respBytes, err := json.Marshal(response)
-		if err != nil {
-			responseString = fmt.Sprintf("error marshal response for log: %v", err)
-		}
-		responseString = string(respBytes)
+	errMsg := ""
+	if httpCode >= http.StatusBadRequest {
+		errMsg = responseBody
 	}
 
 	log := &domain.ApiLog{
@@ -37,9 +31,9 @@ func (s *LogService) InsertLog(playerID int, r *http.Request, reqBody []byte, re
 
 		URI:     r.URL.Path,
 		Method:  r.Method,
-		Request: string(reqBody),
+		Request: requestBody,
 
-		Response: responseString,
+		Response: responseBody,
 		Code:     httpCode,
 		Error:    errMsg,
 		Time:     completedIn,
@@ -47,6 +41,7 @@ func (s *LogService) InsertLog(playerID int, r *http.Request, reqBody []byte, re
 		Created: completedAt,
 	}
 
-	// TODO: repo error handling
-	return s.repo.Insert(context.Background(), log)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	return s.repo.Insert(ctx, log)
 }

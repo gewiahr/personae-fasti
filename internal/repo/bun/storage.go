@@ -120,6 +120,9 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 	if err := s.applyImageMigration(ctx); err != nil {
 		return err
 	}
+	if err := s.applyAPIRequestLoggingMigration(ctx); err != nil {
+		return err
+	}
 
 	_, err = s.db.NewCreateIndex().
 		IfNotExists().
@@ -181,6 +184,47 @@ const personalNoteMigration = "20260825_player_personal_note"
 const legacySchemaMigration = "20260826_legacy_main_schema"
 
 const imageMigration = "20260827_image_system"
+
+const apiRequestLoggingMigration = "20260828_api_request_logging"
+
+func (s *BunStorage) applyAPIRequestLoggingMigration(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migration (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create schema migration table: %w", err)
+	}
+
+	var applied bool
+	if err := s.db.NewSelect().
+		ColumnExpr("EXISTS (SELECT 1 FROM schema_migration WHERE name = ?)", apiRequestLoggingMigration).
+		Scan(ctx, &applied); err != nil {
+		return fmt.Errorf("failed to check API request logging migration: %w", err)
+	}
+	if applied {
+		return nil
+	}
+
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		// Old deployments silently ignored log insert errors. Repair a sequence that
+		// may have fallen behind after a database restore before logging resumes.
+		if _, err := tx.ExecContext(ctx, `
+			SELECT setval(
+				pg_get_serial_sequence('log_api', 'id'),
+				COALESCE((SELECT MAX(id) + 1 FROM log_api), 1),
+				false
+			)
+		`); err != nil {
+			return fmt.Errorf("failed to repair API log sequence: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migration (name) VALUES (?)", apiRequestLoggingMigration); err != nil {
+			return fmt.Errorf("failed to record API request logging migration: %w", err)
+		}
+		return nil
+	})
+}
 
 func (s *BunStorage) applyLegacySchemaMigration(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, `

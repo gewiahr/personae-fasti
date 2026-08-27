@@ -46,7 +46,7 @@ func main() {
 	imageRepo := storage.ImageRepo()
 
 	logService := service.NewLogService(logRepo)
-	authService := service.NewAuthService(config.Auth, logService, playerRepo)
+	authService := service.NewAuthService(config.Auth, playerRepo)
 	gameService := service.NewGameService(playerRepo, gameRepo, recordRepo)
 	playerService := service.NewPlayerService(playerRepo, gameRepo)
 	recordService := service.NewRecordService(playerRepo, gameRepo, recordRepo, questRepo)
@@ -68,6 +68,7 @@ func main() {
 	privateApi := api.ConfigServer(
 		config,
 		authService,
+		logService,
 		storage.Ping,
 	)
 

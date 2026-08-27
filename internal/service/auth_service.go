@@ -20,14 +20,12 @@ import (
 
 type AuthService struct {
 	authConfig *configs.AuthConfig
-	logService *LogService
 	playerRepo repo.PlayerRepository
 }
 
-func NewAuthService(authConfig *configs.AuthConfig, logService *LogService, playerRepo repo.PlayerRepository) *AuthService {
+func NewAuthService(authConfig *configs.AuthConfig, playerRepo repo.PlayerRepository) *AuthService {
 	return &AuthService{
 		authConfig: authConfig,
-		logService: logService,
 		playerRepo: playerRepo,
 	}
 }

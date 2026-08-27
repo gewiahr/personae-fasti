@@ -40,6 +40,7 @@ func AuthAdapt[Body any](authService *service.AuthService, fn HandlerFunc[Body])
 			httputils.RespondError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
+		setRequestLogPlayer(r.Context(), player.ID)
 
 		body, apiErr := readBody[Body](w, r)
 		if apiErr != nil {
@@ -73,6 +74,7 @@ func ImageAdapt(authService *service.AuthService, maxRequestBytes int64, timeout
 			httputils.RespondError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
+		setRequestLogPlayer(r.Context(), player.ID)
 		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBytes)
 		req := httputils.RequestData[dto.NoBody]{
 			Context: r.Context(),
