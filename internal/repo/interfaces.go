@@ -49,7 +49,7 @@ type GameRepository interface {
 	GetCurrentGame(ctx context.Context, playerCurrentGameID int) (*domain.Game, error)
 
 	GetByExt(ctx context.Context, gameExt string) (*domain.Game, error)
-	Create(ctx context.Context, game *domain.Game) (*domain.Game, error)
+	Create(ctx context.Context, game *domain.Game, creatorID int, makeCurrent bool) (*domain.Game, error)
 	UpdateByExt(ctx context.Context, game *domain.Game) (*domain.Game, error)
 
 	GetCurrentGameSession(ctx context.Context, gameID int) (*domain.Session, error)

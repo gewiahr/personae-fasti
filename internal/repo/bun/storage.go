@@ -132,6 +132,9 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 	if err := s.applyAPIClientMetadataMigration(ctx); err != nil {
 		return err
 	}
+	if err := s.applyGameCreationRelationsMigration(ctx); err != nil {
+		return err
+	}
 
 	_, err = s.db.NewCreateIndex().
 		IfNotExists().
@@ -201,6 +204,46 @@ const structuredAPILoggingMigration = "20260829_structured_api_logging"
 const nullableAPILogFieldsMigration = "20260830_nullable_api_log_fields"
 
 const apiClientMetadataMigration = "20260831_api_client_metadata"
+
+const gameCreationRelationsMigration = "20260901_game_creation_relations"
+
+func (s *BunStorage) applyGameCreationRelationsMigration(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migration (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create schema migration table: %w", err)
+	}
+
+	var applied bool
+	if err := s.db.NewSelect().
+		ColumnExpr("EXISTS (SELECT 1 FROM schema_migration WHERE name = ?)", gameCreationRelationsMigration).
+		Scan(ctx, &applied); err != nil {
+		return fmt.Errorf("failed to check game creation relations migration: %w", err)
+	}
+	if applied {
+		return nil
+	}
+
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		statements := []string{
+			`INSERT INTO game_settings (game_id) SELECT id FROM game ON CONFLICT (game_id) DO NOTHING`,
+			`INSERT INTO players_games (player_id, game_id) SELECT gm_id, id FROM game WHERE gm_id IS NOT NULL ON CONFLICT (player_id, game_id) DO NOTHING`,
+			`INSERT INTO game_image_quota (game_id) SELECT id FROM game ON CONFLICT (game_id) DO NOTHING`,
+		}
+		for _, statement := range statements {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("game creation relations migration failed: %w", err)
+			}
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migration (name) VALUES (?)", gameCreationRelationsMigration); err != nil {
+			return fmt.Errorf("failed to record game creation relations migration: %w", err)
+		}
+		return nil
+	})
+}
 
 func (s *BunStorage) applyAPIClientMetadataMigration(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, `

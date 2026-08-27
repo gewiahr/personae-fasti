@@ -6,10 +6,14 @@ import (
 )
 
 func GameToGameBrief(game *domain.Game) *dto.GameBrief {
+	gmExtID := ""
+	if game.GM != nil {
+		gmExtID = game.GM.ExtID
+	}
 	return &dto.GameBrief{
 		ExtID:   game.ExtID,
 		Title:   game.Name,
-		GMExtID: game.GM.ExtID,
+		GMExtID: gmExtID,
 	}
 }
 
@@ -23,13 +27,21 @@ func GameToGameBriefArray(games []domain.Game) []dto.GameBrief {
 }
 
 func GameToGameFull(game *domain.Game) *dto.GameFull {
+	gmExtID := ""
+	if game.GM != nil {
+		gmExtID = game.GM.ExtID
+	}
+	allowAllEditRecords := false
+	if game.Settings != nil {
+		allowAllEditRecords = game.Settings.AllowAllEditRecords
+	}
 	return &dto.GameFull{
 		ExtID:   game.ExtID,
 		Title:   game.Name,
-		GMExtID: game.GM.ExtID,
+		GMExtID: gmExtID,
 
 		Settings: &dto.GameSettings{
-			AllowAllEditRecords: game.Settings.AllowAllEditRecords,
+			AllowAllEditRecords: allowAllEditRecords,
 		},
 		Sessions: SessionToSessionBriefArray(game.Sessions),
 		Players:  PlayerToPlayersBriefArray(game.Players), // TODO: add observers and left

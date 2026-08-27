@@ -56,18 +56,9 @@ func (s *GameService) CreateGame(ctx context.Context, player *domain.Player, tit
 		return nil, e.NewValidationError(message)
 	}
 
-	game, err := s.gameRepo.Create(ctx, newGame)
+	game, err := s.gameRepo.Create(ctx, newGame, player.ID, true) //player.CurrentGameID == 0)
 	if err != nil {
 		return nil, e.NewInternalError("Невозможно создать новую игру", err)
-	}
-
-	var currentGame = player.CurrentGame
-	if currentGame == nil {
-		// TODO: errors should not prevent endpoint to finish
-		player, err = s.playerRepo.ChangeCurrentGame(ctx, player.ID, game.ID)
-		if err != nil {
-			return nil, e.NewInternalError("Невозможно сменить текущую игру", err)
-		}
 	}
 
 	return game, nil

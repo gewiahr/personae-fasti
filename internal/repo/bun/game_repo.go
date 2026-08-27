@@ -57,13 +57,38 @@ func (r *GameRepo) GetByExt(ctx context.Context, gameExt string) (*domain.Game, 
 	return game, err
 }
 
-func (r *GameRepo) Create(ctx context.Context, game *domain.Game) (*domain.Game, error) {
+func (r *GameRepo) Create(ctx context.Context, game *domain.Game, creatorID int, makeCurrent bool) (*domain.Game, error) {
 	err := r.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		if _, err := tx.NewInsert().Model(game).Returning("*").Exec(ctx); err != nil {
 			return err
 		}
-		_, err := tx.NewInsert().Model(&domain.GameImageQuota{GameID: game.ID}).Exec(ctx)
-		return err
+		if _, err := tx.NewInsert().Model(&domain.GameSettings{GameID: game.ID}).Exec(ctx); err != nil {
+			return err
+		}
+		if _, err := tx.NewInsert().Model(&domain.PlayerGame{PlayerID: creatorID, GameID: game.ID}).Exec(ctx); err != nil {
+			return err
+		}
+		if _, err := tx.NewInsert().Model(&domain.GameImageQuota{GameID: game.ID}).Exec(ctx); err != nil {
+			return err
+		}
+		if makeCurrent {
+			if _, err := tx.NewUpdate().Model((*domain.Player)(nil)).
+				Set("current_game_id = ?", game.ID).
+				Where("id = ?", creatorID).
+				Exec(ctx); err != nil {
+				return err
+			}
+		}
+
+		return tx.NewSelect().
+			Model(game).
+			Where("game.id = ?", game.ID).
+			Relation("GM").
+			Relation("Players").
+			Relation("Sessions").
+			Relation("Settings").
+			Relation("Invites").
+			Scan(ctx)
 	})
 	return game, err
 }
