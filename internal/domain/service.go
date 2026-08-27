@@ -10,17 +10,25 @@ type ApiLog struct {
 	bun.BaseModel `bun:"table:log_api"`
 
 	ID       int64 `bun:",pk,autoincrement"`
-	PlayerID int   `bun:"player_id,notnull"`
+	PlayerID *int  `bun:"player_id"`
+	GameID   *int  `bun:"game_id"`
 
-	URI     string `bun:",notnull"`
-	Method  string `bun:",notnull"`
-	Request string `bun:",notnull"`
+	RequestID string  `bun:"request_id,notnull,default:''"`
+	IP        *string `bun:"ip"`
+	Host      *string `bun:"host"`
 
-	Response string `bun:",notnull"`
-	Code     int    `bun:",notnull"`
-	Error    string `bun:""`
-	Time     int64  `bun:""`
+	URI     string  `bun:",notnull"`
+	Method  string  `bun:",notnull"`
+	Request *string `bun:"request"`
 
+	Response      *string `bun:"response"`
+	Code          int     `bun:",notnull"`
+	Error         *string `bun:"error"`
+	ErrorCode     *string `bun:"error_code"`
+	InternalError *string `bun:"internal_error"`
+	Time          int64   `bun:""`
+
+	Started time.Time `bun:"started_at,notnull,default:now()"`
 	Created time.Time `bun:",notnull,default:now()"`
 }
 

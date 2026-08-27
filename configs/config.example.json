@@ -8,7 +8,9 @@
     "readTimeout": 120,
     "writeTimeout": 120,
     "imageUploadTimeout": 120,
-    "migrateOnStart": false
+    "migrateOnStart": false,
+    "successLogRetentionDays": 0,
+    "errorLogRetentionDays": 0
   },
   "auth": {
     "jwtSecret": "replace-me",

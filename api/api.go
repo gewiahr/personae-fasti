@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -51,6 +53,7 @@ func ConfigServer(c *configs.Main, s *service.AuthService, logService *service.L
 		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		ExposedHeaders:   []string{"X-Request-ID"},
 		AllowCredentials: allowCredentials,
 	})
 
@@ -85,8 +88,16 @@ func recoverPanics(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				log.Printf("panic handling %s %s: %v\n%s", r.Method, r.URL.Path, recovered, debug.Stack())
-				http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+				panicDetails := fmt.Errorf("%v\n%s", recovered, debug.Stack())
+				setRequestLogError(r.Context(), "panic", panicDetails)
+				log.Printf("panic handling %s %s: %v", r.Method, r.URL.Path, panicDetails)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				_ = json.NewEncoder(w).Encode(map[string]string{
+					"error":     "Внутренняя ошибка сервера",
+					"code":      "panic",
+					"requestId": requestID(r.Context()),
+				})
 			}
 		}()
 		next.ServeHTTP(w, r)

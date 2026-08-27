@@ -46,6 +46,9 @@ func main() {
 	imageRepo := storage.ImageRepo()
 
 	logService := service.NewLogService(logRepo)
+	if err := logService.Prune(config.App.SuccessLogRetentionDays, config.App.ErrorLogRetentionDays); err != nil {
+		log.Printf("failed to prune API logs: %v", err)
+	}
 	authService := service.NewAuthService(config.Auth, playerRepo)
 	gameService := service.NewGameService(playerRepo, gameRepo, recordRepo)
 	playerService := service.NewPlayerService(playerRepo, gameRepo)

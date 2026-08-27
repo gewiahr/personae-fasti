@@ -36,5 +36,8 @@ func NewForbiddenError(msg string) *AppError {
 	return &AppError{Type: ErrForbidden, Message: msg}
 }
 func NewInternalError(msg string, inner error) *AppError {
-	return &AppError{Type: ErrInternal, Message: "internal error", Inner: inner}
+	if msg == "" {
+		msg = "Внутренняя ошибка сервера"
+	}
+	return &AppError{Type: ErrInternal, Message: msg, Inner: inner}
 }

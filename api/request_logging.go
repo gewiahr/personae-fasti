@@ -3,14 +3,18 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
 
+	"personae-fasti/internal/domain"
 	"personae-fasti/internal/service"
 )
 
@@ -19,7 +23,11 @@ const maxLoggedBodyBytes = 64 << 10
 type requestLogContextKey struct{}
 
 type requestLogState struct {
-	playerID int
+	requestID     string
+	playerID      int
+	gameID        *int
+	errorCode     string
+	internalError string
 }
 
 type logResponseWriter struct {
@@ -70,8 +78,9 @@ func logRequests(next http.Handler, logService *service.LogService) http.Handler
 		}
 
 		startedAt := time.Now().UTC()
-		state := &requestLogState{}
+		state := &requestLogState{requestID: newRequestID()}
 		r = r.WithContext(context.WithValue(r.Context(), requestLogContextKey{}, state))
+		w.Header().Set("X-Request-ID", state.requestID)
 		requestBody := captureRequestBody(r)
 		responseWriter := &logResponseWriter{ResponseWriter: w}
 
@@ -84,16 +93,73 @@ func logRequests(next http.Handler, logService *service.LogService) http.Handler
 		if responseWriter.truncated {
 			responseBody += " [truncated]"
 		}
-		if err := logService.InsertLog(state.playerID, r, requestBody, responseBody, status, startedAt); err != nil {
+		completedAt := time.Now().UTC()
+		publicError := ""
+		if status >= http.StatusBadRequest {
+			publicError = responseBody
+			if state.errorCode == "" {
+				state.errorCode = "http_error"
+			}
+		}
+		entry := &domain.ApiLog{
+			PlayerID: optionalInt(state.playerID), GameID: state.gameID, RequestID: state.requestID,
+			IP: optionalString(clientIP(r)), Host: optionalString(r.Host),
+			URI: r.URL.Path, Method: r.Method, Request: optionalString(requestBody),
+			Response: optionalString(responseBody), Code: status, Error: optionalString(publicError),
+			ErrorCode: optionalString(state.errorCode), InternalError: optionalString(state.internalError),
+			Time: completedAt.Sub(startedAt).Milliseconds(), Started: startedAt, Created: completedAt,
+		}
+		if err := logService.InsertLog(entry); err != nil {
 			log.Printf("failed to insert API log for %s %s: %v", r.Method, r.URL.Path, err)
 		}
 	})
 }
 
-func setRequestLogPlayer(ctx context.Context, playerID int) {
+func optionalString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func optionalInt(value int) *int {
+	if value == 0 {
+		return nil
+	}
+	return &value
+}
+
+func setRequestLogPlayer(ctx context.Context, playerID, gameID int) {
 	if state, ok := ctx.Value(requestLogContextKey{}).(*requestLogState); ok {
 		state.playerID = playerID
+		if gameID != 0 {
+			state.gameID = &gameID
+		}
 	}
+}
+
+func setRequestLogError(ctx context.Context, code string, err error) {
+	if state, ok := ctx.Value(requestLogContextKey{}).(*requestLogState); ok {
+		state.errorCode = code
+		if err != nil {
+			state.internalError = err.Error()
+		}
+	}
+}
+
+func requestID(ctx context.Context) string {
+	if state, ok := ctx.Value(requestLogContextKey{}).(*requestLogState); ok {
+		return state.requestID
+	}
+	return ""
+}
+
+func newRequestID() string {
+	data := make([]byte, 12)
+	if _, err := rand.Read(data); err != nil {
+		return fmt.Sprintf("fallback-%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(data)
 }
 
 func captureRequestBody(r *http.Request) string {
@@ -103,7 +169,8 @@ func captureRequestBody(r *http.Request) string {
 	if r.ContentLength > maxLoggedBodyBytes {
 		return "[omitted: body too large]"
 	}
-	if !strings.Contains(strings.ToLower(r.Header.Get("Content-Type")), "json") {
+	contentType := strings.ToLower(r.Header.Get("Content-Type"))
+	if strings.Contains(contentType, "multipart/") || strings.Contains(contentType, "octet-stream") || strings.HasPrefix(contentType, "image/") {
 		return "[omitted: non-JSON body]"
 	}
 
@@ -113,7 +180,29 @@ func captureRequestBody(r *http.Request) string {
 	}
 	_ = r.Body.Close()
 	r.Body = io.NopCloser(bytes.NewReader(body))
+	if !json.Valid(body) {
+		return "[omitted: non-JSON body]"
+	}
 	return sanitizeLoggedBody(r.URL.Path, body)
+}
+
+func clientIP(r *http.Request) string {
+	// Nginx overwrites X-Real-IP with the direct client address. Prefer it to
+	// X-Forwarded-For, which may contain client-supplied values in its chain.
+	if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
+		return realIP
+	}
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		if first, _, ok := strings.Cut(forwarded, ","); ok {
+			return strings.TrimSpace(first)
+		}
+		return strings.TrimSpace(forwarded)
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil {
+		return host
+	}
+	return r.RemoteAddr
 }
 
 func sanitizeLoggedBody(path string, body []byte) string {

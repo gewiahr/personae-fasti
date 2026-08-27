@@ -5,6 +5,7 @@ import (
 	"errors"
 	"personae-fasti/internal/domain"
 	"personae-fasti/internal/dto"
+	"time"
 
 	"github.com/uptrace/bun"
 )
@@ -148,6 +149,7 @@ type QuestRepository interface {
 
 type LogRepository interface {
 	Insert(ctx context.Context, log *domain.ApiLog) error
+	Prune(ctx context.Context, successBefore, errorBefore *time.Time) error
 }
 
 type AppRepository interface {

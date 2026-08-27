@@ -2,6 +2,7 @@ package errorutils
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,5 +27,16 @@ func TestFieldValidationErrorResponse(t *testing.T) {
 	}
 	if body.Error != "validation_failed" || body.Fields["name"] != "Введите название" {
 		t.Fatalf("unexpected response body: %#v", body)
+	}
+}
+
+func TestInternalErrorSeparatesPublicMessageAndCause(t *testing.T) {
+	cause := errors.New("database connection refused")
+	apiErr := ErrToApiError(NewInternalError("Не удалось загрузить данные", cause))
+	if apiErr.Message != "Не удалось загрузить данные" || apiErr.Code != "internal_error" {
+		t.Fatalf("unexpected public error: %+v", apiErr)
+	}
+	if !errors.Is(apiErr.Internal(), cause) {
+		t.Fatalf("internal cause was lost: %v", apiErr.Internal())
 	}
 }

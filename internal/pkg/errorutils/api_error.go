@@ -13,30 +13,38 @@ func ErrToApiError(err error) ApiError {
 		switch appErr.Type {
 		case ErrNotFound:
 			ae.Status = http.StatusNotFound
+			ae.Code = "not_found"
 		case ErrValidation:
 			ae.Status = http.StatusBadRequest
+			ae.Code = "validation_error"
 		case ErrUnauthorized:
 			ae.Status = http.StatusUnauthorized
+			ae.Code = "unauthorized"
 		case ErrForbidden:
 			ae.Status = http.StatusForbidden
+			ae.Code = "forbidden"
 		default:
 			ae.Status = http.StatusInternalServerError
+			ae.Code = "internal_error"
 			ae.inner = appErr.Inner
 		}
 		return ae
 	}
 	return ApiError{
 		Status:  http.StatusInternalServerError,
-		Message: "internal error",
+		Message: "Внутренняя ошибка сервера",
+		Code:    "internal_error",
 		inner:   err,
 	}
 }
 
 type ApiError struct {
-	Status  int               `json:"-"`
-	Message string            `json:"error"`
-	Fields  map[string]string `json:"fields,omitempty"`
-	inner   error             `json:"-"`
+	Status    int               `json:"-"`
+	Message   string            `json:"error"`
+	Code      string            `json:"code,omitempty"`
+	RequestID string            `json:"requestId,omitempty"`
+	Fields    map[string]string `json:"fields,omitempty"`
+	inner     error             `json:"-"`
 }
 
 func (e ApiError) Respond(w http.ResponseWriter) error {
@@ -46,5 +54,7 @@ func (e ApiError) Respond(w http.ResponseWriter) error {
 }
 
 func NewApiError(status int, msg string) ApiError {
-	return ApiError{Status: status, Message: msg}
+	return ApiError{Status: status, Message: msg, Code: "http_error"}
 }
+
+func (e ApiError) Internal() error { return e.inner }

@@ -25,15 +25,17 @@ type ImageStorageConfig struct {
 }
 
 type APIConfig struct {
-	Port               string   `json:"port"`
-	Debug              bool     `json:"debug"`
-	Environment        string   `json:"environment"`
-	AllowedOrigins     []string `json:"allowedOrigins"`
-	AllowCredentials   bool     `json:"allowCredentials"`
-	ReadTimeout        int      `json:"readTimeout"`
-	WriteTimeout       int      `json:"writeTimeout"`
-	ImageUploadTimeout int      `json:"imageUploadTimeout"`
-	MigrateOnStart     bool     `json:"migrateOnStart"`
+	Port                    string   `json:"port"`
+	Debug                   bool     `json:"debug"`
+	Environment             string   `json:"environment"`
+	AllowedOrigins          []string `json:"allowedOrigins"`
+	AllowCredentials        bool     `json:"allowCredentials"`
+	ReadTimeout             int      `json:"readTimeout"`
+	WriteTimeout            int      `json:"writeTimeout"`
+	ImageUploadTimeout      int      `json:"imageUploadTimeout"`
+	MigrateOnStart          bool     `json:"migrateOnStart"`
+	SuccessLogRetentionDays int      `json:"successLogRetentionDays"`
+	ErrorLogRetentionDays   int      `json:"errorLogRetentionDays"`
 }
 
 type AuthConfig struct {

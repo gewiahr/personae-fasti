@@ -123,6 +123,15 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 	if err := s.applyAPIRequestLoggingMigration(ctx); err != nil {
 		return err
 	}
+	if err := s.applyStructuredAPILoggingMigration(ctx); err != nil {
+		return err
+	}
+	if err := s.applyNullableAPILogFieldsMigration(ctx); err != nil {
+		return err
+	}
+	if err := s.applyAPIClientMetadataMigration(ctx); err != nil {
+		return err
+	}
 
 	_, err = s.db.NewCreateIndex().
 		IfNotExists().
@@ -186,6 +195,141 @@ const legacySchemaMigration = "20260826_legacy_main_schema"
 const imageMigration = "20260827_image_system"
 
 const apiRequestLoggingMigration = "20260828_api_request_logging"
+
+const structuredAPILoggingMigration = "20260829_structured_api_logging"
+
+const nullableAPILogFieldsMigration = "20260830_nullable_api_log_fields"
+
+const apiClientMetadataMigration = "20260831_api_client_metadata"
+
+func (s *BunStorage) applyAPIClientMetadataMigration(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migration (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create schema migration table: %w", err)
+	}
+
+	var applied bool
+	if err := s.db.NewSelect().
+		ColumnExpr("EXISTS (SELECT 1 FROM schema_migration WHERE name = ?)", apiClientMetadataMigration).
+		Scan(ctx, &applied); err != nil {
+		return fmt.Errorf("failed to check API client metadata migration: %w", err)
+	}
+	if applied {
+		return nil
+	}
+
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		statements := []string{
+			`ALTER TABLE log_api ADD COLUMN IF NOT EXISTS ip VARCHAR(45)`,
+			`ALTER TABLE log_api ADD COLUMN IF NOT EXISTS host VARCHAR(255)`,
+			`CREATE INDEX IF NOT EXISTS log_api_ip_idx ON log_api (ip) WHERE ip IS NOT NULL`,
+		}
+		for _, statement := range statements {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("API client metadata migration failed: %w", err)
+			}
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migration (name) VALUES (?)", apiClientMetadataMigration); err != nil {
+			return fmt.Errorf("failed to record API client metadata migration: %w", err)
+		}
+		return nil
+	})
+}
+
+func (s *BunStorage) applyNullableAPILogFieldsMigration(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migration (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create schema migration table: %w", err)
+	}
+
+	var applied bool
+	if err := s.db.NewSelect().
+		ColumnExpr("EXISTS (SELECT 1 FROM schema_migration WHERE name = ?)", nullableAPILogFieldsMigration).
+		Scan(ctx, &applied); err != nil {
+		return fmt.Errorf("failed to check nullable API log fields migration: %w", err)
+	}
+	if applied {
+		return nil
+	}
+
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		statements := []string{
+			`ALTER TABLE log_api ALTER COLUMN player_id DROP NOT NULL, ALTER COLUMN player_id DROP DEFAULT`,
+			`ALTER TABLE log_api ALTER COLUMN "request" DROP NOT NULL`,
+			`ALTER TABLE log_api ALTER COLUMN "response" DROP NOT NULL`,
+			`ALTER TABLE log_api ALTER COLUMN error_code DROP NOT NULL, ALTER COLUMN error_code DROP DEFAULT`,
+			`ALTER TABLE log_api ALTER COLUMN internal_error DROP NOT NULL, ALTER COLUMN internal_error DROP DEFAULT`,
+			`UPDATE log_api SET player_id = NULL WHERE player_id = 0`,
+			`UPDATE log_api SET "request" = NULL WHERE "request" = ''`,
+			`UPDATE log_api SET "response" = NULL WHERE "response" = ''`,
+			`UPDATE log_api SET "error" = NULL WHERE "error" = ''`,
+			`UPDATE log_api SET error_code = NULL WHERE error_code = ''`,
+			`UPDATE log_api SET internal_error = NULL WHERE internal_error = ''`,
+		}
+		for _, statement := range statements {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("nullable API log fields migration failed: %w", err)
+			}
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migration (name) VALUES (?)", nullableAPILogFieldsMigration); err != nil {
+			return fmt.Errorf("failed to record nullable API log fields migration: %w", err)
+		}
+		return nil
+	})
+}
+
+func (s *BunStorage) applyStructuredAPILoggingMigration(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migration (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create schema migration table: %w", err)
+	}
+
+	var applied bool
+	if err := s.db.NewSelect().
+		ColumnExpr("EXISTS (SELECT 1 FROM schema_migration WHERE name = ?)", structuredAPILoggingMigration).
+		Scan(ctx, &applied); err != nil {
+		return fmt.Errorf("failed to check structured API logging migration: %w", err)
+	}
+	if applied {
+		return nil
+	}
+
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		statements := []string{
+			`ALTER TABLE log_api ADD COLUMN IF NOT EXISTS game_id BIGINT`,
+			`ALTER TABLE log_api ADD COLUMN IF NOT EXISTS request_id VARCHAR(32) NOT NULL DEFAULT ''`,
+			`ALTER TABLE log_api ADD COLUMN IF NOT EXISTS error_code VARCHAR(64) NOT NULL DEFAULT ''`,
+			`ALTER TABLE log_api ADD COLUMN IF NOT EXISTS internal_error TEXT NOT NULL DEFAULT ''`,
+			`ALTER TABLE log_api ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ`,
+			`UPDATE log_api SET started_at = created - (time * INTERVAL '1 millisecond') WHERE started_at IS NULL`,
+			`ALTER TABLE log_api ALTER COLUMN started_at SET DEFAULT current_timestamp, ALTER COLUMN started_at SET NOT NULL`,
+			`CREATE INDEX IF NOT EXISTS log_api_created_idx ON log_api (created)`,
+			`CREATE INDEX IF NOT EXISTS log_api_request_id_idx ON log_api (request_id) WHERE request_id <> ''`,
+			`CREATE INDEX IF NOT EXISTS log_api_game_id_idx ON log_api (game_id) WHERE game_id IS NOT NULL`,
+		}
+		for _, statement := range statements {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("structured API logging migration failed: %w", err)
+			}
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migration (name) VALUES (?)", structuredAPILoggingMigration); err != nil {
+			return fmt.Errorf("failed to record structured API logging migration: %w", err)
+		}
+		return nil
+	})
+}
 
 func (s *BunStorage) applyAPIRequestLoggingMigration(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, `
