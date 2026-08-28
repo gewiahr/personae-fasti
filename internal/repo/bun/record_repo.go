@@ -24,7 +24,7 @@ func NewRecordRepo(db *bun.DB) *RecordRepo { return &RecordRepo{db: db} }
 
 func (r *RecordRepo) GetCurrentGameRecordList(ctx context.Context, gameID, playerID int) ([]domain.Record, error) {
 	records := []domain.Record{}
-	err := r.db.NewSelect().Model(&records).Where("\"record\".player_id = ? AND \"record\".game_id = ? AND \"record\".deleted IS NULL", playerID, gameID).
+	err := r.db.NewSelect().Model(&records).Where("\"record\".game_id = ? AND \"record\".deleted IS NULL", playerID, gameID).
 		Relation("Quest").
 		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
 			return q.Where("\"record\".hidden_by = 0").WhereOr("\"record\".hidden_by = ?", playerID)
