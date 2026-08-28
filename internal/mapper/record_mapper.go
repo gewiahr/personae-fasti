@@ -17,7 +17,7 @@ func RecordToRecordFull(r domain.Record, playerExt, gameExt string) dto.RecordFu
 	return dto.RecordFull{
 		ID:          r.ID,
 		Text:        r.Text,
-		PlayerExtID: playerExt,
+		PlayerExtID: r.Player.ExtID,
 		GameExtID:   gameExt,
 		QuestExtID:  recordQuestExt(r),
 		Hidden:      r.HiddenBy != 0,
