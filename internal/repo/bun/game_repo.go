@@ -130,7 +130,7 @@ func (r *GameRepo) GetGameSessionByNumber(ctx context.Context, gameID int, sessi
 func (r *GameRepo) CreateNewSession(ctx context.Context, game *domain.Game) (*domain.Session, error) {
 	var newSession *domain.Session
 	currentSession, err := r.GetCurrentGameSession(ctx, game.ID)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil {
 		return nil, err
 	}
 
@@ -219,23 +219,28 @@ func (r *GameRepo) EditSession(ctx context.Context, game *domain.Game, sessionUp
 
 func (r *GameRepo) RemoveLastSession(ctx context.Context, game *domain.Game) error {
 	currentSession, err := r.GetCurrentGameSession(ctx, game.ID)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil {
 		return err
 	}
+	if currentSession == nil {
+		return nil
+	}
 
+	// TOOD: refactorty to make correct state machine and error return
 	if err := r.db.RunInTx(ctx, &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
 		var previousSession domain.Session
 		if currentSession.Number > 0 {
 			if err := tx.NewSelect().Model(&previousSession).Where("game_id = ? AND number = ?", game.ID, currentSession.Number-1).Scan(ctx, &previousSession); err != nil {
 				return err
 			}
+			if _, err := tx.NewUpdate().Model((*domain.Session)(nil)).Set("end_time = NULL").Where("id = ?", previousSession.ID).Returning("*").Exec(ctx, &previousSession); err != nil {
+				return err
+			}
+			if _, err := tx.NewDelete().Model(currentSession).WherePK().Returning("*").Exec(ctx, currentSession); err != nil {
+				return err
+			}
 		}
-		if _, err := tx.NewUpdate().Model((*domain.Session)(nil)).Set("end_time = NULL").Where("id = ?", previousSession.ID).Returning("*").Exec(ctx, &previousSession); err != nil {
-			return err
-		}
-		if _, err := tx.NewDelete().Model(currentSession).WherePK().Returning("*").Exec(ctx, currentSession); err != nil {
-			return err
-		}
+
 		return nil
 
 	}); err != nil {

@@ -26,6 +26,8 @@ func (r *PlayerRepo) GetByID(ctx context.Context, id int) (*domain.Player, error
 		Relation("RegData").
 		Relation("CurrentGame").
 		Relation("CurrentGame.Settings").
+		Relation("CurrentGame.Players").
+		Relation("CurrentGame.Quests").
 		Scan(ctx)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -44,7 +46,9 @@ func (r *PlayerRepo) GetByToken(ctx context.Context, tokenHash string) (*domain.
 		Relation("Player").
 		Relation("Player.RegData").
 		Relation("Player.CurrentGame").
-		Relation("Player.CurrentGame.Settings"). // TODO: make proper current game load
+		Relation("Player.CurrentGame.Settings").
+		Relation("Player.CurrentGame.Players").
+		Relation("Player.CurrentGame.Quests").
 		Scan(ctx)
 	if err == sql.ErrNoRows {
 		return nil, e.NewNotFoundError("")
@@ -65,6 +69,8 @@ func (r *PlayerRepo) GetByUsername(ctx context.Context, username string) (*domai
 		Relation("RegData").
 		Relation("CurrentGame").
 		Relation("CurrentGame.Settings").
+		Relation("CurrentGame.Players").
+		Relation("CurrentGame.Quests").
 		Scan(ctx)
 	if err == sql.ErrNoRows {
 		return nil, nil

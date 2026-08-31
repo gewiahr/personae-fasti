@@ -43,7 +43,7 @@ func (h *QuestHandler) GetPlayerCurrentGameQuestByExt(req httputils.RequestData[
 	return httputils.Response{Status: http.StatusOK, Body: dto.QuestPage{
 		Quest:   *questFull,
 		Tasks:   mapper.TaskToTaskFullInfoArray(quest.Tasks, req.Player.CurrentGame.ExtID),
-		Records: mapper.RecordToRecordFullArray(quest.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records: mapper.RecordToRecordFullArray(quest.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 	}}
 }
 
@@ -58,7 +58,7 @@ func (h *QuestHandler) PostPlayerCurrentGameQuest(req httputils.RequestData[dto.
 	return httputils.Response{Status: http.StatusCreated, Body: dto.QuestPage{
 		Quest:   *questFull,
 		Tasks:   mapper.TaskToTaskFullInfoArray(quest.Tasks, req.Player.CurrentGame.ExtID),
-		Records: mapper.RecordToRecordFullArray(quest.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records: mapper.RecordToRecordFullArray(quest.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 	}}
 }
 
@@ -73,7 +73,7 @@ func (h *QuestHandler) EditPlayerCurrentGameQuest(req httputils.RequestData[dto.
 	return httputils.Response{Status: http.StatusCreated, Body: dto.QuestPage{
 		Quest:   *questFull,
 		Tasks:   mapper.TaskToTaskFullInfoArray(quest.Tasks, req.Player.CurrentGame.ExtID),
-		Records: mapper.RecordToRecordFullArray(quest.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records: mapper.RecordToRecordFullArray(quest.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 	}}
 }
 
@@ -89,7 +89,7 @@ func (h *QuestHandler) CompletePlayerCurrentGameQuest(req httputils.RequestData[
 	return httputils.Response{Status: http.StatusOK, Body: dto.QuestPage{
 		Quest:   *questFull,
 		Tasks:   mapper.TaskToTaskFullInfoArray(quest.Tasks, req.Player.CurrentGame.ExtID),
-		Records: mapper.RecordToRecordFullArray(quest.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records: mapper.RecordToRecordFullArray(quest.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 	}}
 }
 
@@ -105,7 +105,7 @@ func (h *QuestHandler) FailPlayerCurrentGameQuest(req httputils.RequestData[dto.
 	return httputils.Response{Status: http.StatusOK, Body: dto.QuestPage{
 		Quest:   *questFull,
 		Tasks:   mapper.TaskToTaskFullInfoArray(quest.Tasks, req.Player.CurrentGame.ExtID),
-		Records: mapper.RecordToRecordFullArray(quest.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records: mapper.RecordToRecordFullArray(quest.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 	}}
 }
 
@@ -121,7 +121,7 @@ func (h *QuestHandler) ResetPlayerCurrentGameQuest(req httputils.RequestData[dto
 	return httputils.Response{Status: http.StatusOK, Body: dto.QuestPage{
 		Quest:   *questFull,
 		Tasks:   mapper.TaskToTaskFullInfoArray(quest.Tasks, req.Player.CurrentGame.ExtID),
-		Records: mapper.RecordToRecordFullArray(quest.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records: mapper.RecordToRecordFullArray(quest.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 	}}
 }
 

@@ -46,7 +46,7 @@ func (h *EntitiesHandler) GetPlayerCurrentGameCharByExt(req httputils.RequestDat
 
 	return httputils.Response{Status: http.StatusOK, Body: dto.CharPage{
 		Char:    *charFull,
-		Records: mapper.RecordToRecordFullArray(char.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records: mapper.RecordToRecordFullArray(char.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 	}}
 }
 
@@ -60,7 +60,7 @@ func (h *EntitiesHandler) PostPlayerCurrentGameChar(req httputils.RequestData[dt
 	charFull := mapper.CharToCharFullInfo(char, req.Player.CurrentGame.ExtID, req.Player.ExtID)
 	return httputils.Response{Status: http.StatusCreated, Body: dto.CharPage{
 		Char:    *charFull,
-		Records: mapper.RecordToRecordFullArray(char.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records: mapper.RecordToRecordFullArray(char.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 	}}
 }
 
@@ -74,7 +74,7 @@ func (h *EntitiesHandler) EditPlayerCurrentGameChar(req httputils.RequestData[dt
 	charFull := mapper.CharToCharFullInfo(char, req.Player.CurrentGame.ExtID, req.Player.ExtID)
 	return httputils.Response{Status: http.StatusOK, Body: dto.CharPage{
 		Char:    *charFull,
-		Records: mapper.RecordToRecordFullArray(char.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records: mapper.RecordToRecordFullArray(char.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 	}}
 }
 
@@ -106,7 +106,7 @@ func (h *EntitiesHandler) GetPlayerCurrentGameNPCByExt(req httputils.RequestData
 
 	return httputils.Response{Status: http.StatusOK, Body: dto.NPCPage{
 		NPC:     *npcFull,
-		Records: mapper.RecordToRecordFullArray(npc.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records: mapper.RecordToRecordFullArray(npc.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 	}}
 }
 
@@ -120,7 +120,7 @@ func (h *EntitiesHandler) PostPlayerCurrentGameNPC(req httputils.RequestData[dto
 	npcFull := mapper.NPCToNPCFullInfo(npc, req.Player.CurrentGame.ExtID)
 	return httputils.Response{Status: http.StatusCreated, Body: dto.NPCPage{
 		NPC:     *npcFull,
-		Records: mapper.RecordToRecordFullArray(npc.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records: mapper.RecordToRecordFullArray(npc.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 	}}
 }
 
@@ -134,7 +134,7 @@ func (h *EntitiesHandler) EditPlayerCurrentGameNPC(req httputils.RequestData[dto
 	npcFull := mapper.NPCToNPCFullInfo(npc, req.Player.CurrentGame.ExtID)
 	return httputils.Response{Status: http.StatusOK, Body: dto.NPCPage{
 		NPC:     *npcFull,
-		Records: mapper.RecordToRecordFullArray(npc.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records: mapper.RecordToRecordFullArray(npc.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 	}}
 }
 
@@ -170,7 +170,7 @@ func (h *EntitiesHandler) GetPlayerCurrentGameLocationByExt(req httputils.Reques
 
 	locationPage := dto.LocationPage{
 		Location: *mapper.LocationToLocationFullInfo(location, req.Player.CurrentGame.ExtID),
-		Records:  mapper.RecordToRecordFullArray(location.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records:  mapper.RecordToRecordFullArray(location.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 		Includes: mapper.LocationToLocationBriefArray(locationChildren, req.Player.CurrentGame.ExtID),
 	}
 
@@ -201,7 +201,7 @@ func (h *EntitiesHandler) PostPlayerCurrentGameLocation(req httputils.RequestDat
 
 	locationPage := dto.LocationPage{
 		Location: *mapper.LocationToLocationFullInfo(location, req.Player.CurrentGame.ExtID),
-		Records:  mapper.RecordToRecordFullArray(location.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records:  mapper.RecordToRecordFullArray(location.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 		Includes: mapper.LocationToLocationBriefArray(locationChildren, req.Player.CurrentGame.ExtID),
 	}
 
@@ -232,7 +232,7 @@ func (h *EntitiesHandler) EditPlayerCurrentGameLocation(req httputils.RequestDat
 
 	locationPage := dto.LocationPage{
 		Location: *mapper.LocationToLocationFullInfo(location, req.Player.CurrentGame.ExtID),
-		Records:  mapper.RecordToRecordFullArray(location.Records, req.Player.ExtID, req.Player.CurrentGame.ExtID),
+		Records:  mapper.RecordToRecordFullArray(location.Records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID),
 		Includes: mapper.LocationToLocationBriefArray(locationChildren, req.Player.CurrentGame.ExtID),
 	}
 

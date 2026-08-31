@@ -5,21 +5,21 @@ import (
 	"personae-fasti/internal/dto"
 )
 
-func RecordToRecordFullArray(records []domain.Record, playerExt, gameExt string) []dto.RecordFull {
+func RecordToRecordFullArray(records []domain.Record, players []domain.Player, quests []domain.Quest, gameExt string) []dto.RecordFull {
 	recordsFull := make([]dto.RecordFull, 0, len(records))
 	for _, r := range records {
-		recordsFull = append(recordsFull, RecordToRecordFull(r, playerExt, gameExt))
+		recordsFull = append(recordsFull, RecordToRecordFull(r, players, quests, gameExt))
 	}
 	return recordsFull
 }
 
-func RecordToRecordFull(r domain.Record, playerExt, gameExt string) dto.RecordFull {
+func RecordToRecordFull(r domain.Record, players []domain.Player, quests []domain.Quest, gameExt string) dto.RecordFull {
 	return dto.RecordFull{
 		ID:          r.ID,
 		Text:        r.Text,
-		PlayerExtID: r.Player.ExtID,
+		PlayerExtID: recordPlayerExt(r, players),
 		GameExtID:   gameExt,
-		QuestExtID:  recordQuestExt(r),
+		QuestExtID:  recordQuestExt(r, quests),
 		Hidden:      r.HiddenBy != 0,
 		Created:     r.Created,
 		Updated:     r.Updated,
@@ -27,9 +27,20 @@ func RecordToRecordFull(r domain.Record, playerExt, gameExt string) dto.RecordFu
 	}
 }
 
-func recordQuestExt(record domain.Record) string {
-	if record.Quest == nil {
-		return ""
+func recordPlayerExt(record domain.Record, players []domain.Player) string {
+	for _, player := range players {
+		if player.ID == record.PlayerID {
+			return player.ExtID
+		}
 	}
-	return record.Quest.ExtID
+	return ""
+}
+
+func recordQuestExt(record domain.Record, quests []domain.Quest) string {
+	for _, quest := range quests {
+		if quest.ID == record.QuestID {
+			return quest.ExtID
+		}
+	}
+	return ""
 }

@@ -25,7 +25,6 @@ func NewRecordRepo(db *bun.DB) *RecordRepo { return &RecordRepo{db: db} }
 func (r *RecordRepo) GetCurrentGameRecordList(ctx context.Context, gameID, playerID int) ([]domain.Record, error) {
 	records := []domain.Record{}
 	err := r.db.NewSelect().Model(&records).Where("\"record\".game_id = ? AND \"record\".deleted IS NULL", gameID).
-		Relation("Quest").
 		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
 			return q.Where("\"record\".hidden_by = 0").WhereOr("\"record\".hidden_by = ?", playerID)
 		}).
@@ -124,7 +123,7 @@ func (r *RecordRepo) SoftDeleteRecord(ctx context.Context, playerID int, recordI
 }
 
 func (r *RecordRepo) FilterAllowedRecords(ctx context.Context, records []domain.Record, playerID int) ([]domain.Record, error) {
-	err := r.db.NewSelect().Model(&records).WherePK().Where("\"record\".deleted IS NULL").Relation("Quest").
+	err := r.db.NewSelect().Model(&records).WherePK().Where("\"record\".deleted IS NULL").
 		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
 			return q.Where("\"record\".hidden_by = 0").WhereOr("\"record\".hidden_by = ?", playerID)
 		}).

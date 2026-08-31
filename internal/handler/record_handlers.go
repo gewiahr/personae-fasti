@@ -25,7 +25,7 @@ func (h *RecordHandler) GetPlayerCurrentGameRecords(req httputils.RequestData[dt
 		return e.ErrToApiError(err)
 	}
 
-	resp := mapper.RecordToRecordFullArray(records, req.Player.ExtID, req.Player.CurrentGame.ExtID)
+	resp := mapper.RecordToRecordFullArray(records, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID)
 	return httputils.Response{Status: http.StatusOK, Body: struct {
 		Records []dto.RecordFull `json:"records"`
 	}{
@@ -40,7 +40,7 @@ func (h *RecordHandler) PostPlayerCurrentGameRecord(req httputils.RequestData[dt
 		return e.ErrToApiError(err)
 	}
 
-	resp := mapper.RecordToRecordFull(*record, req.Player.ExtID, req.Player.CurrentGame.ExtID)
+	resp := mapper.RecordToRecordFull(*record, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID)
 	return httputils.Response{Status: http.StatusCreated, Body: resp}
 }
 
@@ -51,7 +51,7 @@ func (h *RecordHandler) EditPlayerCurrentGameRecord(req httputils.RequestData[dt
 		return e.ErrToApiError(err)
 	}
 
-	resp := mapper.RecordToRecordFull(*record, req.Player.ExtID, req.Player.CurrentGame.ExtID)
+	resp := mapper.RecordToRecordFull(*record, req.Player.CurrentGame.Players, req.Player.CurrentGame.Quests, req.Player.CurrentGame.ExtID)
 	return httputils.Response{Status: http.StatusCreated, Body: resp}
 }
 
