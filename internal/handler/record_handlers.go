@@ -55,14 +55,14 @@ func (h *RecordHandler) EditPlayerCurrentGameRecord(req httputils.RequestData[dt
 	return httputils.Response{Status: http.StatusCreated, Body: resp}
 }
 
-// DeletePlayerCurrentGameRecord handles DELETE /record/{id} (protected).
+// DeletePlayerCurrentGameRecord handles DELETE /record/{ext} (protected).
 func (h *RecordHandler) DeletePlayerCurrentGameRecord(req httputils.RequestData[dto.NoBody]) httputils.Responder {
-	recordID := httputils.GetPathValueInt(req.Request, "id")
-	if recordID <= 0 {
-		return e.NewApiError(http.StatusBadRequest, "error parsing id: record id is invalid")
+	recordExt := req.Request.PathValue("ext")
+	if recordExt == "" {
+		return e.NewApiError(http.StatusBadRequest, "record ext is invalid")
 	}
 
-	err := h.svc.DeletePlayerCurrentGameRecord(req.Context, req.Player, recordID)
+	err := h.svc.DeletePlayerCurrentGameRecord(req.Context, req.Player, recordExt)
 	if err != nil {
 		return e.ErrToApiError(err)
 	}

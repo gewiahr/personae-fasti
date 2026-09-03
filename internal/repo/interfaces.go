@@ -87,10 +87,10 @@ type PlayerRepository interface {
 
 type RecordRepository interface {
 	GetCurrentGameRecordList(ctx context.Context, gameID, playerID int) ([]domain.Record, error)
-	GetRecord(ctx context.Context, playerID int, recordID int) (*domain.Record, error)
+	GetRecord(ctx context.Context, gameID int, recordExt string) (*domain.Record, error)
 	PostRecord(ctx context.Context, record *domain.Record) (*domain.Record, error)
-	EditRecord(ctx context.Context, recordUpdate *dto.RecordUpdate, playerID int) (*domain.Record, error)
-	SoftDeleteRecord(ctx context.Context, playerID int, recordID int) error
+	EditRecord(ctx context.Context, recordUpdate *dto.RecordUpdate, playerID, gameID int) (*domain.Record, error)
+	SoftDeleteRecord(ctx context.Context, gameID int, recordExt string) error
 
 	FilterAllowedRecords(ctx context.Context, records []domain.Record, playerID int) ([]domain.Record, error)
 

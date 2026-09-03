@@ -15,7 +15,7 @@ func RecordToRecordFullArray(records []domain.Record, players []domain.Player, q
 
 func RecordToRecordFull(r domain.Record, players []domain.Player, quests []domain.Quest, gameExt string) dto.RecordFull {
 	return dto.RecordFull{
-		ID:          r.ID,
+		ExtID:       r.ExtID,
 		Text:        r.Text,
 		PlayerExtID: recordPlayerExt(r, players),
 		GameExtID:   gameExt,

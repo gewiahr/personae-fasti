@@ -23,7 +23,7 @@ func (api *APIServer) SetHandlers(
 	api.router.HandleFunc("GET /records", AuthAdapt(api.auth, recordHandler.GetPlayerCurrentGameRecords))
 	api.router.HandleFunc("POST /record", AuthAdapt(api.auth, recordHandler.PostPlayerCurrentGameRecord))
 	api.router.HandleFunc("PUT /record", AuthAdapt(api.auth, recordHandler.EditPlayerCurrentGameRecord))
-	api.router.HandleFunc("DELETE /record/{id}", AuthAdapt(api.auth, recordHandler.DeletePlayerCurrentGameRecord))
+	api.router.HandleFunc("DELETE /record/{ext}", AuthAdapt(api.auth, recordHandler.DeletePlayerCurrentGameRecord))
 
 	/* CHARS */
 	api.router.HandleFunc("GET /chars", AuthAdapt(api.auth, entitiesHandler.GetPlayerCurrentGameChars))

@@ -9,8 +9,9 @@ import (
 type Record struct {
 	bun.BaseModel `bun:"table:record"`
 
-	ID   int    `bun:"id,pk,autoincrement"`
-	Text string `bun:"text,notnull"`
+	ID    int    `bun:"id,pk,autoincrement"`
+	ExtID string `bun:"ext,unique,notnull,type:varchar(16),default:nanoid(16)"`
+	Text  string `bun:"text,notnull"`
 
 	Chars     []Char     `bun:"m2m:records_chars,join:Record=Char"`
 	NPCs      []NPC      `bun:"m2m:records_npcs,join:Record=NPC"`

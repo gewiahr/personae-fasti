@@ -3,8 +3,8 @@ package dto
 import "time"
 
 type RecordFull struct {
-	ID   int    `json:"id"`
-	Text string `json:"text"`
+	ExtID string `json:"ext"`
+	Text  string `json:"text"`
 
 	PlayerExtID string `json:"playerExt"`
 	GameExtID   string `json:"gameExt"`
@@ -25,7 +25,7 @@ type RecordInsert struct {
 }
 
 type RecordUpdate struct {
-	ID         int    `json:"id"`
+	ExtID      string `json:"ext"`
 	Text       string `json:"text"`
 	Hidden     bool   `json:"hidden"`
 	QuestExtID string `json:"questExt"`

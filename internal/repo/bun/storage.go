@@ -138,6 +138,9 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 	if err := s.applyInviteSenderMigration(ctx); err != nil {
 		return err
 	}
+	if err := s.applyPublicRecordExtMigration(ctx); err != nil {
+		return err
+	}
 
 	_, err = s.db.NewCreateIndex().
 		IfNotExists().
@@ -211,6 +214,47 @@ const apiClientMetadataMigration = "20260831_api_client_metadata"
 const gameCreationRelationsMigration = "20260901_game_creation_relations"
 
 const inviteSenderMigration = "20260903_invite_sender"
+
+const publicRecordExtMigration = "20260904_public_record_ext"
+
+func (s *BunStorage) applyPublicRecordExtMigration(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migration (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create schema migration table: %w", err)
+	}
+
+	var applied bool
+	if err := s.db.NewSelect().
+		ColumnExpr("EXISTS (SELECT 1 FROM schema_migration WHERE name = ?)", publicRecordExtMigration).
+		Scan(ctx, &applied); err != nil {
+		return fmt.Errorf("failed to check public record ext migration: %w", err)
+	}
+	if applied {
+		return nil
+	}
+
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		statements := []string{
+			`ALTER TABLE "record" ADD COLUMN IF NOT EXISTS ext VARCHAR(16)`,
+			`UPDATE "record" SET ext = nanoid(16) WHERE ext IS NULL OR ext = ''`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS record_ext_idx ON "record" (ext)`,
+			`ALTER TABLE "record" ALTER COLUMN ext SET DEFAULT nanoid(16), ALTER COLUMN ext SET NOT NULL`,
+		}
+		for _, statement := range statements {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("public record ext migration failed: %w", err)
+			}
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migration (name) VALUES (?)", publicRecordExtMigration); err != nil {
+			return fmt.Errorf("failed to record public record ext migration: %w", err)
+		}
+		return nil
+	})
+}
 
 func (s *BunStorage) applyInviteSenderMigration(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, `

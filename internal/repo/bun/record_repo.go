@@ -38,9 +38,12 @@ func (r *RecordRepo) GetCurrentGameRecordList(ctx context.Context, gameID, playe
 	return records, nil
 }
 
-func (r *RecordRepo) GetRecord(ctx context.Context, playerID int, recordID int) (*domain.Record, error) {
-	record := &domain.Record{ID: recordID}
-	err := r.db.NewSelect().Model(record).WherePK().Scan(context.Background(), record)
+func (r *RecordRepo) GetRecord(ctx context.Context, gameID int, recordExt string) (*domain.Record, error) {
+	record := &domain.Record{}
+	err := r.db.NewSelect().
+		Model(record).
+		Where("ext = ? AND game_id = ?", recordExt, gameID).
+		Scan(ctx, record)
 	if err != nil {
 		return nil, err
 	}
@@ -69,13 +72,13 @@ func (r *RecordRepo) PostRecord(ctx context.Context, record *domain.Record) (*do
 	return record, nil
 }
 
-func (r *RecordRepo) EditRecord(ctx context.Context, recordUpdate *dto.RecordUpdate, playerID int) (*domain.Record, error) {
-	record := &domain.Record{ID: recordUpdate.ID}
+func (r *RecordRepo) EditRecord(ctx context.Context, recordUpdate *dto.RecordUpdate, playerID, gameID int) (*domain.Record, error) {
+	record := &domain.Record{}
 
 	if err := r.db.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
 		result, err := tx.NewUpdate().
 			Model(record).
-			WherePK().
+			Where("ext = ? AND game_id = ?", recordUpdate.ExtID, gameID).
 			Set("text = ?", recordUpdate.Text).
 			Set("quest_id = ?", recordUpdate.QuestID).
 			Set("hidden_by = ?", gewiutils.TernaryInt(recordUpdate.Hidden, playerID, 0)).
@@ -103,15 +106,18 @@ func (r *RecordRepo) EditRecord(ctx context.Context, recordUpdate *dto.RecordUpd
 	return record, nil
 }
 
-func (r *RecordRepo) SoftDeleteRecord(ctx context.Context, playerID int, recordID int) error {
+func (r *RecordRepo) SoftDeleteRecord(ctx context.Context, gameID int, recordExt string) error {
 	now := time.Now().UTC()
 	record := domain.Record{
-		ID:      recordID,
 		Deleted: &now,
 	}
 
 	// Soft Delete Record
-	result, err := r.db.NewUpdate().Model(&record).Column("deleted").WherePK().Exec(ctx)
+	result, err := r.db.NewUpdate().
+		Model(&record).
+		Column("deleted").
+		Where("ext = ? AND game_id = ?", recordExt, gameID).
+		Exec(ctx)
 	if err != nil {
 		return err
 	}

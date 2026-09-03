@@ -69,7 +69,7 @@ func (s *RecordService) EditPlayerCurrentGameRecord(ctx context.Context, player 
 	if quest != nil {
 		recordUpdate.QuestID = quest.ID
 	}
-	record, err := s.recordRepo.EditRecord(ctx, recordUpdate, player.ID)
+	record, err := s.recordRepo.EditRecord(ctx, recordUpdate, player.ID, player.CurrentGameID)
 	if err != nil {
 		return nil, e.NewInternalError("Ошибка записи", err)
 	}
@@ -95,8 +95,8 @@ func (s *RecordService) resolveQuest(ctx context.Context, player *domain.Player,
 }
 
 // Delete record in player current game
-func (s *RecordService) DeletePlayerCurrentGameRecord(ctx context.Context, player *domain.Player, recordID int) error {
-	record, err := s.recordRepo.GetRecord(ctx, player.ID, recordID)
+func (s *RecordService) DeletePlayerCurrentGameRecord(ctx context.Context, player *domain.Player, recordExt string) error {
+	record, err := s.recordRepo.GetRecord(ctx, player.CurrentGameID, recordExt)
 	if err != nil {
 		return e.NewInternalError("Ошибка получения записи", err)
 	}
@@ -107,7 +107,7 @@ func (s *RecordService) DeletePlayerCurrentGameRecord(ctx context.Context, playe
 		}
 	}
 
-	err = s.recordRepo.SoftDeleteRecord(ctx, player.ID, recordID)
+	err = s.recordRepo.SoftDeleteRecord(ctx, player.CurrentGameID, recordExt)
 	if err != nil {
 		return e.NewInternalError("Ошибка записи", err)
 	}
