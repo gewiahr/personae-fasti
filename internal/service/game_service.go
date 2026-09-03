@@ -164,7 +164,11 @@ func (s *GameService) InvitePlayer(ctx context.Context, player *domain.Player, i
 		}
 	}
 
-	err = s.gameRepo.InvitePlayer(ctx, &domain.GameInvite{GameID: player.CurrentGame.ID, PlayerID: playerInvited.ID})
+	err = s.gameRepo.InvitePlayer(ctx, &domain.GameInvite{
+		GameID:      player.CurrentGame.ID,
+		PlayerID:    playerInvited.ID,
+		InvitedByID: player.ID,
+	})
 	if err != nil {
 		return e.NewInternalError("error inviting player", err)
 	}

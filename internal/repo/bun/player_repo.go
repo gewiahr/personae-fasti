@@ -214,11 +214,21 @@ func (r *PlayerRepo) AddPlayerToGame(ctx context.Context, playerID, gameID int) 
 			return err
 		}
 
+		player := &domain.Player{ID: playerID}
+		if _, err := tx.NewUpdate().
+			Model(player).
+			Set("current_game_id = ?", gameID).
+			WherePK().
+			Where("COALESCE(current_game_id, 0) = 0").
+			Exec(ctx); err != nil {
+			return err
+		}
+
 		gameInvite := domain.GameInvite{
 			PlayerID: playerID,
 			GameID:   gameID,
 		}
-		if _, err := tx.NewDelete().Model(&gameInvite).WherePK().Exec(context.Background()); err != nil {
+		if _, err := tx.NewDelete().Model(&gameInvite).WherePK().Exec(ctx); err != nil {
 			return err
 		}
 

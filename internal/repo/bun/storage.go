@@ -135,6 +135,9 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 	if err := s.applyGameCreationRelationsMigration(ctx); err != nil {
 		return err
 	}
+	if err := s.applyInviteSenderMigration(ctx); err != nil {
+		return err
+	}
 
 	_, err = s.db.NewCreateIndex().
 		IfNotExists().
@@ -206,6 +209,49 @@ const nullableAPILogFieldsMigration = "20260830_nullable_api_log_fields"
 const apiClientMetadataMigration = "20260831_api_client_metadata"
 
 const gameCreationRelationsMigration = "20260901_game_creation_relations"
+
+const inviteSenderMigration = "20260903_invite_sender"
+
+func (s *BunStorage) applyInviteSenderMigration(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migration (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create schema migration table: %w", err)
+	}
+
+	var applied bool
+	if err := s.db.NewSelect().
+		ColumnExpr("EXISTS (SELECT 1 FROM schema_migration WHERE name = ?)", inviteSenderMigration).
+		Scan(ctx, &applied); err != nil {
+		return fmt.Errorf("failed to check invite sender migration: %w", err)
+	}
+	if applied {
+		return nil
+	}
+
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		statements := []string{
+			`ALTER TABLE game_invites ADD COLUMN IF NOT EXISTS invited_by_id BIGINT`,
+			`UPDATE game_invites AS invite
+			 SET invited_by_id = game.gm_id
+			 FROM game
+			 WHERE invite.game_id = game.id AND invite.invited_by_id IS NULL`,
+			`ALTER TABLE game_invites ALTER COLUMN invited_by_id SET NOT NULL`,
+		}
+		for _, statement := range statements {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("invite sender migration failed: %w", err)
+			}
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migration (name) VALUES (?)", inviteSenderMigration); err != nil {
+			return fmt.Errorf("failed to record invite sender migration: %w", err)
+		}
+		return nil
+	})
+}
 
 func (s *BunStorage) applyGameCreationRelationsMigration(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, `

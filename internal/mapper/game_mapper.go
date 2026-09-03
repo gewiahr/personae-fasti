@@ -67,10 +67,15 @@ func SessionToSessionBriefArray(sessions []domain.Session) []dto.SessionBrief {
 }
 
 func InviteToGameInvite(invite *domain.GameInvite) *dto.GameInvite {
+	invitedBy := dto.PlayerBrief{}
+	if invite.InvitedBy != nil {
+		invitedBy = PlayerToPlayersBrief(*invite.InvitedBy)
+	}
 	return &dto.GameInvite{
 		PlayerExt:  invite.Player.ExtID,
 		GameExt:    invite.Game.ExtID,
 		GameTitle:  invite.Game.Name,
+		InvitedBy:  invitedBy,
 		InviteCode: invite.Code,
 	}
 }

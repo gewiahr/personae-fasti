@@ -36,10 +36,11 @@ type SessionUpdate struct {
 }
 
 type GameInvite struct {
-	PlayerExt  string `json:"playerExt"`
-	GameExt    string `json:"gameExt"`
-	GameTitle  string `json:"gameTitle"`
-	InviteCode string `json:"inviteCode"`
+	PlayerExt  string      `json:"playerExt"`
+	GameExt    string      `json:"gameExt"`
+	GameTitle  string      `json:"gameTitle"`
+	InvitedBy  PlayerBrief `json:"invitedBy"`
+	InviteCode string      `json:"inviteCode"`
 }
 
 type GameCreate struct {

@@ -258,6 +258,7 @@ func (r *GameRepo) GetPlayerInvites(ctx context.Context, playerID int) ([]domain
 		Where("player_id = ?", playerID).
 		Relation("Player").
 		Relation("Game").
+		Relation("InvitedBy").
 		Exec(context.Background(), &invites)
 
 	if err == sql.ErrNoRows {
@@ -277,6 +278,7 @@ func (r *GameRepo) GetGameInvites(ctx context.Context, gameID int) ([]domain.Gam
 		Where("game_id = ?", gameID).
 		Relation("Player").
 		Relation("Game").
+		Relation("InvitedBy").
 		Exec(context.Background(), &invites)
 
 	if err == sql.ErrNoRows {

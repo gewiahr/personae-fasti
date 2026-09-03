@@ -57,10 +57,12 @@ type PlayerGame struct {
 type GameInvite struct {
 	bun.BaseModel `bun:"game_invites"`
 
-	PlayerID int     `bun:"player_id,pk"`
-	Player   *Player `bun:"rel:belongs-to,join:player_id=id"`
-	GameID   int     `bun:"game_id,pk"`
-	Game     *Game   `bun:"rel:belongs-to,join:game_id=id"`
+	PlayerID    int     `bun:"player_id,pk"`
+	Player      *Player `bun:"rel:belongs-to,join:player_id=id"`
+	GameID      int     `bun:"game_id,pk"`
+	Game        *Game   `bun:"rel:belongs-to,join:game_id=id"`
+	InvitedByID int     `bun:"invited_by_id,notnull"`
+	InvitedBy   *Player `bun:"rel:belongs-to,join:invited_by_id=id"`
 
 	Code string `bun:"code,unique,notnull,type:varchar(16),default:nanoid(16)"`
 
