@@ -141,6 +141,9 @@ func (s *BunStorage) Migrate(ctx context.Context) error {
 	if err := s.applyPublicRecordExtMigration(ctx); err != nil {
 		return err
 	}
+	if err := s.applyCaseInsensitiveUsernameMigration(ctx); err != nil {
+		return err
+	}
 
 	_, err = s.db.NewCreateIndex().
 		IfNotExists().
@@ -216,6 +219,39 @@ const gameCreationRelationsMigration = "20260901_game_creation_relations"
 const inviteSenderMigration = "20260903_invite_sender"
 
 const publicRecordExtMigration = "20260904_public_record_ext"
+
+const caseInsensitiveUsernameMigration = "20260905_case_insensitive_username"
+
+func (s *BunStorage) applyCaseInsensitiveUsernameMigration(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migration (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create schema migration table: %w", err)
+	}
+
+	var applied bool
+	if err := s.db.NewSelect().
+		ColumnExpr("EXISTS (SELECT 1 FROM schema_migration WHERE name = ?)", caseInsensitiveUsernameMigration).
+		Scan(ctx, &applied); err != nil {
+		return fmt.Errorf("failed to check case-insensitive username migration: %w", err)
+	}
+	if applied {
+		return nil
+	}
+
+	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.ExecContext(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS player_username_lower_idx ON player (LOWER(username))`); err != nil {
+			return fmt.Errorf("case-insensitive username migration failed: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migration (name) VALUES (?)", caseInsensitiveUsernameMigration); err != nil {
+			return fmt.Errorf("failed to record case-insensitive username migration: %w", err)
+		}
+		return nil
+	})
+}
 
 func (s *BunStorage) applyPublicRecordExtMigration(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, `

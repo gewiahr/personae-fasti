@@ -65,7 +65,7 @@ func (r *PlayerRepo) GetByUsername(ctx context.Context, username string) (*domai
 	player := &domain.Player{}
 	err := r.db.NewSelect().
 		Model(player).
-		Where("username = ?", username).
+		Where("LOWER(username) = LOWER(?)", username).
 		Relation("RegData").
 		Relation("CurrentGame").
 		Relation("CurrentGame.Settings").
@@ -105,7 +105,10 @@ func (r *PlayerRepo) CreatePlayer(ctx context.Context, player *domain.Player) (*
 }
 
 func (r *PlayerRepo) IsUsernameFree(ctx context.Context, username string) (bool, error) {
-	count, err := r.db.NewSelect().Model(&domain.Player{}).Where("username = ?", username).Count(context.Background())
+	count, err := r.db.NewSelect().
+		Model(&domain.Player{}).
+		Where("LOWER(username) = LOWER(?)", username).
+		Count(ctx)
 	if err != nil {
 		return false, err
 	}
